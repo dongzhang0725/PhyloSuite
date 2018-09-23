@@ -1,6 +1,6 @@
 # Release Note
 
-## PhyloSuite v1.1.2 (2018-09-23, Fri)
+## PhyloSuite v1.1.1 (2018-09-23, Fri)
 + test recognize version
   - descript1
   - descript2
