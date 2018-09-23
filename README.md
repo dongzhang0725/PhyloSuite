@@ -1,2 +1,2 @@
-# PhyloMAN
+# PhyloSuite
 Phylogeny Manager
