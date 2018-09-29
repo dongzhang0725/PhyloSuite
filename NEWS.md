@@ -1,6 +1,6 @@
 # Release Note
 
-## PhyloSuite v1.1.21 (2018-09-29, Sat)
+## PhyloSuite v1.1.3 (2018-09-29, Sat)
 + Rewrite the function of normalization
 + Optimize flowchart function
 + Optimize GenBank file display
