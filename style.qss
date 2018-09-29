@@ -17,6 +17,11 @@ QTableView {
     outline: 0;
 }
 
+/* QTableView::item:hover {
+    background: #0078D7;
+    color: white;
+} */
+
 #page_8, #page_5, #page_3, #page_7, #page_display {
 	background-color: #A0A0A0;
 }
@@ -125,17 +130,27 @@ background:none;
 background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #E1E4E6,stop:1 #CCD3D9);
 } */
 
-QPushButton::menu-indicator {
+/* QPushButton::menu-indicator {
 subcontrol-position: right center;
 right: 5px;
+} */
+
+QPushButton::menu-indicator {
+    subcontrol-position: right center;
+    subcontrol-origin: padding;
+    width: 15px;
+    height: 15px;
+    right: 5px;
+    border-left: 1px solid gray;
+    border-image: url(:/picture/resourses/1485528481_arrow-down-01.png);
 }
 
-/*
+
 QToolButton::menu-indicator{
 subcontrol-position: right center;
 right: 5px;
 }
-*/
+
 
 QPushButton QMenu::separator
 {
@@ -551,9 +566,8 @@ BaseTable::item:selected:active
 
 
 QToolTip { 
-    color: #ffffff; 
-    background-color: #0078D7;
-    /* background-color: green; */
+    /* color: #ffffff; 
+    background-color: #0078D7; */
     border: 1px solid white;
     min-height: 20px;
     }
