@@ -1,8 +1,12 @@
 # Release Note
 
+<<<<<<< HEAD
 # Release Note
 
 ## PhyloSuite v1.1.4 (2018-10-17, Wed)
+=======
+## PhyloSuite v1.1.4 (2018-09-29, Sat)
+>>>>>>> origin/master
 + Optimize functions
 
 ## PhyloSuite v1.1.3 (2018-09-29, Sat)
