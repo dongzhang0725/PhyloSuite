@@ -1,6 +1,6 @@
 # Release Note
 
-## PhyloSuite v1.1.4 (2018-09-29, Sat)
+## PhyloSuite v1.1.4 (2018-10-17, Wed)
 + Optimize functions
 
 ## PhyloSuite v1.1.3 (2018-09-29, Sat)
