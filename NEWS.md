@@ -1,5 +1,10 @@
 # Release Note
 
+## PhyloSuite v1.1.5 (2018-10-31, Wed)
++ Add statistics of nucleotide content of each gene
++ Fix the bug of sorting numbers in table
++ Add functions of auto-detect taxonomy from NCBI 'taxonomy' database and WoRMS website
+
 ## PhyloSuite v1.1.4 (2018-10-17, Wed)
 + Optimize functions
 
