@@ -6,6 +6,7 @@
 + add 'all' features to GenBank file extract settings
 + speed up the initialization of GenBank information table
 + change plugin IQ-TREE to the newest version (1.6.8, need to download anew)
++ enable ModelFinder to select model for BEAST1 and BEAST2
 
 ## PhyloSuite v1.1.3 (2018-10-31, Wed)
 + Add statistics of nucleotide content of each gene
