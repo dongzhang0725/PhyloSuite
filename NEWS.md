@@ -1,6 +1,13 @@
 # Release Note
 
-## PhyloSuite v1.1.5 (2018-10-31, Wed)
+## PhyloSuite v1.1.11 (2018-11-15, Thu)
++ enable user to add note to GenBank file
++ count time of each execution
++ add 'all' features to GenBank file extract settings
++ speed up the initialization of GenBank information table
++ change plugin IQ-TREE to the newest version (1.6.8, need to download anew)
+
+## PhyloSuite v1.1.3 (2018-10-31, Wed)
 + Add statistics of nucleotide content of each gene
 + Fix the bug of sorting numbers in table
 + Add functions of auto-detect taxonomy from NCBI 'taxonomy' database and WoRMS website
