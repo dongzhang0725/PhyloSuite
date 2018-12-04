@@ -4,6 +4,7 @@
 + enable MAFFT to align protein-coding genes with internal stop codons
 + uniformize/replace model name in ModelFinder, IQ-TREE and MrBayes
 + add parameters check and autocorrection functions to Flowchart
++ enable PhyloSuite to run on MAC and Linux systems
 
 ## PhyloSuite v1.1.11 (trial version, 2018-11-15, Thu)
 + enable user to add note to GenBank file
