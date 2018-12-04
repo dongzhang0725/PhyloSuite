@@ -52,7 +52,6 @@ bind Spinbox <<Copy>> {
     }
 }
 bind Spinbox <<Paste>> {
-    global tcl_platform
     catch {
 	if {[tk windowingsystem] ne "x11"} {
 	    catch {
@@ -74,8 +73,8 @@ bind Spinbox <<PasteSelection>> {
 }
 
 bind Spinbox <<TraverseIn>> {
-    %W selection range 0 end 
-    %W icursor end 
+    %W selection range 0 end
+    %W icursor end
 }
 
 # Standard Motif bindings:
@@ -87,10 +86,12 @@ bind Spinbox <B1-Motion> {
     ::tk::spinbox::Motion %W %x %y
 }
 bind Spinbox <Double-1> {
+    ::tk::spinbox::ArrowPress %W %x %y
     set tk::Priv(selectMode) word
     ::tk::spinbox::MouseSelect %W %x sel.first
 }
 bind Spinbox <Triple-1> {
+    ::tk::spinbox::ArrowPress %W %x %y
     set tk::Priv(selectMode) line
     ::tk::spinbox::MouseSelect %W %x 0
 }
@@ -300,6 +301,10 @@ bind Spinbox <B2-Motion> {
 proc ::tk::spinbox::Invoke {w elem} {
     variable ::tk::Priv
 
+    if {![winfo exists $w]} {
+      return
+    }
+
     if {![info exists Priv(outsideElement)]} {
 	$w invoke $elem
 	incr Priv(repeated)
@@ -329,6 +334,35 @@ proc ::tk::spinbox::ClosestGap {w x} {
     incr pos
 }
 
+# ::tk::spinbox::ArrowPress --
+# This procedure is invoked to handle button-1 presses in buttonup
+# or buttondown elements of spinbox widgets.
+#
+# Arguments:
+# w -		The spinbox window in which the button was pressed.
+# x -		The x-coordinate of the button press.
+# y -		The y-coordinate of the button press.
+
+proc ::tk::spinbox::ArrowPress {w x y} {
+    variable ::tk::Priv
+
+    if {[$w cget -state] ne "disabled" && \
+            [string match "button*" $Priv(element)]} {
+        $w selection element $Priv(element)
+        set Priv(repeated) 0
+        set Priv(relief) [$w cget -$Priv(element)relief]
+        catch {after cancel $Priv(afterId)}
+        set delay [$w cget -repeatdelay]
+        if {$delay > 0} {
+            set Priv(afterId) [after $delay \
+                    [list ::tk::spinbox::Invoke $w $Priv(element)]]
+        }
+        if {[info exists Priv(outsideElement)]} {
+            unset Priv(outsideElement)
+        }
+    }
+}
+
 # ::tk::spinbox::ButtonDown --
 # This procedure is invoked to handle button-1 presses in spinbox
 # widgets.  It moves the insertion cursor, sets the selection anchor,
@@ -337,6 +371,7 @@ proc ::tk::spinbox::ClosestGap {w x} {
 # Arguments:
 # w -		The spinbox window in which the button was pressed.
 # x -		The x-coordinate of the button press.
+# y -		The y-coordinate of the button press.
 
 proc ::tk::spinbox::ButtonDown {w x y} {
     variable ::tk::Priv
@@ -351,20 +386,7 @@ proc ::tk::spinbox::ButtonDown {w x y} {
 
     switch -exact $Priv(element) {
 	"buttonup" - "buttondown" {
-	    if {"disabled" ne [$w cget -state]} {
-		$w selection element $Priv(element)
-		set Priv(repeated) 0
-		set Priv(relief) [$w cget -$Priv(element)relief]
-		catch {after cancel $Priv(afterId)}
-		set delay [$w cget -repeatdelay]
-		if {$delay > 0} {
-		    set Priv(afterId) [after $delay \
-			    [list ::tk::spinbox::Invoke $w $Priv(element)]]
-		}
-		if {[info exists Priv(outsideElement)]} {
-		    unset Priv(outsideElement)
-		}
-	    }
+	    ::tk::spinbox::ArrowPress $w $x $y
 	}
 	"entry" {
 	    set Priv(selectMode) char
@@ -389,6 +411,7 @@ proc ::tk::spinbox::ButtonDown {w x y} {
 # Arguments:
 # w -		The spinbox window in which the button was pressed.
 # x -		The x-coordinate of the button press.
+# y -		The y-coordinate of the button press.
 
 proc ::tk::spinbox::ButtonUp {w x y} {
     variable ::tk::Priv
@@ -492,6 +515,8 @@ proc ::tk::spinbox::Paste {w x} {
 #
 # Arguments:
 # w -		The spinbox window.
+# x -		The x-coordinate of the mouse.
+# y -		The y-coordinate of the mouse.
 
 proc ::tk::spinbox::Motion {w x y} {
     variable ::tk::Priv
