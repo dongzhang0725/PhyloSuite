@@ -1,0 +1,12 @@
+atp6_mafft_gb=1-133;
+cox1_mafft_gb=134-619;
+cox2_mafft_gb=620-767;
+cox3_mafft_gb=768-896;
+cytb_mafft_gb=897-1236;
+nad1_mafft_gb=1237-1499;
+nad2_mafft_gb=1500-1685;
+nad3_mafft_gb=1686-1782;
+nad4_mafft_gb=1783-2025;
+nad4L_mafft_gb=2026-2089;
+nad5_mafft_gb=2090-2384;
+nad6_mafft_gb=2385-2481;
