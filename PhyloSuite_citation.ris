@@ -1,15 +1,16 @@
-﻿TY  - JOUR
-AU  - Zhang, D.
-AU  - Gao, F.
-AU  - Jakovlić, Ivan
+TY  - JOUR
+T1  - PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies
+JF  - bioRxiv
+DO  - 10.1101/489088
+SP  - 489088
+AU  - Zhang, Dong
+AU  - Gao, Fangluan
 AU  - Li, Wen X
+AU  - Jakovlić, Ivan
 AU  - Zou, Hong
 AU  - Zhang, Jin
 AU  - Wang, Gui T
-PY  - 2018
-ST  - PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Available from https://github.com/dongzhang0725/PhyloSuite.
-TI  - PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Available from https://github.com/dongzhang0725/PhyloSuite.
-ID  - 844
+Y1  - 2018/01/01
+UR  - http://biorxiv.org/content/early/2018/12/07/489088.abstract
+N2  - Multi-gene and genomic datasets have become commonplace in the field of phylogenetics, but many of the existing tools are not designed for such datasets, which makes the analysis time-consuming and tedious. We therefore present PhyloSuite, a user-friendly workflow desktop platform dedicated to streamlining molecular sequence data management and evolutionary phylogenetics studies. It employs a plugin-based system that integrates a number of useful phylogenetic and bioinformatic tools, thereby streamlining the entire procedure, from data acquisition to phylogenetic tree annotation, with the following features: (i) point-and-click and drag-and-drop graphical user interface, (ii) a workspace to manage and organize molecular sequence data and results of analyses, (iii) GenBank entries extraction and comparative statistics, (iv) a phylogenetic workflow with batch processing capability, (v) elaborate bioinformatic analysis for mitochondrial genomes. The aim of PhyloSuite is to enable researchers to spend more time playing with scientific questions, instead of wasting it on conducting standard analyses. The compiled binary of PhyloSuite is available under the LGPL license at https://github.com/dongzhang0725/PhyloSuite/releases, implemented in Python and runs on Windows, Mac OSX and Linux.
 ER  - 
-
-

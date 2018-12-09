@@ -22,7 +22,7 @@ background-color: #FCFCF5;
     color: white;
 } */
 
-QTableView::item:selected {background: rgb(245, 105, 87); color: white; border: 0px;}
+QTableView::item:selected {background: rgb(240, 116, 100); color: white; border: 0px;}
 
 #page_8, #page_5, #page_3, #page_7, #page_display {
 	background-color: #A0A0A0;
@@ -500,7 +500,7 @@ Qlabel#label_flow_sum, Qlabel#label_flow_resul
 
 QTextEdit{
     selection-color: white; 
-    selection-background-color: #FB4B33;
+    selection-background-color: rgb(238, 101, 83);
     font-family: "Courier New" 
 }
 
