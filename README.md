@@ -13,7 +13,7 @@ Unzip `PhyloSuite_xxx_Mac.zip/PhyloSuite_xxx_Linux.tar.gz` to anywhere you like,
 cd path/to/PhyloSuite
 ./PhyloSuite
  ```
-If you encounter an error of "permission denied", try to use the follow command:
+If you encounter an error of "permission denied", try to use the following command:
 
 ```
 chmod -R 755 path/to/PhyloSuite(folder)
