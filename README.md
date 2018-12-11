@@ -7,7 +7,7 @@ PhyloSuite is an integrated and scalable desktop platform for streamlined molecu
 Windows 7, 8 and 10 are supported, you can download `PhyloSuite_xxx_win_setup.exe` from <a href="https://github.com/dongzhang0725/PhyloSuite/releases">here</a>, and run “PhyloSuite.exe” file after the installation.
 
 ### Mac OSX & Linux
-Unzip `PhyloSuite_xxx_Mac.zip/PhyloSuite_xxx_Linux.tar.gz` to anywhere you like, and double click “PhyloSuite” (in PhyloSuite folder) to start or use the following command: 
+Unzip `PhyloSuite_xxx_Mac.zip/PhyloSuite_xxx_Linux.tar.gz` to anywhere you like, and double click “PhyloSuite” (in PhyloSuite folder) to start, or use the following command: 
 
 ```
 cd path/to/PhyloSuite
