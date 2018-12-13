@@ -1,11 +1,14 @@
 
-<center style="font-size:30px"><strong>PhyloSuite</strong></center>
-<center style="font-size:17px"><strong>An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies</strong></center>
-<center><a>https://github.com/dongzhang0725/PhyloSuite/release</a></center><br>
-<center style="font-size:17px">Dong Zhang, Fangluan Gao, Wen X. Li, Ivan Jakovlić, Hong Zou, Jin Zhang and Gui T. Wang</center>
-<center style="font-size:17px">Version 1.1.13 || December 8, 2018</center>
-<hr>
-<div style="font-size:25px">Contents</div>
+PhyloSuite
+======================
+
+#### An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies
+
+#### https://github.com/dongzhang0725/PhyloSuite/release
+#### Dong Zhang, Fangluan Gao, Wen X. Li, Ivan Jakovlić, Hong Zou, Jin Zhang and Gui T. Wang
+#### Version 1.1.13 || December 8, 2018
+
+## Contents
 <!-- TOC -->
 
 - [1. Introduction](#1-introduction)
