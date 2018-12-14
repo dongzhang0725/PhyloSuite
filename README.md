@@ -1,6 +1,14 @@
 # PhyloSuite
 PhyloSuite is an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. It combines the functions of two previous tools: MitoTool (https://github.com/dongzhang0725/MitoTool) and BioSuite (https://github.com/dongzhang0725/BioSuite).
 
+The interface and the main functions of PhyloSuite.  
+
+![image](https://github.com/dongzhang0725/PhyloSuite_tutorial/blob/master/main_functions.jpg)
+
+The workflow diagram of PhyloSuite.  
+
+![image](https://github.com/dongzhang0725/PhyloSuite_tutorial/blob/master/flowchart.jpg)
+
 ## Installation
 
 The installer of all platforms can be downloaded from https://github.com/dongzhang0725/PhyloSuite/releases.
@@ -33,3 +41,4 @@ https://github.com/dongzhang0725/PhyloSuite/issues or send email to dongzhang072
 
 ## Citation
 Zhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088. (Download as: <a href="https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/PhyloSuite_citation.ris">RIS</a>   <a href="https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/PhyloSuite_citation.xml">XML</a>   <a href="https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/PhyloSuite_citation.enw">ENW</a>)
+
