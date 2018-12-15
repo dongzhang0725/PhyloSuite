@@ -32,7 +32,6 @@ QTableView::item:selected {background: rgb(240, 116, 100); color: white; border:
 	background-color: #E8E8EA;
 }
 
-
 QComboBox {
     border: 1px solid gray;
     border-radius: 3px;
