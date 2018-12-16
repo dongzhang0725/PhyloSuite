@@ -15,7 +15,7 @@ The summary of flowchart and references of used programs.
 
 ## Installation
 
-The installer of all platforms can be downloaded from https://github.com/dongzhang0725/PhyloSuite/releases.
+Installers for all platforms can be downloaded from https://github.com/dongzhang0725/PhyloSuite/releases.
 
 ### Windows
 Windows 7, 8 and 10 are supported, just double click the `PhyloSuite_xxx_win_setup.exe` to install, and run “PhyloSuite.exe” file after the installation.
