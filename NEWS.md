@@ -1,6 +1,6 @@
 # Release Note
 
-## PhyloSuite v1.1.132 (2019-01-06, Sun)
+## PhyloSuite v1.1.14 (2019-01-06, Sun)
 + Shielded the folder/files which are irrelevant to the workplace
 + Fixed the bug that caused the results of PartitionFinder to be unrecognized by MrBayes and IQ-TREE on MAC and Linux
 + Added outgroup parameters to IQ-TREE
@@ -12,6 +12,7 @@
 + Fixed the bug that prevented the sequences to be reordered more than once in the "Concatenation" function on MAC
 + Added "Reminder settings" to "Settings-->Settings" function
 + Fixed the bug that disabled the "Continue Previous Analysis" function of MrBayes
++ Added "Default" and "Custom" options to "Extracter" function, which can extract the entire sequence and specific features, respectively
 
 ## PhyloSuite v1.1.132 (2018-12-09, Sun, <font color="red">BUG fix</font>)
 + Fixed an error when using "Draw RSCU figure" function in MAC (for v1.1.13)
