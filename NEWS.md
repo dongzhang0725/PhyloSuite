@@ -1,6 +1,6 @@
 # Release Note
 
-## PhyloSuite v1.1.14 (2019-01-06, Sun)
+## PhyloSuite v1.1.132 (2019-01-06, Sun)
 + Shielded the folder/files which are irrelevant to the workplace
 + Fixed the bug that caused the results of PartitionFinder to be unrecognized by MrBayes and IQ-TREE on MAC and Linux
 + Added outgroup parameters to IQ-TREE
