@@ -6,15 +6,20 @@ PhyloSuite
 
 #### https://github.com/dongzhang0725/PhyloSuite/release
 #### Dong Zhang, Fangluan Gao, Wen X. Li, Ivan Jakovlić, Hong Zou, Jin Zhang and Gui T. Wang
-#### Version 1.1.13 || December 8, 2018
+#### Version 1.1.14 || December 8, 2018
 
 ## Contents
 <!-- TOC -->
 
+            - [An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies](#an-integrated-and-scalable-desktop-platform-for-streamlined-molecular-sequence-data-management-and-evolutionary-phylogenetics-studies)
+            - [https://github.com/dongzhang0725/PhyloSuite/release](#httpsgithubcomdongzhang0725phylosuiterelease)
+            - [Dong Zhang, Fangluan Gao, Wen X. Li, Ivan Jakovlić, Hong Zou, Jin Zhang and Gui T. Wang](#dong-zhang-fangluan-gao-wen-x-li-ivan-jakovlić-hong-zou-jin-zhang-and-gui-t-wang)
+            - [Version 1.1.14 || December 8, 2018](#version-1114--december-8-2018)
+    - [Contents](#contents)
 - [1. Introduction](#1-introduction)
     - [1.1. *Background*](#11-background)
     - [1.2. *Functions*](#12-functions)
-- [2. License & Disclaimer](#2-license-disclaimer)
+- [2. License & Disclaimer](#2-license--disclaimer)
     - [2.1. *License*](#21-license)
     - [2.2. *Disclaimer*](#22-disclaimer)
 - [3. Operating systems and installation](#3-operating-systems-and-installation)
@@ -431,8 +436,50 @@ There are several things you should keep in mind when using this function:
 - Only the first program requires an input file(s), whereas the input file(s) of other programs will be autodetected from the results of upstream analyses. <span style="color: red">_Note that the two `Tree Reconstruction` programs can use either the results of `ModelFinder` or `PartitionFinder`, and they can run in parallel._</span>
 - As the `Minimum Number Of Sequences For A Conserved Position` and `Minimum Number Of Sequences For A Flank Position` options are enabled only when files are input directly into [Gblocks](#gblocks), these two options are set by default to the most ‘relaxed’ values (i.e. lowest values) in the Flowchart mode, unless if `Gblocks` is the first program in a Flowchart analysis, in which case you can set the two options as you would normally.
 - For the model selection and tree reconstruction, if only `ModelFinder` and `IQ-TREE` are selected, `IQ-TREE` will use the best-fit model calculated by `ModelFinder`; if only `ModelFinder` and `MrBayes` are selected, then `Mrbayes` option must be selected in the `Model for` menu of `ModelFinder`; and finally, if `ModelFinder`, `IQ-TREE` and `MrBayes` are selected, the results of `ModelFinder` will be used only for `MrBayes` (thus it will use the same settings as described in the preceding note), whereas `IQ-TREE` will first conduct the best-fit model selection inbuilt in the algorithm, and conduct the tree inference (using the `Auto` option in the `Models` menu, equivalent to `-m TEST` or `-m MFP`). 
-- PhyloSuite also provides a function to check and autocorrect the parameters between selected programs, including those specified in the previous note, conflicting sequence types, conflicting partition modes, etc. 
-- When the flowchart is finished, the parameter settings and the citations of corresponding software programs will be summarized in the [display area](#operation) of the `flowchart`.
+- [PhyloSuite](#phylosuite)
+            - [An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies](#an-integrated-and-scalable-desktop-platform-for-streamlined-molecular-sequence-data-management-and-evolutionary-phylogenetics-studies)
+            - [https://github.com/dongzhang0725/PhyloSuite/release](#httpsgithubcomdongzhang0725phylosuiterelease)
+            - [Dong Zhang, Fangluan Gao, Wen X. Li, Ivan Jakovlić, Hong Zou, Jin Zhang and Gui T. Wang](#dong-zhang-fangluan-gao-wen-x-li-ivan-jakovli%C4%87-hong-zou-jin-zhang-and-gui-t-wang)
+            - [Version 1.1.14 || December 8, 2018](#version-1114-december-8-2018)
+    - [Contents](#contents)
+- [1. Introduction](#1-introduction)
+    - [1.1. *Background*](#11-background)
+    - [1.2. *Functions*](#12-functions)
+- [2. License & Disclaimer](#2-license-disclaimer)
+    - [2.1. *License*](#21-license)
+    - [2.2. *Disclaimer*](#22-disclaimer)
+- [3. Operating systems and installation](#3-operating-systems-and-installation)
+- [4. Management](#4-management)
+    - [4.1. *Interface Operation*](#41-interface-operation)
+    - [4.2. *Plugins Installation*](#42-plugins-installation)
+    - [4.3. *GenBank File Settings*](#43-genbank-file-settings)
+        - [4.3.1. Lineage Recognition](#431-lineage-recognition)
+        - [4.3.2. Information Display and Modification](#432-information-display-and-modification)
+        - [4.3.3. Features Extract](#433-features-extract)
+    - [4.4. *Import Files*](#44-import-files)
+        - [4.4.1. GenBank file](#441-genbank-file)
+        - [4.4.2. Other types of files](#442-other-types-of-files)
+    - [4.5. *File Operation*](#45-file-operation)
+        - [4.5.1. Input Files](#451-input-files)
+            - [4.5.1.1. Autodetect Input Files](#4511-autodetect-input-files)
+            - [4.5.1.2. Specify Input Files](#4512-specify-input-files)
+        - [4.5.2. Output Files](#452-output-files)
+- [5. Data analysis](#5-data-analysis)
+    - [5.1. *Extract GenBank file*](#51-extract-genbank-file)
+    - [5.2. *MAFFT*](#52-mafft)
+    - [5.3. *Gblocks*](#53-gblocks)
+    - [5.4. *Concatenate Sequences*](#54-concatenate-sequences)
+    - [5.5. *Convert Format*](#55-convert-format)
+    - [5.6. *ModelFinder*](#56-modelfinder)
+    - [5.7. *PartitionFinder*](#57-partitionfinder)
+    - [5.8. *IQ-TREE*](#58-iq-tree)
+    - [5.9. *MrBayes*](#59-mrbayes)
+    - [5.10. *Flowchart*](#510-flowchart)
+    - [5.11. *Mitogenome*](#511-mitogenome)
+        - [5.11.1. Parse annotations](#5111-parse-annotations)
+        - [5.11.2. Compare tables](#5112-compare-tables)
+        - [5.11.3. Draw RSCU figure](#5113-draw-rscu-figure)
+- [6. Citations and codes](#6-citations-and-codes)
 
 ## 5.11. *Mitogenome*
 ### 5.11.1. Parse annotations

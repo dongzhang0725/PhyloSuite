@@ -43,6 +43,7 @@ QComboBox {
     selection-background-color: #BDD7FD;
     selection-color: black;
     /* border-top-color: rgb(218, 216, 216) */
+    combobox-popup: 0;
 }
 
 QComboBox::drop-down {
@@ -310,7 +311,8 @@ QAbstractSpinBox {
 	padding:2px; 
     background:white;
     selection-background-color: green;
-	selection-color:white;
+    selection-color:white;
+    min-width: 60px;
 }  
   
 QAbstractSpinBox:up-button  
@@ -324,7 +326,7 @@ QAbstractSpinBox:down-button
 {  
     background-color: transparent;  
     subcontrol-origin: border;  
-    subcontrol-position: center left;  
+    subcontrol-position: center left; 
 }  
   
 QAbstractSpinBox::up-arrow,QAbstractSpinBox::up-arrow:disabled,QAbstractSpinBox::up-arrow:off {  
@@ -516,8 +518,7 @@ QTextEdit{
         outline: 0;
         border-bottom: 2px ridge #B9B9B9;
         border-left: 2px dotted #B9B9B9;
-        border-right: 2px dotted #B9B9B9;
-    
+        border-right: 2px dotted #B9B9B9;    
     }
 TestWidget > QPushButton{
     border-width: 1px;
