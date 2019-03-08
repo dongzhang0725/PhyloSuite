@@ -1,6 +1,6 @@
 # Release Note
 
-## PhyloSuite v1.1.15 (2019-03-08, Fri)
+## PhyloSuite v1.1.141 (2019-03-08, Fri)
 + Made a homepage for PhyloSuite (https://dongzhang0725.github.io)
 + Added a funtion to clear "misc_feature" in "Standardization" function
 + Fixed a bug that caused IQ-TREE and MrBayes to fail recognizing the outgroup
