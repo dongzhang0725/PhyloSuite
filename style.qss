@@ -190,13 +190,13 @@ border-radius:5px;
 background-color:rgb(76, 169, 106);
 }
 
-.QGroupBox{
+QGroupBox{
 border:1px solid #B2B6B9;
 border-radius:5px;
 margin-top:3ex;
 }
 
-.QGroupBox::title{
+QGroupBox::title{
 subcontrol-origin: margin;
 subcontrol-position: relative;
 left:10px;
@@ -208,6 +208,15 @@ QGroupBox::indicator,QTreeWidget::indicator,QListWidget::indicator{
 width:13px;
 height:13px;
 }
+
+/* QGroupBox#groupBox_top_line {
+border-top:1px solid #B2B6B9;
+}
+
+QGroupBox#groupBox_top_line::title{
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    } */
 
 QDialog QDialogButtonBox
 {

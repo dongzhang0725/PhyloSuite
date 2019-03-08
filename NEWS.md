@@ -1,5 +1,20 @@
 # Release Note
 
+## PhyloSuite v1.1.15 (2019-03-08, Fri)
++ Made a homepage for PhyloSuite (https://dongzhang0725.github.io)
++ Added a funtion to clear "misc_feature" in "Standardization" function
++ Fixed a bug that caused IQ-TREE and MrBayes to fail recognizing the outgroup
++ Added a function to draw a linear figure in "Concatenation"
++ Added the ability to allow mutiple results of each function, instead of overwriting them 
++ Added a function to reconstruct phylogenetic trees in batches using IQ-TREE 
++ Added a function to search sequences in the nucleotide and protein databases of NCBI
++ Optimized and upgraded the function of input files into PhyloSuite, see https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/five_ways_to_import/
++ Added a multi-thread MrBayes run option to the Linux version
++ Enabled the Flowchart function to save different settings as workflow
++ Allowed spaces in the software and workplace paths
++ Changed the interfaces of some functions
++ Enabled MrBayes to infer the tree at any generation
+
 ## PhyloSuite v1.1.141 (2019-01-09, Wed, <font color="red">BUG fix</font>)
 + Fixed the bug that caused "Flowchart" function to crash
     + Shielded the folder/files which are irrelevant to the workplace
