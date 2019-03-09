@@ -13,6 +13,10 @@ The summary of flowchart and references of used programs.
 
 ![image](https://github.com/dongzhang0725/PhyloSuite_tutorial/blob/master/images/flowchart_summary.jpg)
 
+## Homepage
+
+https://dongzhang0725.github.io
+
 ## Installation
 
 Installers for all platforms can be downloaded from https://github.com/dongzhang0725/PhyloSuite/releases.
