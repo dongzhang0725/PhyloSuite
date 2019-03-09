@@ -14,6 +14,7 @@
 + Allowed spaces in the software and workplace paths
 + Changed the interfaces of some functions
 + Enabled MrBayes to infer the tree at any generation
++ Enabled user to customize the sequence name when extracting sequence
 
 ## PhyloSuite v1.1.141 (2019-01-09, Wed, <font color="red">BUG fix</font>)
 + Fixed the bug that caused "Flowchart" function to crash
