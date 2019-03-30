@@ -1,5 +1,26 @@
 # Release Note
 
+## PhyloSuite v1.1.151 (2019-03-28, Thu, <font color="red">BUG fix</font>)
++ Added compiled PartitionFinder2 (MAC and Window only), which doesn't rely on Python 2.7 any more
++ Optimized plugins download and configuration, and added a demo tutorial for this (https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/)
++ Fixed a bug that caused MAFFT to crash
++ Fixed bugs in "Concatenation", "Search in NCBI", and "Fasta file import" functions
+    + Made a homepage for PhyloSuite (https://dongzhang0725.github.io)
+    + Added a funtion to clear "misc_feature" in "Standardization" function
+    + Fixed a bug that caused IQ-TREE and MrBayes to fail recognizing the outgroup
+    + Added a function to draw a linear figure in "Concatenation"
+    + Added the ability to allow mutiple results of each function, instead of overwriting them 
+    + Added a function to reconstruct phylogenetic trees in batches using IQ-TREE 
+    + Added a function to search sequences in the nucleotide and protein databases of NCBI
+    + Optimized and upgraded the function of input files into PhyloSuite, see https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/five_ways_to_import/
+    + Added a multi-thread MrBayes run option to the Linux version
+    + Enabled the Flowchart function to save different settings as workflow
+    + Allowed spaces in the software and workplace paths
+    + Changed the interfaces of some functions
+    + Enabled MrBayes to infer the tree at any generation
+    + Enabled user to customize the sequence name when extracting sequence
+
+
 ## PhyloSuite v1.1.15 (2019-03-08, Fri)
 + Made a homepage for PhyloSuite (https://dongzhang0725.github.io)
 + Added a funtion to clear "misc_feature" in "Standardization" function
