@@ -241,6 +241,7 @@ border: .5px solid #C1BFBF;
 border-radius:3px;
 margin: 5px;
 padding: 5px;
+messagebox-text-interaction-flags: 5;
 }
 
 QInputDialog QPushButton, QMessageBox QPushButton{
