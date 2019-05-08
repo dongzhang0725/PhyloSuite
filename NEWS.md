@@ -1,6 +1,6 @@
 # Release Note
 
-## PhyloSuite v1.1.152 (2019-05-07, Thu, <font color="red">BUG fix</font>)
+## PhyloSuite v1.1.151 (2019-05-07, Thu, <font color="red">BUG fix</font>)
 + Added strand-specific statistics when extracting mitogenomes
 + Fixed bugs for the 'Extract' function
 + Fixed a bug that caused Gblocks to crash
