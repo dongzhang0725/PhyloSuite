@@ -22,7 +22,7 @@ https://dongzhang0725.github.io
 Installers for all platforms can be downloaded from https://github.com/dongzhang0725/PhyloSuite/releases.
 
 ### Windows
-Windows 7, 8 and 10 are supported, just double click the `PhyloSuite_xxx_win_setup.exe` to install, and run “PhyloSuite.exe” file after the installation. If the installation fails, download `PhyloSuite_xxx_Win.zip`, unzip it, and run PhyloSuite directly from this folder.
+Windows 7, 8 and 10 are supported, just double click the `PhyloSuite_xxx_win_setup.exe` to install, and run “PhyloSuite.exe” file after the installation. If the installation fails, download `PhyloSuite_xxx_Win.rar`, unzip it, and run PhyloSuite directly from this folder.
 
 ### Mac OSX &&nbsp;Linux
 Unzip `PhyloSuite_xxx_Mac.zip/PhyloSuite_xxx_Linux.tar.gz` to anywhere you like, and double click “PhyloSuite” (in PhyloSuite folder) to start, or use the following command: 
