@@ -37,7 +37,7 @@ If you encounter an error of "permission denied", try to use the following comma
 chmod -R 755 path/to/PhyloSuite(folder)
 ```
 
-Note that both 64 bit and 32 bit Windows and Mac OSX versions are supported, whereas only 64 bit has been tested in Linux (ubuntu).
+<span style="color:red">Note that both 64 bit and 32 bit Windows is supported (Windows 7 and above), whereas only 64 bit has been tested in Linux (Ubuntu 14.04.1 and above) and Mac OSX (macOS Sierra version 10.12.3 and above).</span>
 
 ## Examples
 
