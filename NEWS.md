@@ -1,6 +1,6 @@
 # Release Note
 
-## PhyloSuite v1.1.151 (2019-05-07, Thu, <font color="red">BUG fix</font>)
+## PhyloSuite v1.1.152 (2019-05-07, Thu, <font color="red">BUG fix</font>)
 + Added strand-specific statistics when extracting mitogenomes
 + Fixed bugs for the 'Extract' function
 + Fixed a bug that caused Gblocks to crash
@@ -8,7 +8,7 @@
 + Added a exclusion function when customizing taxonomy recognition 
 + Fixed a bug that caused incompatible of MrBayes 3.2.7
 + Added rename, drag and drop functions for the file explorer in the main page of PhyloSuite
-+ Added a function to extract chloroplast genome
++ Added a function to extract chloroplast genome (thanks to Dr. Kai Meng)
     + Made a homepage for PhyloSuite (https://dongzhang0725.github.io)
     + Added a funtion to clear "misc_feature" in "Standardization" function
     + Fixed a bug that caused IQ-TREE and MrBayes to fail recognizing the outgroup
