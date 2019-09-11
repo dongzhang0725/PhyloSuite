@@ -1,0 +1,1006 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>mafft</class>
+ <widget class="QDialog" name="mafft">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>501</width>
+    <height>492</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MAFFT</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true"/>
+  </property>
+  <property name="sizeGripEnabled">
+   <bool>true</bool>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_5">
+   <item row="0" column="0">
+    <widget class="QGroupBox" name="groupBox_4">
+     <property name="title">
+      <string>Input</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_4">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Input:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="ListQCombobox" name="comboBox_4">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="acceptDrops">
+         <bool>true</bool>
+        </property>
+        <property name="editable">
+         <bool>true</bool>
+        </property>
+        <property name="sizeAdjustPolicy">
+         <enum>QComboBox::AdjustToMinimumContentsLength</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="pushButton_3">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>30</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="3">
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Try to drag your &lt;span style=&quot; font-weight:600; color:#ff0000;&quot;&gt;fasta&lt;/span&gt; file and drop here if you want to use custom files&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="ClickedLableGif" name="label_7">
+          <property name="toolTip">
+           <string>Brief example</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Parameter</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <property name="horizontalSpacing">
+       <number>0</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Alignment Mode:</string>
+        </property>
+        <property name="buddy">
+         <cstring>normal_radioButton</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QRadioButton" name="normal_radioButton">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Normal</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_2</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="codon_radioButton">
+          <property name="text">
+           <string>Codon</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_2</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="N2P_radioButton">
+          <property name="text">
+           <string>N2P</string>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_2</string>
+          </attribute>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <widget class="QCheckBox" name="checkBox_2">
+        <property name="text">
+         <string>Extract-Seq.:</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QRadioButton" name="AA_radioButton_2">
+          <property name="toolTip">
+           <string>Amino acid sequences</string>
+          </property>
+          <property name="text">
+           <string>AA</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="PCG_radioButton_2">
+          <property name="toolTip">
+           <string>Protein-coding genes</string>
+          </property>
+          <property name="text">
+           <string>PCGs</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="RNAs_radioButton_2">
+          <property name="toolTip">
+           <string>RNA sequences (rRNA and tRNA)</string>
+          </property>
+          <property name="text">
+           <string>RNAs</string>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup</string>
+          </attribute>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_22">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Code Table:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_24">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Strategy:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_3</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2">
+       <widget class="QComboBox" name="comboBox_3">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>13</width>
+          <height>26</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>1. --auto</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>2. FFT-NS-1 (fast)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>3. FFT-NS-2 (default)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>4. G-INS-i  (accurate)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>5. L-INS-i  (accurate)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>6. E-INS-i  (accurate)</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_23">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Export Format:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_2</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QComboBox" name="comboBox_2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>13</width>
+          <height>26</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>1. CLUSTAL Format / Sorted</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>2. CLUSTAL Format / Input order</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>3. FASTA Format   / Sorted</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>4. FASTA Format   / Input order</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>5. PHYLIP Format  / Sorted</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>6. PHYLIP Format  / Input order</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_25">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Parameters:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_2</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="2">
+       <widget class="QPushButton" name="pushButton_par">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="layoutDirection">
+         <enum>Qt::LeftToRight</enum>
+        </property>
+        <property name="text">
+         <string>Additional Parameters</string>
+        </property>
+        <property name="icon">
+         <iconset resource="myRes.qrc">
+          <normaloff>:/picture/resourses/keynote.png</normaloff>:/picture/resourses/keynote.png</iconset>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QComboBox" name="comboBox_9">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>114</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <item>
+         <property name="text">
+          <string>1 The standard code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>2 Vertebrate mitochondrial code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>3 The Yeast Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>4 Mold, Protozoan, and Coelenterate Mitochondrial code and Mycoplasma/Spiroplasma code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>5 Invertebrate mitochondrial</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>6 The Ciliate, Dasycladacean and Hexamita Nuclear Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>9 Echinoderm and Flatworm mitochondrial code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>10 The Euplotid Nuclear Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>11 The Bacterial, Archaeal and Plant Plastid Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>12 The Alternative Yeast Nuclear Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>13 Ascidian mitochondrial code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>14 Alternative flatworm mitochondrial code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>16 Chlorophycean Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>21 Trematode Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>22 Scenedesmus obliquus Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>23 Thraustochytrium Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>24 Pterobranchia Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>25 Candidate Division SR1 and Gracilibacteria Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>26 Pachysolen tannophilus Nuclear Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>27 Karyorelict Nuclear</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>28 Condylostoma Nuclear</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>29 Mesodinium Nuclear</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>30 Peritrich Nuclear</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>31 Blastocrithidia Nuclear</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="title">
+      <string>Run</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3" columnstretch="1,1">
+      <item row="0" column="0">
+       <widget class="ArrowPushButton" name="pushButton">
+        <property name="text">
+         <string>Start</string>
+        </property>
+        <property name="icon">
+         <iconset resource="myRes.qrc">
+          <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QPushButton" name="pushButton_2">
+        <property name="text">
+         <string>Stop</string>
+        </property>
+        <property name="icon">
+         <iconset resource="myRes.qrc">
+          <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Progress</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>file:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QProgressBar" name="progressBar_2">
+        <property name="value">
+         <number>0</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Total:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QProgressBar" name="progressBar">
+        <property name="value">
+         <number>0</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Log:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="pushButton_9">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Show log</string>
+        </property>
+        <property name="icon">
+         <iconset resource="myRes.qrc">
+          <normaloff>:/picture/resourses/Eye_Care_Services-512.png</normaloff>:/picture/resourses/Eye_Care_Services-512.png</iconset>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ListQCombobox</class>
+   <extends>QComboBox</extends>
+   <header>src.CustomWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ArrowPushButton</class>
+   <extends>QPushButton</extends>
+   <header>src.CustomWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ClickedLableGif</class>
+   <extends>QLabel</extends>
+   <header>src.CustomWidget.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>pushButton_3</tabstop>
+  <tabstop>checkBox_2</tabstop>
+  <tabstop>comboBox_3</tabstop>
+  <tabstop>comboBox_4</tabstop>
+  <tabstop>comboBox_2</tabstop>
+  <tabstop>pushButton_par</tabstop>
+  <tabstop>comboBox_9</tabstop>
+  <tabstop>pushButton</tabstop>
+  <tabstop>pushButton_2</tabstop>
+  <tabstop>pushButton_9</tabstop>
+  <tabstop>normal_radioButton</tabstop>
+  <tabstop>codon_radioButton</tabstop>
+  <tabstop>N2P_radioButton</tabstop>
+  <tabstop>AA_radioButton_2</tabstop>
+  <tabstop>PCG_radioButton_2</tabstop>
+  <tabstop>RNAs_radioButton_2</tabstop>
+ </tabstops>
+ <resources>
+  <include location="myRes.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>AA_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>normal_radioButton</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>229</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>229</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>RNAs_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>normal_radioButton</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>460</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>229</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>AA_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>codon_radioButton</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>229</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>345</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>AA_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>N2P_radioButton</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>229</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>460</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>RNAs_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>N2P_radioButton</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>460</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>460</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>RNAs_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>codon_radioButton</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>460</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>345</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>PCG_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>normal_radioButton</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>345</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>229</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>PCG_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>codon_radioButton</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>345</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>345</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>PCG_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>N2P_radioButton</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>345</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>460</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>PCG_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>codon_radioButton</receiver>
+   <slot>toggle()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>345</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>345</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>RNAs_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>normal_radioButton</receiver>
+   <slot>toggle()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>460</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>229</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>AA_radioButton_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>normal_radioButton</receiver>
+   <slot>toggle()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>229</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>229</x>
+     <y>135</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>AA_radioButton_2</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>84</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>229</x>
+     <y>159</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>PCG_radioButton_2</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>89</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>345</x>
+     <y>159</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_2</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>RNAs_radioButton_2</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>70</x>
+     <y>159</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>460</x>
+     <y>159</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>normal_radioButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>comboBox_9</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>154</x>
+     <y>125</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>186</x>
+     <y>181</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>N2P_radioButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>comboBox_9</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>365</x>
+     <y>126</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>362</x>
+     <y>186</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>codon_radioButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>comboBox_9</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>262</x>
+     <y>128</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>178</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>N2P_radioButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>comboBox_9</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>398</x>
+     <y>129</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>411</x>
+     <y>182</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <buttongroups>
+  <buttongroup name="buttonGroup_2"/>
+  <buttongroup name="buttonGroup"/>
+ </buttongroups>
+</ui>
