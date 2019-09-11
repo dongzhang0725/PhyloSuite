@@ -1,0 +1,9 @@
+biopython
+python-dateutil
+suds-py3
+PyQt5==5.10.1
+reportlab
+psutil
+
+[:platform_system == "Windows"]
+pywin32

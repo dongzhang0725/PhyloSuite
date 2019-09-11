@@ -1,0 +1,3 @@
+[console_scripts]
+PhyloSuite = PhyloSuite.PhyloSuite:start
+

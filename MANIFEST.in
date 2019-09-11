@@ -1,0 +1,9 @@
+include PhyloSuite/NEWS.md
+include LICENSE
+include PhyloSuite/PhyloSuite_citation.enw
+include PhyloSuite/PhyloSuite_citation.ris
+include PhyloSuite/PhyloSuite_citation.xml
+include PhyloSuite/style.qss
+recursive-include PhyloSuite/manual *
+recursive-include PhyloSuite/tests *
+recursive-include PhyloSuite/uifiles *.ui

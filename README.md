@@ -3,15 +3,15 @@ PhyloSuite is an integrated and scalable desktop platform for streamlined molecu
 
 The interface and the main functions of PhyloSuite.  
 
-![image](https://github.com/dongzhang0725/PhyloSuite_tutorial/blob/master/images/main_functions.jpg)
+![main_functions.jpg](https://github.com/dongzhang0725/PhyloSuite_tutorial/blob/master/images/main_functions.jpg?raw=true)
 
 The workflow diagram of PhyloSuite.  
 
-![image](https://github.com/dongzhang0725/PhyloSuite_tutorial/blob/master/images/flowchart.jpg)
+![flowchart.jpg](https://github.com/dongzhang0725/PhyloSuite_tutorial/blob/master/images/flowchart.jpg?raw=true)
 
 The summary of flowchart and references of used programs.  
 
-![image](https://github.com/dongzhang0725/PhyloSuite_tutorial/blob/master/images/flowchart_summary.jpg)
+![flowchart_summary.jpg](https://github.com/dongzhang0725/PhyloSuite_tutorial/blob/master/images/flowchart_summary.jpg?raw=true)
 
 ## Homepage
 

@@ -1,0 +1,690 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ModelFinder</class>
+ <widget class="QDialog" name="ModelFinder">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>518</width>
+    <height>526</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>ModelFinder</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_4">
+   <item row="0" column="0">
+    <widget class="QGroupBox" name="groupBox_4">
+     <property name="title">
+      <string>Input</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Alignment File:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="InputQLineEdit" name="lineEdit">
+        <property name="cursor">
+         <cursorShape>ArrowCursor</cursorShape>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="placeholderText">
+         <string>PHYLIP, FASTA, NEXUS, CLUSTAL format is ok</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="pushButton_3">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>30</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Tree File:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="InputQLineEdit" name="lineEdit_2">
+        <property name="cursor">
+         <cursorShape>ArrowCursor</cursorShape>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="placeholderText">
+         <string>Optional! (in newick format)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QPushButton" name="pushButton_4">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>30</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QCheckBox" name="checkBox">
+        <property name="text">
+         <string>Partition Mode:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="InputQLineEdit" name="lineEdit_3">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="placeholderText">
+         <string>Optional!</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QPushButton" name="pushButton_22">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>30</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Partition Style:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0" colspan="3">
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="label_14">
+          <property name="text">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click &lt;a href=&quot;http://www.iqtree.org/doc/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt; to learn more about &lt;span style=&quot; font-weight:600; color:#ff0000;&quot;&gt;IQ-TREE&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="openExternalLinks">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="ClickedLableGif" name="label_2">
+          <property name="toolTip">
+           <string>Brief example</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="3" column="1" colspan="2">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QRadioButton" name="radioButton">
+          <property name="text">
+           <string>Edge-linked</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_2">
+          <property name="text">
+           <string>Edge-unlinked</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Parameters</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_24">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Sequence Type:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_3</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboBox_3">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>13</width>
+          <height>26</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>Auto detect</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>DNA</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Protein</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Codon</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Binary</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Morphology</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>DNA--&gt;AA</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="label_27">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Threads:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_3</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QComboBox" name="comboBox_6">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>13</width>
+          <height>26</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_22">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Code Table:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1" colspan="3">
+       <widget class="QComboBox" name="comboBox_9">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>114</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <item>
+         <property name="text">
+          <string>1 The standard code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>2 Vertebrate mitochondrial code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>3 The Yeast Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>4 Mold, Protozoan, and Coelenterate Mitochondrial code and Mycoplasma/Spiroplasma code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>5 Invertebrate mitochondrial</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>6 The Ciliate, Dasycladacean and Hexamita Nuclear Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>9 Echinoderm and Flatworm mitochondrial code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>10 The Euplotid Nuclear Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>11 The Bacterial, Archaeal and Plant Plastid Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>12 The Alternative Yeast Nuclear Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>13 Ascidian mitochondrial code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>14 Alternative flatworm mitochondrial code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>16 Chlorophycean Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>21 Trematode Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>22 Scenedesmus obliquus Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>23 Thraustochytrium Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>24 Pterobranchia Mitochondrial Code</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>25 Candidate Division SR1 and Gracilibacteria Code</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_25">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Criterion:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_3</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1" colspan="3">
+       <widget class="QComboBox" name="comboBox_4">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>13</width>
+          <height>26</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>Bayesian information criterion (BIC)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Corrected AIC (AICc)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Akaike information criterion (AIC)</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_26">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Model for:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_3</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QComboBox" name="comboBox_5">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>13</width>
+          <height>26</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>IQ-TREE</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Mrbayes</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>RAxML</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>PhyML</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>BEAST1</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>BEAST2</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="3" column="2" colspan="2">
+       <widget class="QCheckBox" name="checkBox_2">
+        <property name="text">
+         <string>FreeRate heterogeneity [+R]</string>
+        </property>
+        <property name="autoRepeat">
+         <bool>false</bool>
+        </property>
+        <property name="autoExclusive">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="title">
+      <string>Run</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3" columnstretch="1,1">
+      <item row="0" column="0">
+       <widget class="ArrowPushButton" name="pushButton">
+        <property name="text">
+         <string>Start</string>
+        </property>
+        <property name="icon">
+         <iconset resource="myRes.qrc">
+          <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QPushButton" name="pushButton_2">
+        <property name="text">
+         <string>Stop</string>
+        </property>
+        <property name="icon">
+         <iconset resource="myRes.qrc">
+          <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QGroupBox" name="groupBox_6">
+     <property name="title">
+      <string>Progress</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_7">
+      <item row="1" column="0">
+       <widget class="QPushButton" name="pushButton_9">
+        <property name="text">
+         <string>Show log</string>
+        </property>
+        <property name="icon">
+         <iconset resource="myRes.qrc">
+          <normaloff>:/picture/resourses/Eye_Care_Services-512.png</normaloff>:/picture/resourses/Eye_Care_Services-512.png</iconset>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QProgressBar" name="progressBar">
+        <property name="value">
+         <number>0</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>InputQLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>src.CustomWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ArrowPushButton</class>
+   <extends>QPushButton</extends>
+   <header>src.CustomWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ClickedLableGif</class>
+   <extends>QLabel</extends>
+   <header>src.CustomWidget.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>pushButton_3</tabstop>
+  <tabstop>lineEdit_3</tabstop>
+  <tabstop>pushButton_4</tabstop>
+  <tabstop>pushButton_9</tabstop>
+  <tabstop>lineEdit_2</tabstop>
+  <tabstop>comboBox_3</tabstop>
+  <tabstop>pushButton_22</tabstop>
+  <tabstop>lineEdit</tabstop>
+  <tabstop>comboBox_4</tabstop>
+  <tabstop>comboBox_5</tabstop>
+  <tabstop>comboBox_6</tabstop>
+  <tabstop>pushButton_2</tabstop>
+  <tabstop>pushButton</tabstop>
+ </tabstops>
+ <resources>
+  <include location="myRes.qrc"/>
+ </resources>
+ <connections/>
+</ui>
