@@ -18,7 +18,7 @@ URL = 'https://github.com/dongzhang0725/PhyloSuite'
 EMAIL = 'dongzhang0725@gmail.com'
 AUTHOR = 'Dong Zhang'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '1.1.16-1'
+VERSION = '1.1.1605'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
