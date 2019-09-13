@@ -113,7 +113,6 @@ PhyloSuite/uifiles/addFile.ui
 PhyloSuite/uifiles/authenticationdialog.ui
 PhyloSuite/uifiles/clipboard_query.ui
 PhyloSuite/uifiles/compareTable.ui
-PhyloSuite/uifiles/correct_myRes.py
 PhyloSuite/uifiles/dirichlet_mrbayes.ui
 PhyloSuite/uifiles/display_setting.ui
 PhyloSuite/uifiles/exe_path.ui
