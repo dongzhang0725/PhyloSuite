@@ -58,6 +58,15 @@ It will take some time to install. If it installs successfully, PhyloSuite will 
 
 If the above `pip` command failed to install PhyloSuite, you can use compiled PhyloSuite (see `section 1`) or find and download the source codes here (https://pypi.org/project/PhyloSuite/#files or https://github.com/dongzhang0725/PhyloSuite), and install it manually.
 
+### 3. Install manually
+
+Similarly, Python (version higher than 3.6) should be pre-installed and added to the environment variable in your computer. If it is, then download the PhyloSuite from github, either using `git clone https://github.com/dongzhang0725/PhyloSuite.git` or use the `Clone or download`-->`Download ZIP` button in https://github.com/dongzhang0725/PhyloSuite.
+After that, change your directory to the `PhyloSuite` folder that contains the `setup.py` file, then type:
+
+```
+python setup.py install
+```
+
 ## Examples
 
 https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/example.zip
