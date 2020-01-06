@@ -73,11 +73,7 @@ https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/example.zip
 
 ## Bug report
 
-<<<<<<< HEAD
 [Google group](https://groups.google.com/forum/#!forum/phylosuite), [Github issue](https://github.com/dongzhang0725/PhyloSuite/issues) or send email to dongzhang0725@gmail.com.
-=======
-<a href="https://groups.google.com/forum/#!forum/phylosuite">Google group</a>, <a href="https://github.com/dongzhang0725/PhyloSuite/issues">GitHub issue</a> or send email to dongzhang0725@gmail.com.
->>>>>>> 6773ab30b8d8734159152db86676cace1200e93d
 
 ## Citation
 Zhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096. (Download as: <a href="https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/PhyloSuite/PhyloSuite_citation.ris">RIS</a>   <a href="https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/PhyloSuite/PhyloSuite_citation.xml">XML</a>   <a href="https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/PhyloSuite/PhyloSuite_citation.enw">ENW</a>)
