@@ -441,6 +441,7 @@ class GbEditor(QDialog, Ui_GBeditor, object):
     def guiRestore(self):
         # Restore geometry
         self.resize(self.gbEditor_settings.value('size', QSize(600, 600)))
+        self.factory.centerWindow(self)
         # self.move(self.gbEditor_settings.value('pos', QPoint(875, 254)))
 
     def closeEvent(self, event):

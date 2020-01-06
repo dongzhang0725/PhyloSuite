@@ -1,16 +1,37 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 %0 Journal Article
 %A Zhang, Dong
 %A Gao, Fangluan
-%A Li, Wen X
 %A Jakovlić, Ivan
 %A Zou, Hong
 %A Zhang, Jin
-%A Wang, Gui T
-%T PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies
-%D 2018
-%R 10.1101/489088
-%J bioRxiv
-%P 489088
-%X Multi-gene and genomic datasets have become commonplace in the field of phylogenetics, but many of the existing tools are not designed for such datasets, which makes the analysis time-consuming and tedious. We therefore present PhyloSuite, a user-friendly workflow desktop platform dedicated to streamlining molecular sequence data management and evolutionary phylogenetics studies. It employs a plugin-based system that integrates a number of useful phylogenetic and bioinformatic tools, thereby streamlining the entire procedure, from data acquisition to phylogenetic tree annotation, with the following features: (i) point-and-click and drag-and-drop graphical user interface, (ii) a workspace to manage and organize molecular sequence data and results of analyses, (iii) GenBank entries extraction and comparative statistics, (iv) a phylogenetic workflow with batch processing capability, (v) elaborate bioinformatic analysis for mitochondrial genomes. The aim of PhyloSuite is to enable researchers to spend more time playing with scientific questions, instead of wasting it on conducting standard analyses. The compiled binary of PhyloSuite is available under the LGPL license at https://github.com/dongzhang0725/PhyloSuite/releases, implemented in Python and runs on Windows, Mac OSX and Linux.
-%U https://www.biorxiv.org/content/biorxiv/early/2018/12/07/489088.full.pdf
+%A Li, Wen X.
+%A Wang, Gui T.
+
+%T PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies
+%D 2020
+%J Molecular Ecology Resources
+%P 348-355
+%V 20
+%N 1
+%@ 1755-098X
+%R 10.1111/1755-0998.13096
+%U https://onlinelibrary.wiley.com/doi/abs/10.1111/1755-0998.13096
+%X Abstract Multigene and genomic data sets have become commonplace in the field of phylogenetics, but many existing tools are not designed for such data sets, which often makes the analysis time-consuming and tedious. Here, we present PhyloSuite, a (cross-platform, open-source, stand-alone Python graphical user interface) user-friendly workflow desktop platform dedicated to streamlining molecular sequence data management and evolutionary phylogenetics studies. It uses a plugin-based system that integrates several phylogenetic and bioinformatic tools, thereby streamlining the entire procedure, from data acquisition to phylogenetic tree annotation (in combination with iTOL). It has the following features: (a) point-and-click and drag-and-drop graphical user interface; (b) a workplace to manage and organize molecular sequence data and results of analyses; (c) GenBank entry extraction and comparative statistics; and (d) a phylogenetic workflow with batch processing capability, comprising sequence alignment (mafft and macse), alignment optimization (trimAl, HmmCleaner and Gblocks), data set concatenation, best partitioning scheme and best evolutionary model selection (PartitionFinder and modelfinder), and phylogenetic inference (MrBayes and iq-tree). PhyloSuite is designed for both beginners and experienced researchers, allowing the former to quick-start their way into phylogenetic analysis, and the latter to conduct, store and manage their work in a streamlined way, and spend more time investigating scientific questions instead of wasting it on transferring files from one software program to another.
+
+
+
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\Concatenate.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\Concatenate.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Matrix(object):
     def setupUi(self, Matrix):
         Matrix.setObjectName("Matrix")
-        Matrix.resize(546, 492)
+        Matrix.resize(657, 492)
         Matrix.setSizeGripEnabled(True)
         self.verticalLayout = QtWidgets.QVBoxLayout(Matrix)
         self.verticalLayout.setObjectName("verticalLayout")
@@ -47,6 +47,14 @@ class Ui_Matrix(object):
         self.gridLayout_2.addWidget(self.pushButton_3, 0, 2, 1, 1)
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.checkBox_6 = QtWidgets.QCheckBox(self.groupBox_4)
+        self.checkBox_6.setObjectName("checkBox_6")
+        self.horizontalLayout_2.addWidget(self.checkBox_6)
+        self.line = QtWidgets.QFrame(self.groupBox_4)
+        self.line.setFrameShape(QtWidgets.QFrame.VLine)
+        self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.line.setObjectName("line")
+        self.horizontalLayout_2.addWidget(self.line)
         self.label_5 = QtWidgets.QLabel(self.groupBox_4)
         self.label_5.setObjectName("label_5")
         self.horizontalLayout_2.addWidget(self.label_5)
@@ -234,6 +242,8 @@ class Ui_Matrix(object):
         Matrix.setWindowTitle(_translate("Matrix", "Concatenate Sequence"))
         self.groupBox_4.setTitle(_translate("Matrix", "Input"))
         self.label_4.setText(_translate("Matrix", "Input:"))
+        self.checkBox_6.setToolTip(_translate("Matrix", "Sort the input files according to file name"))
+        self.checkBox_6.setText(_translate("Matrix", "Sort"))
         self.label_5.setText(_translate("Matrix", "<html><head/><body><p>Try to drag your <span style=\" font-weight:600; color:#ff0000;\">alignments</span> file and drop here if you want to use custom files</p></body></html>"))
         self.label_2.setToolTip(_translate("Matrix", "Brief example"))
         self.groupBox.setTitle(_translate("Matrix", "Parameter"))

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import re
+from collections import OrderedDict
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -17,6 +19,166 @@ import traceback
 import copy
 import platform
 
+dict_url = {
+    "windows": {
+        "64bit": {
+            "Github": {
+                "mafft": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mafft.zip",
+                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe",
+                "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-1.6.8-Windows.zip",
+                "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win64.zip",
+                "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder-2.1.1.zip",
+                "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse_v2.03.jar.zip",
+                "trimAl": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/trimal.v1.2rev59.zip",
+                "tbl2asn": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/tbl2asn.zip"
+            },
+            "Gitlab": {
+                "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft.zip",
+                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe",
+                "gblocks": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/iqtree-1.6.8-Windows.zip",
+                "MrBayes": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_win64.zip",
+                "PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/partitionfinder-2.1.1.zip",
+                "macse": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/macse_v2.03.jar.zip",
+                "trimAl": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/trimal.v1.2rev59.zip",
+                "tbl2asn": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/tbl2asn.zip"
+            },
+            "Coding": {
+                "mafft": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/mafft.zip",
+                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe",
+                "gblocks": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/iqtree-1.6.8-Windows.zip",
+                "MrBayes": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_win64.zip",
+                "PF2": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/partitionfinder-2.1.1.zip",
+                "macse": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/macse_v2.03.jar.zip",
+                "trimAl": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/trimal.v1.2rev59.zip",
+                "tbl2asn": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/tbl2asn.zip"
+            },
+            "Chinese resource": {
+                "mafft": "https://pyqt5.com/data/phylosuite/mafft.zip",
+                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe",
+                "gblocks": "https://pyqt5.com/data/phylosuite/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "https://pyqt5.com/data/phylosuite/iqtree-1.6.8-Windows.zip",
+                "MrBayes": "https://pyqt5.com/data/phylosuite/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "https://pyqt5.com/data/phylosuite/PartitionFinder_win64.zip",
+                "PF2": "https://pyqt5.com/data/phylosuite/partitionfinder-2.1.1.zip",
+                "macse": "https://pyqt5.com/data/phylosuite/macse_v2.03.jar.zip",
+                "trimAl": "https://pyqt5.com/data/phylosuite/trimal.v1.2rev59.zip",
+                "tbl2asn": "https://pyqt5.com/data/phylosuite/tbl2asn.zip"
+            }
+        },
+        "32bit": {
+            "Github": {
+                "mafft": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mafft-7.304-win32.zip",
+                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe",
+                "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-1.6.8-Windows32.zip",
+                "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win32.zip",
+                "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder-2.1.1.zip",
+                "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse_v2.03.jar.zip",
+                "trimAl": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/trimal.v1.2rev59.zip",
+                "tbl2asn": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/tbl2asn.zip"
+            },
+            "Gitlab": {
+                "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-7.304-win32.zip",
+                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe",
+                "gblocks": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/iqtree-1.6.8-Windows32.zip",
+                "MrBayes": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_win32.zip",
+                "PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/partitionfinder-2.1.1.zip",
+                "macse": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/macse_v2.03.jar.zip",
+                "trimAl": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/trimal.v1.2rev59.zip",
+                "tbl2asn": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/tbl2asn.zip"
+            },
+            "Coding": {
+                "mafft": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/mafft-7.304-win32.zip",
+                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe",
+                "gblocks": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/iqtree-1.6.8-Windows32.zip",
+                "MrBayes": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_win32.zip",
+                "PF2": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/partitionfinder-2.1.1.zip",
+                "macse": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/macse_v2.03.jar.zip",
+                "trimAl": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/trimal.v1.2rev59.zip",
+                "tbl2asn": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/tbl2asn.zip"
+            },
+            "Chinese resource": {
+                "mafft": "https://pyqt5.com/data/phylosuite/mafft-7.304-win32.zip",
+                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe",
+                "gblocks": "https://pyqt5.com/data/phylosuite/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "https://pyqt5.com/data/phylosuite/iqtree-1.6.8-Windows32.zip",
+                "MrBayes": "https://pyqt5.com/data/phylosuite/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "https://pyqt5.com/data/phylosuite/PartitionFinder_win32.zip",
+                "PF2": "https://pyqt5.com/data/phylosuite/partitionfinder-2.1.1.zip",
+                "macse": "https://pyqt5.com/data/phylosuite/macse_v2.03.jar.zip",
+                "trimAl": "https://pyqt5.com/data/phylosuite/trimal.v1.2rev59.zip",
+                "tbl2asn": "https://pyqt5.com/data/phylosuite/tbl2asn.zip"
+            }
+        }
+    },
+    "darwin": {
+        "64bit": {
+            "Github": {
+                "mafft": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mafft-7.407-mac.zip",
+                "Rscript": "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg",
+                "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_OSX_0.91b.zip",
+                "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-1.6.8-MacOSX.zip",
+                "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MrBayes-3.2.6_MACx64.zip",
+                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_mac.zip",
+                "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder-2.1.1.zip",
+                "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse_v2.03.jar.zip",
+            },
+            "Gitlab": {
+                "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-7.407-mac.zip",
+                "Rscript": "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg",
+                "gblocks": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/Gblocks_OSX_0.91b.zip",
+                "iq-tree": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/iqtree-1.6.8-MacOSX.zip",
+                "MrBayes": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/MrBayes-3.2.6_MACx64.zip",
+                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_mac.zip",
+                "PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/partitionfinder-2.1.1.zip",
+                "macse": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/macse_v2.03.jar.zip",
+            },
+            "Coding": {
+                "mafft": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/mafft-7.407-mac.zip",
+                "Rscript": "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg",
+                "gblocks": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/Gblocks_OSX_0.91b.zip",
+                "iq-tree": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/iqtree-1.6.8-MacOSX.zip",
+                "MrBayes": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/MrBayes-3.2.6_MACx64.zip",
+                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_mac.zip",
+                "PF2": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/partitionfinder-2.1.1.zip",
+                "macse": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/macse_v2.03.jar.zip",
+            },
+            "Chinese resource": {
+                "mafft": "https://pyqt5.com/data/phylosuite/mafft-7.407-mac.zip",
+                "Rscript": "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg",
+                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg",
+                "gblocks": "https://pyqt5.com/data/phylosuite/Gblocks_OSX_0.91b.zip",
+                "iq-tree": "https://pyqt5.com/data/phylosuite/iqtree-1.6.8-MacOSX.zip",
+                "MrBayes": "https://pyqt5.com/data/phylosuite/MrBayes-3.2.6_MACx64.zip",
+                "compiled PF2": "https://pyqt5.com/data/phylosuite/PartitionFinder_mac.zip",
+                "PF2": "https://pyqt5.com/data/phylosuite/partitionfinder-2.1.1.zip",
+                "macse": "https://pyqt5.com/data/phylosuite/macse_v2.03.jar.zip",
+            }
+        }
+    }
+}
 
 class LG_exePath(QDialog, Ui_ExePath, object):
     downloadSig = pyqtSignal()
@@ -28,6 +190,7 @@ class LG_exePath(QDialog, Ui_ExePath, object):
         self.parent = parent
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
+        self.downloadRes = "Github"
         self.setupUi(self)
         if label1:
             self.label_3.setText(label1)
@@ -48,6 +211,7 @@ class LG_exePath(QDialog, Ui_ExePath, object):
         self.label_4.linkActivated.connect(self.exe_link)
         self.label_6.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/")))
+        self.comboBox.currentTextChanged.connect(self.switchRes)
         if platform.system().lower() in ["darwin", "windows"]:
             self.toolButton_3.setStyleSheet("QToolButton {background: transparent;}")
         if not link:
@@ -67,6 +231,10 @@ class LG_exePath(QDialog, Ui_ExePath, object):
             self.label_4.setText(link)
             self.label_4.setWordWrap(True)
         self.adjustSize()
+        ##调用一下
+        self.switchRes("Github")
+        if (flag in ["RscriptPath", "python27"]) or (platform.system().lower() == "linux"):
+            self.comboBox.setEnabled(False)
 
     @pyqtSlot()
     def on_toolButton_3_clicked(self):
@@ -184,6 +352,15 @@ class LG_exePath(QDialog, Ui_ExePath, object):
         else:
             QDesktopServices.openUrl(QUrl(qtext))
 
+    def switchRes(self, resource):
+        if not resource: return
+        self.downloadRes = resource
+        if platform.system().lower() in ["darwin", "windows"]:
+            try:
+                url = dict_url[platform.system().lower()][self.parent.pc_bit][resource][self.flag]
+                self.label_4.setText(re.sub(r"<a href=\".*?\">", "<a href=\"%s\">" % url, self.label_4.text()))
+            except: pass
+
 
 class LG_PF2_exePath(QDialog, Ui_PF2ExePath, object):
     downloadSig = pyqtSignal(str)
@@ -195,6 +372,7 @@ class LG_PF2_exePath(QDialog, Ui_PF2ExePath, object):
         self.parent = parent
         self.thisPath = self.factory.thisPath
         self.setupUi(self)
+        self.downloadRes = "Github"
         self.groupBox_2.toggled.connect(lambda bool_: self.groupBox_3.setChecked(not bool_))
         self.groupBox_3.toggled.connect(lambda bool_: self.groupBox_2.setChecked(not bool_))
         self.groupBox_2.setChecked(True)
@@ -211,6 +389,11 @@ class LG_PF2_exePath(QDialog, Ui_PF2ExePath, object):
         self.setStyleSheet(self.qss_file)
         self.label_9.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/")))
+        self.comboBox.currentTextChanged.connect(self.switchRes)
+        self.switchRes("Github")
+        self.adjustSize()
+        if platform.system().lower() == "linux":
+            self.comboBox.setEnabled(False)
 
     @pyqtSlot()
     def on_pushButton_9_clicked(self):
@@ -269,6 +452,19 @@ class LG_PF2_exePath(QDialog, Ui_PF2ExePath, object):
         path = self.lineEdit_3.text()
         self.closeSig.emit("PF2", path)
 
+    def switchRes(self, resource):
+        if not resource: return
+        self.downloadRes = resource
+        if platform.system().lower() in ["darwin", "windows"]:
+            try:
+                url = dict_url[platform.system().lower()][self.parent.pc_bit][resource]["compiled PF2"]
+                self.label_7.setText(re.sub(r"<a href=\".*?\">", "<a href=\"%s\">" % url, self.label_7.text()))
+            except: pass
+            try:
+                url = dict_url[platform.system().lower()][self.parent.pc_bit][resource]["PF2"]
+                self.label_8.setText(re.sub(r"<a href=\".*?\">", "<a href=\"%s\">" % url, self.label_8.text()))
+            except: pass
+
 
 class Setting(QDialog, Ui_Settings, object):
     '''安装软件的路线：先是执行on_download_xxx，然后弹出询问窗口，判断是自己指定，还是download
@@ -293,11 +489,14 @@ class Setting(QDialog, Ui_Settings, object):
     def __init__(self, parent=None):
         super(Setting, self).__init__(parent)
         # self.thisPath = os.path.dirname(os.path.realpath(__file__))
+        self.parent = parent
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         self.setupUi(self)
         self.currentPath = self.thisPath
         self.factory.init_check(self)
+        ##信号槽
+        self.comboBox.currentTextChanged.connect(self.judgeSettings)
         self.settings = QSettings(
             self.thisPath + '/settings/setting_settings.ini', QSettings.IniFormat)
         self.settings.setFallbacksEnabled(False)
@@ -337,7 +536,7 @@ class Setting(QDialog, Ui_Settings, object):
                               "perl": 12,
                               "HmmCleaner": 13,
                               }
-        self.display_table(self.listWidget.item(0))
+        # self.display_table(self.listWidget.item(0))
         # 预设置按钮
         self.download_mafft_button = QPushButton("Install", self)
         self.download_mafft_button.clicked.connect(
@@ -424,6 +623,7 @@ class Setting(QDialog, Ui_Settings, object):
         self.tableView_2.installEventFilter(self)
         # 恢复用户的设置
         self.guiRestore()
+        self.display_table(self.listWidget.item(0))
         self.pc_bit = self.fetch_os_bit()
         ## 拖拽表格列
         self.tableView_2.horizontalHeader().setSectionsMovable(True)
@@ -450,6 +650,9 @@ class Setting(QDialog, Ui_Settings, object):
         self.tableWidget.setSpan(2, 0, 2, 1)
         self.tableWidget.setSpan(9, 0, 2, 1)
         self.tableWidget.setSpan(12, 0, 2, 1)
+        ## 信号槽
+        self.lineEdit.clicked.connect(self.setFont)
+        self.lineEdit_2.clicked.connect(self.setFont)
 
     def fetch_os_bit(self):
         return "64bit" if platform.machine().endswith('64') else "32bit"
@@ -1278,6 +1481,95 @@ class Setting(QDialog, Ui_Settings, object):
                     QMessageBox.information(
                         self, "Settings", "<p style='line-height:25px; height:25px'>\"%s\" cannot be removed!</p>"%header[column])
 
+    @pyqtSlot()
+    def on_toolButton_3_clicked(self):
+        """
+        add settings
+        """
+        inputDialog = QInputDialog(self)
+        inputDialog.setMinimumWidth(500)
+        settingName, ok = inputDialog.getText(
+            self, 'Add setting', 'New setting name:%s' % (" " * 26))
+        if ok:
+            allSettings = self.settings.value("Taxonomy Recognition")
+            if settingName not in allSettings:
+                allSettings[settingName] = [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
+                                           [['', '*tera', '*dea', '*dae', '*nae', ''],
+                                            ['', '', '*ida', '', '', ''],
+                                            ['', '', '', '', '', ''],
+                                            ['', '', '', '', '', ''],
+                                            ['', '', '', '', '', '']]]
+                self.saveTaxonomySettings(allSettings)
+                self.refresh_taxonomyCombo(settingName)
+            else:
+                QMessageBox.information(
+                    self, "Settings",
+                    "<p style='line-height:25px; height:25px'>A setting named \"%s\" existing. Please select a new name.</p>" % settingName)
+
+    @pyqtSlot()
+    def on_toolButton_4_clicked(self):
+        """
+        remove settings
+        """
+        allSettings = self.settings.value("Taxonomy Recognition")
+        currentSettingName = self.comboBox.currentText()
+        if currentSettingName in allSettings:
+            reply = QMessageBox.information(
+                self,
+                "PhyloSuite",
+                "This will delete \"%s\" setting, continue?"%currentSettingName,
+                QMessageBox.Yes,
+                QMessageBox.Cancel)
+            if reply == QMessageBox.Yes:
+                allSettings.pop(currentSettingName)
+                self.saveTaxonomySettings(allSettings)
+                self.refresh_taxonomyCombo()
+
+    @pyqtSlot()
+    def on_toolButton_6_clicked(self):
+        """
+        import settings
+        """
+        fileName = QFileDialog.getOpenFileName(
+            self, "Input setting file", filter="INIT Format(*.ini);;")
+        if fileName[0]:
+            setting_name = QSettings(
+                fileName[0], QSettings.IniFormat)
+            setting_name.setFallbacksEnabled(False)
+            setting = setting_name.value("exported taxonomy settings", None)
+            if setting:
+                inputDialog = QInputDialog(self)
+                inputDialog.setMinimumWidth(500)
+                settingName, ok = inputDialog.getText(
+                    self, 'Import setting', 'Set setting name:%s' % (" " * 26))
+                if ok:
+                    allSettings = self.settings.value("Taxonomy Recognition")
+                    if settingName not in allSettings:
+                        allSettings[settingName] = setting
+                        self.saveTaxonomySettings(allSettings)
+                        self.refresh_taxonomyCombo(settingName)
+                    else:
+                        QMessageBox.information(
+                            self, "Settings",
+                            "<p style='line-height:25px; height:25px'>A setting named \"%s\" existing. Please select a new name.</p>" % settingName)
+
+    @pyqtSlot()
+    def on_toolButton_5_clicked(self):
+        """
+        export settings
+        """
+        allSettings = self.settings.value("Taxonomy Recognition")
+        currentSettingName = self.comboBox.currentText()
+        fileName, format = QFileDialog.getSaveFileName(self,
+                                                      "Export current setting",
+                                                      currentSettingName,
+                                                      "INIT Format(*.ini);;")
+        if fileName and (currentSettingName in allSettings):
+            setting_name = QSettings(
+                fileName, QSettings.IniFormat)
+            setting_name.setFallbacksEnabled(False)
+            setting_name.setValue("exported taxonomy settings", allSettings[currentSettingName])
+
     def display_table(self, listItem):
         listItem.setSelected(True)
         # self.listWidget.setItemSelected(listItem, True)
@@ -1288,30 +1580,30 @@ class Setting(QDialog, Ui_Settings, object):
             self.stackedWidget.setCurrentIndex(0)
         elif name == "Taxonomy Recognition":
             self.stackedWidget.setCurrentIndex(1)
-            ini_data = [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
-                        [['', '*tera', '*dea', '*dae', '*nae', ''],
-                         ['', '', '*ida', '', '', ''],
-                         ['', '', '', '', '', ''],
-                         ['', '', '', '', '', ''],
-                         ['', '', '', '', '', '']]]
-            data = self.settings.value(name, ini_data)
-            header, array = data
-            if not hasattr(self, "init_data"):
-                self.init_data = copy.deepcopy(data)
-            tableModel = MySettingTableModel(array, header)
-            self.tableView_2.setModel(tableModel)
-            self.tableView_2.resizeColumnsToContents()
-            tableModel.dataChanged.connect(self.depositeTable2Data)
-            tableModel.layoutChanged.connect(self.depositeTable2Data)
+            # data = self.settings.value(name, None)
+            # if not data:
+            #     #保证至少有个数据
+            #     ini_data = OrderedDict(
+            #         [("Default taxonomy settings", [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
+            #                                        [['', '*tera', '*dea', '*dae', '*nae', ''],
+            #                                         ['', '', '*ida', '', '', ''],
+            #                                         ['', '', '', '', '', ''],
+            #                                         ['', '', '', '', '', ''],
+            #                                         ['', '', '', '', '', '']]])])
+            #     self.settings.setValue(name, ini_data)
+            #     data = ini_data
+            # self.refreshTaxonomyTable(data["Default taxonomy settings"])
 
     def depositeTable2Data(self):
         self.tableView_2.updateEditorData()
         name = self.listWidget.currentItem().text()
+        allSettings = self.settings.value(name)
         currentModel = self.tableView_2.model()
         header = currentModel.headerdata
         array = currentModel.arraydata
         currentData = [header, array]
-        self.settings.setValue(name, currentData)
+        allSettings[self.comboBox.currentText()] = currentData
+        self.saveTaxonomySettings(allSettings)
         if currentData != self.init_data:
             self.haveNewTaxmy = True
         else:
@@ -1332,10 +1624,13 @@ class Setting(QDialog, Ui_Settings, object):
         # self.settings.setValue('pos', self.pos())
         ###存数据
         self.updateTableView2()
-        # for name, obj in inspect.getmembers(self):
-        #     # if type(obj) is QComboBox:  # this works similar to isinstance, but
-        #     # missed some field... not sure why?
-        #     if isinstance(obj, QTableWidget):
+        for name, obj in inspect.getmembers(self):
+            # if type(obj) is QComboBox:  # this works similar to isinstance, but
+            # missed some field... not sure why?
+            if isinstance(obj, QComboBox):
+                if name == "comboBox":
+                    settingName = self.comboBox.currentText()
+                    self.settings.setValue(name, settingName)
         #         array = []  # 每一行存：name, description, status, install, progress
         #         for row in range(obj.rowCount()):
         #             Name = obj.item(row, 0).text()
@@ -1353,8 +1648,24 @@ class Setting(QDialog, Ui_Settings, object):
     def guiRestore(self):
         # Restore geometry
         self.resize(self.settings.value('size', QSize(844, 500)))
+        self.factory.centerWindow(self)
         # self.move(self.settings.value('pos', QPoint(596, 231)))
+        data = self.settings.value("Taxonomy Recognition", None)
+        if not data:
+            #保证至少有个数据
+            ini_data = OrderedDict(
+                [("Default taxonomy settings", [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
+                                               [['', '*tera', '*dea', '*dae', '*nae', ''],
+                                                ['', '', '*ida', '', '', ''],
+                                                ['', '', '', '', '', ''],
+                                                ['', '', '', '', '', ''],
+                                                ['', '', '', '', '', '']]])])
+            self.settings.setValue("Taxonomy Recognition", ini_data)
         for name, obj in inspect.getmembers(self):
+            if isinstance(obj, QComboBox):
+                if name == "comboBox":
+                    settingName = self.settings.value("comboBox", "Default taxonomy settings")
+                    self.refresh_taxonomyCombo(settingName)
             if isinstance(obj, QTableWidget):
                 WorkThread(self.judgePluginInstall, parent=self).start()
                 # for i in ["mafft", "tbl2asn", "RscriptPath", "PF2", "gblocks", "iq-tree", "MrBayes", "mpi",
@@ -1386,6 +1697,10 @@ class Setting(QDialog, Ui_Settings, object):
                     value = self.launcher_settings.value("ifLaunch", "true")
                     obj.setChecked(not self.factory.str2bool(value))
                     obj.toggled.connect(lambda bool_: self.launcher_settings.setValue("ifLaunch", not bool_))
+            elif isinstance(obj, QLineEdit):
+                family, size = re.findall(r"\*{font-family: (.+?); font-size: (\d+?)pt;}", self.qss_file)[0]
+                self.lineEdit.setText(family)
+                self.lineEdit_2.setText(size)
 
     def closeEvent(self, event):
         self.guiSave()
@@ -1447,7 +1762,7 @@ class Setting(QDialog, Ui_Settings, object):
         try:
             dict_args = {}
             dict_args[
-                "httpURL"] = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/tbl2asn.zip"
+                "httpURL"] = self.getURls("tbl2asn") #"https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/tbl2asn.zip"
             dict_args["exportPath"] = self.plugin_path + \
                                       os.sep + "tbl2asn.zip"
             dict_args["download_button"] = self.download_tbl2asn_button
@@ -1696,7 +2011,9 @@ class Setting(QDialog, Ui_Settings, object):
         zip_data = list(map(list, zip(*data)))
         updated_data = list(map(list, zip(*[zip_data[j] for j in list_logicIndex])))
         currentData = [updated_header, updated_data]
-        self.settings.setValue("Taxonomy Recognition", currentData)
+        allSettings = self.settings.value("Taxonomy Recognition")
+        allSettings[self.comboBox.currentText()] = currentData
+        self.saveTaxonomySettings(allSettings)
 
     def installStatus(self, flag, status):
         self.installButtonSig.emit(
@@ -1704,63 +2021,27 @@ class Setting(QDialog, Ui_Settings, object):
 
     def getURls(self, program):
         url = ""
-        if program == "mafft":
-            if platform.system().lower() == "windows":
-                if self.pc_bit == "64bit":
-                    url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mafft.zip"
-                else:
-                    url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mafft-7.304-win32.zip"
-            elif platform.system().lower() == "darwin":
-                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mafft-7.407-mac.zip"
-        elif program == "Rscript":
-            if platform.system().lower() == "windows":
-                url = "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe"
-            elif platform.system().lower() == "darwin":
-                url = "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg"
-        elif program == "python27":
-            if platform.system().lower() == "windows":
-                url = "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe" \
-                    if self.pc_bit == "64bit" else "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe"
-            elif platform.system().lower() == "darwin":
-                url = "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg"
-        elif program == "gblocks":
-            if platform.system().lower() == "windows":
-                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_Windows_0.91b.zip"
-            elif platform.system().lower() == "darwin":
-                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_OSX_0.91b.zip"
-        elif program == "iq-tree":
-            if platform.system().lower() == "windows":
-                if self.pc_bit == "64bit":
-                    url = \
-                    "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-1.6.8-Windows.zip"
-                else:
-                    url = \
-                    "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-1.6.8-Windows32.zip"
-            elif platform.system().lower() == "darwin":
-                url = \
-                    "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-1.6.8-MacOSX.zip"
-        elif program == "MrBayes":
-            if platform.system().lower() == "windows":
-                url = \
-                    "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MrBayes-3.2.6_WIN32_x64.zip"
-            elif platform.system().lower() == "darwin":
-                url = \
-                    "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MrBayes-3.2.6_MACx64.zip"
-        elif program == "compiled PF2":
-            if platform.system().lower() == "windows":
-                if self.pc_bit == "64bit":
-                    url = "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win64.zip"
-                else:
-                    url = "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win32.zip"
-            elif platform.system().lower() == "darwin":
-                url = "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_mac.zip"
-        elif program == "PF2":
-            url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder-2.1.1.zip"
-        elif program == "macse":
-            url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse_v2.03.jar.zip"
-        elif program == "trimAl":
-            if platform.system().lower() == "windows":
-                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/trimal.v1.2rev59.zip"
+        platform_ = platform.system().lower()
+        dict_program = {"mafft": "lg_exePath_mafft",
+                        "Rscript": "lg_exePath",
+                        "python27": "lg_exePath_python27",
+                        "gblocks": "lg_exePath_gb",
+                        "iq-tree": "lg_exePath_iq",
+                        "MrBayes": "lg_exePath_mb",
+                        "compiled PF2": "lg_exePath_PF",
+                        "PF2": "lg_exePath_PF",
+                        "macse": "lg_exePath_macse",
+                        "trimAl": "lg_exePath_trimAl",
+                        "tbl2asn": "lg_exePath_ts"
+                        }
+        if hasattr(self, dict_program[program]):
+            resource = getattr(self, dict_program[program]).downloadRes
+        else: resource = ""
+        if platform_ in dict_url:
+            if self.pc_bit in dict_url[platform_]:
+                if resource in dict_url[platform_][self.pc_bit]:
+                    if program in dict_url[platform_][self.pc_bit][resource]:
+                        url = dict_url[platform_][self.pc_bit][resource][program]
         return url
 
     def zip_waiting(self, text):
@@ -1808,6 +2089,61 @@ class Setting(QDialog, Ui_Settings, object):
             status = self.factory.programIsValid(i)
             self.installStatus(i, status)
         self.refreshPython27()  ##python 2.7的状态单独判断
+
+    def refresh_taxonomyCombo(self, settingName=None):
+        allItems = self.settings.value("Taxonomy Recognition").keys()
+        model = self.comboBox.model()
+        self.comboBox.clear()
+        for num, i in enumerate(allItems):
+            item = QStandardItem(i)
+            # 背景颜色
+            if num % 2 == 0:
+                item.setBackground(QColor(255, 255, 255))
+            else:
+                item.setBackground(QColor(237, 243, 254))
+            item.setToolTip(i)
+            model.appendRow(item)
+        if settingName in allItems: self.comboBox.setCurrentText(settingName)
+        else: self.comboBox.setCurrentIndex(0)
+
+    def refreshTaxonomyTable(self, data):
+        header, array = data
+        if not hasattr(self, "init_data"): self.init_data = copy.deepcopy(data)
+        tableModel = MySettingTableModel(array, header)
+        self.tableView_2.setModel(tableModel)
+        self.tableView_2.resizeColumnsToContents()
+        tableModel.dataChanged.connect(self.depositeTable2Data)
+        tableModel.layoutChanged.connect(self.depositeTable2Data)
+
+    def judgeSettings(self, text):
+        if not text: return
+        if text != "Default taxonomy settings": self.toolButton_4.setEnabled(True)
+        else: self.toolButton_4.setEnabled(False)
+        allSettings = self.settings.value("Taxonomy Recognition")
+        self.refreshTaxonomyTable(allSettings[text])
+
+    def saveTaxonomySettings(self, settings):
+        self.settings.setValue("Taxonomy Recognition", settings)
+
+    def setFont(self):
+        family = self.lineEdit.text()
+        size = int(self.lineEdit_2.text())
+        font, ok = QFontDialog.getFont(QFont(family, size), self)
+        if ok:
+            family_ = font.family()
+            size_ = str(font.pointSize())
+            self.lineEdit.setText(family_)
+            self.lineEdit_2.setText(size_)
+            self.qss_file = re.sub(r"^\*{font-family: (.+?); font-size: (\d+)pt;}",
+                                   "*{font-family: %s; font-size: %spt;}"%(family_, size_), self.qss_file)
+            self.setStyleSheet(self.qss_file)
+            self.parent.setStyleSheet(self.qss_file)
+            self.style().unpolish(self)
+            self.style().polish(self)
+            with open(self.thisPath + os.sep + 'style.qss', "w", encoding="utf-8", errors='ignore') as f:
+                f.write(self.qss_file)
+            font_settings = QSettings()
+            font_settings.setValue("font changed", True)
 
 
 if __name__ == "__main__":

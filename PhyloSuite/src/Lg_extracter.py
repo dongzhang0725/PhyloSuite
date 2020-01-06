@@ -40,6 +40,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
             parent=None):
         super(ExtractGB, self).__init__(parent)
         self.parent = parent
+        self.function_name = "Extraction"
         self.setupUi(self)
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
@@ -88,10 +89,10 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.settings_ini = QSettings(self.thisPath + '/settings/setting_settings.ini', QSettings.IniFormat)
         self.settings_ini.setFallbacksEnabled(False)
         # 保存主界面设置
-        self.mainwindow_settings = QSettings(
-            self.thisPath + '/settings/mainwindow_settings.ini', QSettings.IniFormat)
+        self.data_settings = QSettings(
+            self.factory.workPlaceSettingPath + os.sep + 'data_settings.ini', QSettings.IniFormat)
         # File only, no fallback to registry or or.
-        self.mainwindow_settings.setFallbacksEnabled(False)
+        self.data_settings.setFallbacksEnabled(False)
         # 恢复用户的设置
         self.guiRestore()
         # 开始装载样式表
@@ -222,10 +223,9 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.dict_args["qualifiers"] = dict_extract_settings  ###只剩下qualifier的设置
         self.dict_args["extract_entire_seq"] = self.radioButton.isChecked()
         self.dict_args["entire_seq_name"] = self.lineEdit.text() if self.lineEdit.text() else "sequence"
+        self.dict_args["cal_codon_bias"] = False # self.checkBox.isChecked()
         ok = self.factory.remove_dir(self.dict_args["exportPath"], parent=self)
-        if not ok:
-            # 提醒是否删除旧结果，如果用户取消，就不执行
-            return
+        if not ok: return  # 提醒是否删除旧结果，如果用户取消，就不执行
         self.worker = WorkThread(self.run_command, parent=self)
         self.worker.start()
 
@@ -257,10 +257,10 @@ class ExtractGB(QDialog, Ui_Extractor, object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
             with open(self.dict_args["exportPath"] + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., "
-                        "Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop "
-                        "platform for streamlined molecular sequence data management and evolutionary phylogenetics "
-                        "studies. bioRxiv, doi: 10.1101/489088.\n\n" + self.time_used_des
+                f.write("If you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, "
+                        "and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular "
+                        "sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, "
+                        "2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des
                         + "For the summary of this extraction, please see \"overview.csv\"")
         except BaseException:
             self.exceptionInfo = ''.join(
@@ -272,10 +272,17 @@ class ExtractGB(QDialog, Ui_Extractor, object):
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
-        """
-        execute program
-        """
-        self.close()
+        reply = QMessageBox.question(
+            self,
+            "Confirmation",
+            "<p style='line-height:25px; height:25px'>Extracter is still running, terminate it?</p>",
+            QMessageBox.Yes,
+            QMessageBox.Cancel)
+        if reply == QMessageBox.Yes:
+            if hasattr(self, "worker"):
+                try: self.worker.stopWork()
+                except: pass
+            self.close()
 
     @pyqtSlot()
     def on_pushButton_6_clicked(self):
@@ -442,6 +449,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
 
         # Restore geometry
         self.resize(self.extractGB_settings.value('size', QSize(571, 680)))
+        self.factory.centerWindow(self)
         if self.height() < 640:
             self.resize(QSize(571, 650))
         # self.move(self.extractGB_settings.value('pos', QPoint(875, 254)))
@@ -467,7 +475,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                     self.updateLineageCombo()
                 elif name == "comboBox_4":
                     key = re.sub(r"/|\\", "_", self.workPath) + "_availableInfo"
-                    value = self.mainwindow_settings.value(
+                    value = self.data_settings.value(
                         key, None)
                     if value:
                         source_keys = value[3][1]
@@ -752,13 +760,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
     def updateLineageTable(self):
         # tableWidget_2
         self.tableWidget_2.itemDoubleClicked.connect(self.handleItemClicked_2)
-        ini_data = [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
-                    [['', '*tera', '*dea', '*dae', '*nae', ''],
-                     ['', '', '*ida', '', '', ''],
-                     ['', '', '', '', '', ''],
-                     ['', '', '', '', '', ''],
-                     ['', '', '', '', '', '']]]
-        header, array = self.settings_ini.value("Taxonomy Recognition", ini_data)
+        header, array = self.factory.getCurrentTaxSetData()
         countColumn = len(header)
         self.tableWidget_2.setColumnCount(countColumn)
         ini_dict_array = OrderedDict()
@@ -791,13 +793,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                 self.tableWidget_2.setItem(row, column, item)
 
     def updateLineageCombo(self):
-        ini_data = [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
-                    [['', '*tera', '*dea', '*dae', '*nae', ''],
-                     ['', '', '*ida', '', '', ''],
-                     ['', '', '', '', '', ''],
-                     ['', '', '', '', '', ''],
-                     ['', '', '', '', '', '']]]
-        header, array = self.settings_ini.value("Taxonomy Recognition", ini_data)
+        header, array = self.factory.getCurrentTaxSetData()
         ini_state = {}.fromkeys(header, 2)  # 2代表选中
         dict_lng_state = self.extractGB_settings.value("comboBox_7", ini_state)
         model = self.comboBox_7.model()

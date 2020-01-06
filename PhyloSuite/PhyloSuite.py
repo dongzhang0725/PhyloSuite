@@ -8,21 +8,32 @@ import sys
 import traceback
 from copy import deepcopy
 
+from PyQt5.QtGui import QPixmap, QFont, QIcon
+
 thisPath = os.path.abspath(os.path.dirname(sys.argv[0]))
 thisPath = os.path.abspath(os.path.dirname(__file__)) if not os.path.exists(thisPath + os.sep + "style.qss") else thisPath
 sys.path.append(thisPath)
-# sys.path.append(os.path.abspath(os.path.dirname(__file__))) #不添加的话，setup安装时双击无法运行
-# sys.path.append(thisPath + os.sep + "uifiles")
-# sys.path.append(thisPath + os.sep + "src")
-
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox
+from PyQt5.QtCore import QSettings, Qt
+from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox, QSplashScreen
 from src.Launcher import Launcher
-from src.factory import QSingleApplication
+from src.factory import QSingleApplication, Factory
 from src.main import MyMainWindow
 
 def start():
     app = QSingleApplication(sys.argv)
+    splash = QSplashScreen(
+        QPixmap(":/picture/resourses/start.jpg"))
+    with open(thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        qss_file = f.read()
+    splash.setWindowFlags(Qt.Window)
+    font_size = 13 if platform.system().lower() == "windows" else 15
+    splash.setFont(QFont('Arial', font_size))
+    splash.setStyleSheet(qss_file)
+    icon = QIcon(":/picture/resourses/windowIcon.png")
+    splash.setWindowIcon(icon)
+    splash.show()
+    app.processEvents()
+    splash.showMessage("Checking if the program is already running...", Qt.AlignBottom, Qt.black)
     if platform.system().lower() == "windows":
         multiprocessing.freeze_support() # windows必须调用这个，不然会出错
     # 异常调试
@@ -35,8 +46,6 @@ def start():
     path_settings = QSettings()
     path_settings.setValue("thisPath", thisPath)
     os.chdir(thisPath)
-    with open(thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-        qss_file = f.read()
     dialog = QDialog()
     dialog.setStyleSheet(qss_file)
     # 异常处理
@@ -69,6 +78,7 @@ def start():
         sys.exit(0)
 
     # 界面运行选择
+    splash.showMessage("Choosing workplace...", Qt.AlignBottom, Qt.black)
     launcher_settings = QSettings(
         thisPath + '/settings/launcher_settings.ini', QSettings.IniFormat)
     launcher_settings.setFallbacksEnabled(False)
@@ -93,15 +103,21 @@ def start():
     launcher_settings.setValue(
         "workPlace", workPlace)
     if not_exe_lunch == "true":
+        splash.showMessage("Starting PhyloSuite...", Qt.AlignBottom, Qt.black)
         myMainWindow = MyMainWindow(workPlace)
+        Factory().centerWindow(myMainWindow)
         myMainWindow.show()
+        splash.finish(myMainWindow)
         sys.exit(app.exec_())
     else:
         launcher = Launcher()
         if launcher.exec_() == QDialog.Accepted:
+            splash.showMessage("Starting PhyloSuite...", Qt.AlignBottom, Qt.black)
             workPlace = launcher.WorkPlace
             myMainWindow = MyMainWindow(workPlace)
+            Factory().centerWindow(myMainWindow)
             myMainWindow.show()
+            splash.finish(myMainWindow)
             sys.exit(app.exec_())
 
 if __name__ == "__main__":

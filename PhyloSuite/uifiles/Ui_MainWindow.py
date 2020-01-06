@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\MainWindow.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\MainWindow.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -11,7 +11,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1195, 630)
+        MainWindow.setWindowModality(QtCore.Qt.WindowModal)
+        MainWindow.resize(1207, 630)
         MainWindow.setAcceptDrops(False)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(":/picture/resourses/windowIcon.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -221,7 +222,7 @@ class Ui_MainWindow(object):
         sizePolicy.setHeightForWidth(self.label_6.sizePolicy().hasHeightForWidth())
         self.label_6.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
-        font.setFamily("Arial")
+        font.setFamily("Microsoft YaHei")
         font.setPointSize(7)
         self.label_6.setFont(font)
         self.label_6.setStyleSheet("")
@@ -615,7 +616,7 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.stackedWidget.setCurrentIndex(4)
+        self.stackedWidget.setCurrentIndex(6)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -631,7 +632,7 @@ class Ui_MainWindow(object):
         self.label_24.setText(_translate("MainWindow", "<html><head/><body><p><a href=\"open_file\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">Open file(s)</span></a><span style=\" font-size:14pt;\"> to import</span></p></body></html>"))
         self.label_18.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:14pt;\">Drop </span><span style=\" font-size:14pt; font-weight:600; color:#ffaa00;\">file(s)</span><span style=\" font-size:14pt;\"> here to open</span></p></body></html>"))
         self.label_4.setText(_translate("MainWindow", "<html><head/><body><ul style=\"margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;\"><li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:13pt; font-weight:600; color:#ffaa00;\">*.fas, *.fasta</li><li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:13pt; font-weight:600; color:#ffaa00;\">*.phy, *.phylip</li><li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:13pt; font-weight:600; color:#ffaa00;\">*.nex, *.nxs, *.nexus</li><li style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:13pt; font-weight:600; color:#ffaa00;\">*.docx *.doc, *.odt, *.docm, *.dotx, *.dotm, *.dot</li></ul></body></html>"))
-        self.label_6.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\"><span style=\" font-size:20pt; font-weight:600;\">PhyloSuite v1.1.16</span></p><p align=\"center\"><span style=\" font-family:\'Calibri,sans-serif\'; font-size:14pt; font-weight:600;\">A desktop platform for streamlined molecular sequence data management and state of the art evolutionary phylogenetics studies</span></p><p><span style=\" font-size:14pt; font-weight:600;\">Home page: </span></p><p><a href=\"https://dongzhang0725.github.io\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">https://dongzhang0725.github.io</span></a></p><p><span style=\" font-size:14pt; font-weight:600;\">Usage and test run: </span></p><p><span style=\" font-size:14pt;\">Test run can be found </span><a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/example/\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">here</span></a><span style=\" font-size:14pt;\">. You may view a brief demo for each function via the inbuilt </span><img src=\":/picture/resourses/help.gif\"/><span style=\" font-size:14pt;\"> button. </span><a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/quick_start/\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">Quick Start </span></a></p><p><span style=\" font-size:14pt; font-weight:600;\">Bug report:</span></p><p><a href=\"https://github.com/dongzhang0725/PhyloSuite/issues\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">https://github.com/dongzhang0725/PhyloSuite/issues</span></a><span style=\" font-size:14pt;\"> or send email to dongzhang0725@gmail.com.</span></p><p><span style=\" font-size:14pt; font-weight:600;\">Citation:</span></p><p><span style=\" font-size:14pt;\">Zhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088. (</span><span style=\" font-size:14pt; font-weight:600;\">Download as: </span><a href=\"RIS\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">RIS</span></a>&nbsp;&nbsp;&nbsp;<a href=\" XML\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">XML</span></a>&nbsp;&nbsp;&nbsp;<a href=\"ENW\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">ENW</span></a><span style=\" font-size:14pt;\">)</span></p><p><br/></p></body></html>"))
+        self.label_6.setText(_translate("MainWindow", "<html><head/><body><p align=\"center\"><span style=\" font-size:20pt; font-weight:600;\">PhyloSuite v1.2.1</span></p><p align=\"center\"><span style=\" font-family:\'Calibri,sans-serif\'; font-size:14pt; font-weight:600;\">A desktop platform for streamlined molecular sequence data management and state of the art evolutionary phylogenetics studies</span></p><p><span style=\" font-size:14pt; font-weight:600;\">Home page: </span></p><p><a href=\"https://dongzhang0725.github.io\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">https://dongzhang0725.github.io</span></a></p><p><span style=\" font-size:14pt; font-weight:600;\">Usage and test run: </span></p><p><span style=\" font-size:14pt;\">Test run can be found </span><a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/example/\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">here</span></a><span style=\" font-size:14pt;\">. You may view a brief demo for each function via the inbuilt </span><img src=\":/picture/resourses/help.gif\"/><span style=\" font-size:14pt;\"> button. </span><a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/quick_start/\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">Quick Start </span></a></p><p><span style=\" font-size:14pt; font-weight:600;\">Bug report:</span></p><p><a href=\"https://groups.google.com/forum/#!forum/phylosuite\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">Google group</span></a><span style=\" font-size:14pt;\">, </span><a href=\"https://github.com/dongzhang0725/PhyloSuite/issues\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">GitHub issue</span></a><span style=\" font-size:14pt;\"> or send email to dongzhang0725@gmail.com.</span></p><p><span style=\" font-size:14pt; font-weight:600;\">Citation:</span></p><p><span style=\" font-size:14pt;\">Zhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096. (</span><span style=\" font-size:14pt; font-weight:600;\">Download as: </span><a href=\"RIS\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">RIS</span></a>&nbsp;&nbsp;&nbsp;<a href=\" XML\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">XML</span></a>&nbsp;&nbsp;&nbsp;<a href=\"ENW\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">ENW</span></a><span style=\" font-size:14pt;\">)</span></p><p><br/></p></body></html>"))
         self.label_flow_sum.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:13pt; color:#ffffff;\">Name:</span></p></body></html>"))
         self.toolButton_del.setToolTip(_translate("MainWindow", "Remove current workflow results"))
         self.toolButton_del.setText(_translate("MainWindow", "..."))

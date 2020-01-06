@@ -565,12 +565,17 @@
         </item>
         <item>
          <property name="text">
-          <string>BEAST1</string>
+          <string>BEAST1 (NUC)</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>BEAST2</string>
+          <string>BEAST2 (NUC)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>BEAST (AA)</string>
          </property>
         </item>
        </widget>
@@ -603,7 +608,7 @@
          <string>Start</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
         </property>
        </widget>
@@ -614,7 +619,7 @@
          <string>Stop</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
         </property>
        </widget>
@@ -634,7 +639,7 @@
          <string>Show log</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/Eye_Care_Services-512.png</normaloff>:/picture/resourses/Eye_Care_Services-512.png</iconset>
         </property>
        </widget>
@@ -684,7 +689,7 @@
   <tabstop>pushButton</tabstop>
  </tabstops>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections/>
 </ui>

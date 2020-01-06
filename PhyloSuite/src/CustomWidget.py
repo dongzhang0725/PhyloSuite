@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import platform
+import re
 from collections import OrderedDict
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -1403,7 +1404,7 @@ class SingeleWidget(QWidget):
         # 设置菜单窗体的宽度
         # self.DropDownMenu.setMinimumWidth(self.width())
         # self.DropDownMenu.setMaximumWidth(self.width())
-        # 我靠！由于布局的leftMargin是9，所以要减去9
+        # 由于布局的leftMargin是9，所以要减去9
         a0 = self.mapToGlobal(QPoint(self.parent().x()-9, self.height()))
 
         self.DropDownMenu.move(a0)
@@ -1412,7 +1413,9 @@ class SingeleWidget(QWidget):
         # 设置table外容器的宽度
         if hasattr(self.DropDownMenu, "tableWidget") and self.DropDownMenu.tableWidget.rowCount() != 0:
             table = self.DropDownMenu.tableWidget
-            height = table.rowCount() * 30
+            font_ = table.font()
+            height_ = QFontMetrics(QFont(font_.family(), font_.pointSize())).height()
+            height = table.rowCount() * (height_ + 15)
             table.parent().setMinimumHeight(height)
             table.parent().setMaximumHeight(height)
             self.DropDownMenu.show()
@@ -1561,7 +1564,7 @@ class BaseTable(QTableWidget):
         self.verticalHeader().setStretchLastSection(True);  # 充满行高
         self.setEditTriggers(QAbstractItemView.NoEditTriggers);  # 只读
         # self.resizeColumnsToContents()
-
+        self.setTextElideMode(Qt.ElideMiddle)
         # 关闭滑动条
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -1811,11 +1814,28 @@ class ListQCombobox(QComboBox):
         else:
             # 如果只需要输入新序列
             self.clear()
-        paths = sorted(list_inputs, key=lambda x: os.path.basename(x)) if sort else list_inputs
+        def sort_def(file_name):
+            base = os.path.basename(file_name).split(".")[0]
+            if re.search(r"^\d+", base): return int(re.search(r"^\d+", base).group())
+            elif re.search(r"\d+$", base): return int(re.search(r"\d+$", base).group())
+            else: return base
+        try:
+            paths = sorted(list_inputs, key=lambda x: (isinstance(sort_def(x), str), sort_def(x))) if sort else list_inputs
+            # sort数字与字母混合情况参考：https://stackoverflow.com/questions/53246253/python-list-sort-integers-and-then-strings
+        except:
+            paths = list_inputs
+        path_num = len(paths)
+        ##进度条
+        if path_num > 70:
+            from src.factory import Factory
+            self.factory = Factory()
+            self.progressDialog = self.factory.myProgressDialog(
+                "Please Wait", "Importing...", parent=self)
+            self.progressDialog.show()
         for num, path in enumerate(paths):
             if (not os.path.exists(path)) or (path in self.fetchListsText()):
                 # 如果路径不存在，就跳过这个循环
-                continue
+               continue
             listwitem = QListWidgetItem(self.listw)
             listwitem.setToolTip(path)
             itemWidget = ComboBoxWidget(os.path.basename(path), listwitem, self)
@@ -1829,6 +1849,10 @@ class ListQCombobox(QComboBox):
             listwitem.setSizeHint(itemWidget.sizeHint())
             self.listw.addItem(listwitem)
             self.listw.setItemWidget(listwitem, itemWidget)
+            if path_num > 70:
+                self.runProgressDialog(100*(num/len(paths)))
+        if path_num > 70:
+            self.progressDialog.close()
         self.setTopText()
 
     def setTopText(self):
@@ -1911,6 +1935,15 @@ class ListQCombobox(QComboBox):
     def hidePopup(self):
         self.isPopup = False
         return super(ListQCombobox, self).hidePopup()
+
+    def runProgressDialog(self, num):
+        oldValue = self.progressDialog.value()
+        done_int = int(num)
+        if done_int > oldValue:
+            self.progressDialog.setProperty("value", done_int)
+            QCoreApplication.processEvents()
+            if done_int == 100:
+                self.progressDialog.close()
 
 
 class InputQLineEdit(QLineEdit):
@@ -3191,6 +3224,83 @@ class FileIconProvider(QFileIconProvider):
         elif type_info.isDir() and type_info.fileName() == "Flowchart_reports":
             return self.reportIcon
         return super(FileIconProvider, self).icon(type_info)
+
+
+class MyQProgressDialog(QProgressDialog):
+
+    def __init__(self, *args):
+        super(MyQProgressDialog, self).__init__(*args)
+
+    def closeEvent(self, event):
+        return QDialog().closeEvent(event)
+
+
+class JobFinishMessageBox(QDialog, object):
+
+    def __init__(self, icon, singleBtn=False, parent=None):
+        super(JobFinishMessageBox, self).__init__(parent)
+        self.setWindowTitle("Information")
+        self.gridLayout = QGridLayout(self)
+        self.widget_layout = QWidget(self)
+        self.widget_layout.setObjectName("widget_layout")
+        self.widget_layout.setStyleSheet("QWidget#widget_layout {border: 1px ridge gray; background-color: white}")
+        self.verticalLayout = QVBoxLayout(self.widget_layout)
+        self.label = QLabel(self.widget_layout)
+        self.label.resize(52, 52)
+        self.label.setText("Task completed! You can choose to:")
+        self.label.setPixmap(QPixmap(icon).scaled(50, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.horizontalLayout = QHBoxLayout()
+        self.horizontalLayout.setSpacing(20)
+        self.verticalLayout_2 = QVBoxLayout()
+        self.verticalLayout_2.addWidget(self.label)
+        spacerItem = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.verticalLayout_2.addItem(spacerItem)
+        self.horizontalLayout.addLayout(self.verticalLayout_2)
+        self.verticalLayout_3 = QVBoxLayout()
+        # self.openFolder = QRadioButton("Open the results folder", self.widget_layout)
+        self.label_3 = QLabel("<p style='line-height:25px; height:25px'>Task completed! You can choose to:"
+                              "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+                              "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</p>", self.widget_layout)
+        self.combox = QComboBox(self)
+        self.verticalLayout_3.addWidget(self.label_3)
+        # self.verticalLayout_3.addWidget(self.openFolder)
+        self.verticalLayout_3.addWidget(self.combox)
+        self.horizontalLayout.addLayout(self.verticalLayout_3)
+        self.verticalLayout.addLayout(self.horizontalLayout)
+        spacerItem = QSpacerItem(20, 29, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.verticalLayout.addItem(spacerItem)
+        self.horizontalLayout_2 = QHBoxLayout()
+        spacerItem1 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalLayout_2.addItem(spacerItem1)
+        self.buttonBox = QDialogButtonBox(self.widget_layout)
+        self.buttonBox.setOrientation(Qt.Horizontal)
+        if singleBtn:
+            self.buttonBox.setStandardButtons(QDialogButtonBox.Ok)
+        else:
+            self.buttonBox.setStandardButtons(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        self.horizontalLayout_2.addWidget(self.buttonBox)
+        self.verticalLayout.addLayout(self.horizontalLayout_2)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+        self.gridLayout.addWidget(self.widget_layout, 0, 0, 1, 1)
+        self.adjustSize()
+
+    def refreshCombo(self, list_):
+        if (platform.system().lower() == "windows") and ("Import the results to HmmCleaner" in list_):
+            # windows 屏蔽HmmCleaner
+            list_.remove("Import the results to HmmCleaner")
+        model = self.combox.model()
+        self.combox.clear()
+        for num, i in enumerate(list_):
+            item = QStandardItem(i)
+            # 背景颜色
+            if num % 2 == 0:
+                item.setBackground(QColor(255, 255, 255))
+            else:
+                item.setBackground(QColor(237, 243, 254))
+            model.appendRow(item)
+        self.combox.setCurrentIndex(0)
+
 
 def showERROR():
     errmsg = traceback.format_exc()

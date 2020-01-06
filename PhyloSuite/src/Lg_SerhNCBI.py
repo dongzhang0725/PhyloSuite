@@ -297,6 +297,7 @@ In case of excessive usage of the E-utilities, NCBI will attempt to contact a us
 
         # Restore geometry
         self.resize(self.serhNCBI_settings.value('size', QSize(1000, 600)))
+        self.factory.centerWindow(self)
         # self.move(self.serhNCBI_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):

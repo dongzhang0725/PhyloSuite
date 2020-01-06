@@ -33,6 +33,8 @@ class IQTREE(QDialog, Ui_IQTREE, object):
     closeSig = pyqtSignal(str, str)
     # 用于输入文件后判断用
     ui_closeSig = pyqtSignal(str)
+    ##弹出识别输入文件的信号
+    auto_popSig = pyqtSignal(QDialog)
 
     def __init__(
             self,
@@ -84,6 +86,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         self.ctrlModel(self.comboBox_7.currentText())
         # 恢复用户的设置
         self.guiRestore()
+        self.judgePFresults() #判断partitionfinder2是否有结果
         if self.autoModelFile[1]:
             self.autoModel()
         self.exception_signal.connect(self.popupException)
@@ -130,6 +133,8 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         ## brief demo
         self.label.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-11-1-Brief-example")))
+        ##自动弹出识别文件窗口
+        self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -254,7 +259,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                 ok = QMetaObject.invokeMethod(self, "fetchPopen",
                                           Qt.BlockingQueuedConnection, Q_RETURN_ARG(bool),
                                           Q_ARG(str, self.command))
-                self.logGuiSig.emit(self.command)
+                self.factory.emitCommands(self.logGuiSig, self.command)
                 self.run_IQ(0, 100)
             else:
                 each_pro = 100/len(files)
@@ -275,14 +280,14 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                     ok = QMetaObject.invokeMethod(self, "fetchPopen",
                                                   Qt.BlockingQueuedConnection, Q_RETURN_ARG(bool),
                                                   Q_ARG(str, command))
-                    self.logGuiSig.emit(command)
+                    self.factory.emitCommands(self.logGuiSig, command)
                     self.run_IQ(each_pro*num, each_pro)
             time_end = datetime.datetime.now()
             self.time_used = str(time_end - time_start)
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
             with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write(self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n"
+                f.write(self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                         "If you use IQ-TREE and Ultrafast bootstrap, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -360,6 +365,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
 
         # Restore geometry
         self.resize(self.iqtree_settings.value('size', QSize(556, 675)))
+        self.factory.centerWindow(self)
         # self.move(self.iqtree_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -617,6 +623,8 @@ class IQTREE(QDialog, Ui_IQTREE, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
+            with open(self.exportPath + os.sep + "PhyloSuite_IQ-TREE.log", "a") as f:
+                f.write(text + "\n")
 
     def save_log_to_file(self):
         content = self.textEdit_log.toPlainText()
@@ -646,7 +654,6 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             self.comboBox_9.setEnabled(False)
 
     def run_IQ(self, base, proportion):
-        # self.logGuiSig.emit(self.command)
         isStandBP = True if self.bootstrap_method == "Standard" else False
         isAutoModel = True if self.model_text == "Auto" else False
         rgx_1st = re.compile(r"^\*\*\*\*  TOTAL")  # 1%
@@ -1053,8 +1060,9 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         self.lineEdit_3.setText("")
         if MSA:
             self.input(MSA)
-        if model_file[1] or model_file[0]:
-            self.autoModelFile = model_file
+        self.autoModelFile = model_file
+        self.judgePFresults() #判断partitionfinder2是否有结果
+        if model_file[1]:
             self.autoModel()
 
     def ctrl_ratehet(self, bool_):
@@ -1067,15 +1075,19 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             self.checkBox_3.setEnabled(False)
             self.checkBox_4.setEnabled(False)
 
-    def popupAutoDec(self):
-        popupUI = self.factory.popUpAutoDetect("IQ-TREE", self.workPath, self)
+    def popupAutoDec(self, init=False):
+        self.init = init
+        self.factory.popUpAutoDetect("IQ-TREE", self.workPath, self.auto_popSig, self)
+
+    def popupAutoDecSub(self, popupUI):
         if not popupUI:
-            QMessageBox.warning(
-                self,
-                "Warning",
-                "<p style='line-height:25px; height:25px'>No available file detected!</p>")
+            if not self.init:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    "<p style='line-height:25px; height:25px'>No available file detected!</p>")
             return
-        popupUI.checkBox.setVisible(False)
+        if not self.init: popupUI.checkBox.setVisible(False)
         if popupUI.exec_() == QDialog.Accepted:
             widget = popupUI.listWidget_framless.itemWidget(
                 popupUI.listWidget_framless.selectedItems()[0])
@@ -1343,8 +1355,6 @@ class IQTREE(QDialog, Ui_IQTREE, object):
     def run_with_CMD(self, cmd):
         self.command = cmd
         if self.command:
-            # self.IQ_popen = self.factory.init_popen(self.command)
-            # self.logGuiSig.emit(self.command)
             self.worker = WorkThread(self.run_command, parent=self)
             self.worker.start()
 
@@ -1435,6 +1445,14 @@ class IQTREE(QDialog, Ui_IQTREE, object):
     def isPartitionChecked(self):
         return True if len(self.comboBox_11.fetchListsText()) == 1 and self.checkBox_8.isChecked() and\
                        self.lineEdit_3.toolTip() else False
+
+    def judgePFresults(self):
+        if (self.autoModelFile[0] == "PF") and (not self.autoModelFile[1]):
+            QMessageBox.information(
+                self,
+                "IQ-TREE",
+                "<p style='line-height:25px; height:25px'>Cannot find \"<span style='font-weight:600; color:#ff0000;'>best_scheme.txt</span>\" in \"<span style='font-weight:600; color:#ff0000;'>analysis</span>\" folder, "
+                "PartitionFinder analysis seems to be unfinished!</p>")
 
 
 if __name__ == "__main__":

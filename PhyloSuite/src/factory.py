@@ -8,7 +8,7 @@ import sys
 import time
 
 from src.CustomWidget import DetectItemWidget, DetectPopupGui, AnimationShadowEffect, NoteMessage, \
-    NoteMessage_option
+    NoteMessage_option, MyQProgressDialog, Inputbox_message, JobFinishMessageBox
 import subprocess
 import pickle
 import os
@@ -36,11 +36,13 @@ class Factory(QObject, object):
         thisPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__))) if not os.path.exists(
             thisPath + os.sep + "style.qss") else thisPath
         QSettings.setDefaultFormat(QSettings.IniFormat)
-        path_settings = QSettings()
-        self.thisPath = path_settings.value("thisPath", thisPath)
+        self.path_settings = QSettings()
+        self.thisPath = self.path_settings.value("thisPath", thisPath)
+        self.workPlaceSettingPath = self.path_settings.value("current workplace setting path", thisPath)
         self.settings_ini = QSettings(
             self.thisPath + '/settings/setting_settings.ini', QSettings.IniFormat)
         self.settings_ini.setFallbacksEnabled(False)
+        self.dict_autoInputs = None
 
     def creat_dir(self, folder):  # 创建文件夹
         if not os.path.exists(folder):
@@ -236,7 +238,7 @@ class Factory(QObject, object):
                     os.remove(i[0] + os.sep + j)
         return folder_path
 
-    def unZip(self, zip, target):
+    def unZip(self, zip, target, errorSig):
         # 如果遇到2个不同文件夹，有同一个名字的文件，就麻烦，比如都有mafft.exe
         try:
             input_path = os.path.dirname(
@@ -252,11 +254,11 @@ class Factory(QObject, object):
                 if (os.path.basename(file) in list_target) and os.path.isfile(input_path + os.sep + file):
                     self.exe_file = file
             file_zip.close()
+            return self.topFolder, self.exe_file
         except:
-            pass
-            # print(''.join(
-            #     traceback.format_exception(*sys.exc_info())) + "\n")
-        return self.topFolder, self.exe_file
+            errorSig.emit(''.join(
+                traceback.format_exception(*sys.exc_info())) + "\n")
+
 
     def ctrl_startButton_status(self, list_):
         button, progressbar, state, path, qss, parent = list_
@@ -285,14 +287,51 @@ class Factory(QObject, object):
             button.setEnabled(True)
             button.setStyleSheet(qss)
             button.setText("Start")
-            reply = QMessageBox.information(
-                parent,
-                "PhyloSuite",
-                "<p style='line-height:25px; height:25px'>Task completed! Open the results folder?        </p>",
-                QMessageBox.Ok,
-                QMessageBox.Cancel)
-            if reply == QMessageBox.Ok:
-                self.openPath(path, parent)
+            dict_ = {
+                "Extraction": ["Open the results folder", "Import the results to MAFFT", "Import the results to MACSE (for CDS)"],
+                "MAFFT": ["Open the results folder", "Import the results to MACSE (for CDS)", "Import the results to Gblocks", "Import the results to trimAl",
+                          "Import the results to HmmCleaner", "Import the results to Convert Sequence Format",
+                          "Import the results to Concatenate Sequence"],
+                "MACSE": ["Open the results folder", "Import the results to Gblocks", "Import the results to trimAl", "Import the results to HmmCleaner",
+                          "Import the results to Convert Sequence Format", "Import the results to Concatenate Sequence"],
+                "Concatenation": ["Open the results folder", "Import the results to Gblocks", "Import the results to trimAl",
+                                  "Import the results to HmmCleaner", "Import the results to IQ-TREE",
+                                  "Import the results to ModelFinder", "Import the results to PartitionFinder2"],
+                "PartitionFinder2": ["Open the results folder", "Import the results to IQ-TREE", "Import the results to MrBayes"],
+                "ModelFinder": ["Open the results folder", "Import the results to IQ-TREE", "Import the results to MrBayes"],
+                "Gblocks": ["Open the results folder", "Import the results to Convert Sequence Format",
+                            "Import the results to Concatenate Sequence"],
+                "trimAl": ["Open the results folder", "Import the results to Convert Sequence Format",
+                           "Import the results to Concatenate Sequence"],
+                "HmmCleaner": ["Open the results folder", "Import the results to Convert Sequence Format",
+                               "Import the results to Concatenate Sequence"]
+            }
+            if hasattr(parent, "function_name") and (parent.function_name in dict_):
+                windInfo = JobFinishMessageBox(":/picture/resourses/msg_info.png", parent=parent)
+                windInfo.refreshCombo(dict_[parent.function_name])
+                if windInfo.exec_() == QDialog.Accepted:
+                    selection = windInfo.combox.currentText()
+                    if selection == "Open the results folder": self.openPath(path, parent)
+                    elif selection == "Import the results to MAFFT": parent.parent.on_Mafft_triggered()
+                    elif selection == "Import the results to MACSE (for CDS)": parent.parent.on_MACSE_triggered()
+                    elif selection == "Import the results to Gblocks": parent.parent.on_actionGblocks_triggered()
+                    elif selection == "Import the results to trimAl": parent.parent.on_actiontrimAl_triggered()
+                    elif selection == "Import the results to HmmCleaner": parent.parent.on_actionHmmCleaner_triggered()
+                    elif selection == "Import the results to Convert Sequence Format": parent.parent.on_ConvertFMT_triggered()
+                    elif selection == "Import the results to Concatenate Sequence": parent.parent.on_Concatenate_triggered()
+                    elif selection == "Import the results to ModelFinder": parent.parent.on_actionModelFinder_triggered()
+                    elif selection == "Import the results to PartitionFinder2": parent.parent.on_actionPartitionFinder_triggered()
+                    elif selection == "Import the results to IQ-TREE": parent.parent.on_actionIQTREE_triggered()
+                    elif selection == "Import the results to MrBayes": parent.parent.on_actionMrBayes_triggered()
+            else:
+                reply = QMessageBox.information(
+                    parent,
+                    "PhyloSuite",
+                    "<p style='line-height:25px; height:25px'>Task completed! Open the results folder?        </p>",
+                    QMessageBox.Ok,
+                    QMessageBox.Cancel)
+                if reply == QMessageBox.Ok:
+                    self.openPath(path, parent)
             if type(progressbar) == list:
                 for i in progressbar:
                     i.setProperty("value", 0)
@@ -401,8 +440,8 @@ class Factory(QObject, object):
         list_repeat_name_num.append(numbered_name)
         return numbered_name, list_repeat_name_num
 
-    def myProgressDialog(self, title, label, busy=False, parent=None):
-        progressDialog = QProgressDialog(parent)
+    def myProgressDialog(self, title, label, busy=False, parent=None, rewrite=False):
+        progressDialog = MyQProgressDialog(parent) if rewrite else QProgressDialog(parent)
         progressDialog.setWindowFlags(
             progressDialog.windowFlags() | Qt.WindowMinMaxButtonsHint)
         progressDialog.setWindowModality(Qt.WindowModal)
@@ -571,7 +610,7 @@ class Factory(QObject, object):
                 dict_subResults = OrderedDict()  # 按修改时间排序
                 for subResults in self.fetchSubResults(mafftPath):
                     autoInputs = [
-                        subResults + os.sep + i for i in os.listdir(subResults) if i != "summary.txt"]
+                        subResults + os.sep + i for i in os.listdir(subResults) if (i != "summary.txt") and (not re.search(r"^PhyloSuite\w+\.log$", i))]
                     if autoInputs:
                         dict_subResults[os.path.normpath(subResults)] = autoInputs
                 if dict_subResults:
@@ -626,7 +665,7 @@ class Factory(QObject, object):
                 dict_subResults = OrderedDict()  # 按修改时间排序
                 for subResults in self.fetchSubResults(mafftPath):
                     autoInputs = [
-                        subResults + os.sep + i for i in os.listdir(subResults) if i != "summary.txt"]
+                        subResults + os.sep + i for i in os.listdir(subResults) if i != ("summary.txt") and (not re.search(r"^PhyloSuite\w+\.log$", i))]
                     if autoInputs:
                         dict_subResults[os.path.normpath(subResults)] = autoInputs
                 if dict_subResults:
@@ -997,8 +1036,8 @@ class Factory(QObject, object):
                     input_MSA = input_MSAs[0] if input_MSAs else None
                     path = subResults + os.sep + "analysis" + \
                         os.sep + "best_scheme.txt"
-                    model = ["PF", path] if os.path.exists(path) else ["", None]
-                    if (model != ["", None]) or input_MSA:
+                    model = ["PF", path] if os.path.exists(path) else ["PF", None]
+                    if (model != ["PF", None]) or input_MSA:
                         dict_subResults[
                             os.path.normpath(subResults)] = [[input_MSA], model]
                 if dict_subResults:
@@ -1092,15 +1131,348 @@ class Factory(QObject, object):
                     dict_autoInputs[
                         os.path.normpath(otherPath + os.sep + each_path)] = \
                         {os.path.normpath(otherPath + os.sep + each_path): list_docx_files}
+        self.dict_autoInputs = dict_autoInputs
         return dict_autoInputs
 
-    def popUpAutoDetect(self, mode, currentPath, parent, dict_autoInputs=None):
+    def judgeAutoInputs(self, mode=None, resultsPath=None):
+        autoInputs = []
+        if not resultsPath: return autoInputs
+        resultsParentName = os.path.basename(os.path.dirname(resultsPath))
+        if mode == "Concatenation":
+            if resultsParentName == "mafft_results":
+                autoInputs = [
+                        resultsPath + os.sep + i for i in os.listdir(resultsPath) if i != ("summary.txt") and ((not re.search(r"^PhyloSuite\w+\.log$", i)))]
+            if resultsParentName == "MACSE_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*_NT_removed_chars.*")
+            if resultsParentName == "Gblocks_results":
+                autoInputs = [resultsPath + os.sep + i for i in os.listdir(resultsPath)
+                              if
+                              os.path.splitext(i)[1].upper() == ".FASTA" and os.path.splitext(i)[0].endswith("_gb")]
+            if resultsParentName == "trimAl_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*_trimAl.*")
+            if resultsParentName == "HmmCleaner_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*_hmm.fasta")
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File": # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = self.fetchAlignmentFile(resultsPath)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    if list_alignments: autoInputs = list_alignments
+        elif mode == "format conversion":
+            if resultsParentName == "mafft_results":
+                autoInputs = [
+                        resultsPath + os.sep + i for i in os.listdir(resultsPath) if (i != "summary.txt") and (not re.search(r"^PhyloSuite\w+\.log$", i))]
+            if resultsParentName == "MACSE_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*_NT_removed_chars.*")
+            if resultsParentName == "Gblocks_results":
+                autoInputs = [resultsPath + os.sep + i for i in os.listdir(resultsPath)
+                                  if
+                                  os.path.splitext(i)[1].upper() == ".FASTA" and os.path.splitext(i)[0].endswith("_gb")]
+            if resultsParentName == "trimAl_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*_trimAl.*")
+            if resultsParentName == "HmmCleaner_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*_hmm.fasta")
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File": # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = self.fetchAlignmentFile(resultsPath)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    if list_alignments: autoInputs = list_alignments
+        elif mode == "Gblocks":
+            if resultsParentName == "mafft_results":
+                autoInputs = glob.glob(
+                        resultsPath + os.sep + "*.fas") + glob.glob(resultsPath + os.sep + "*.fasta")
+            if resultsParentName == "MACSE_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*_NT_removed_chars.*")
+            if resultsParentName == "concatenate_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*.fas") + \
+                                 glob.glob(resultsPath + os.sep + "*.fasta")
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File":  # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = self.fetchAlignmentFile(resultsPath)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    if list_alignments: autoInputs = list_alignments
+        elif mode == "trimAl":
+            if resultsParentName == "mafft_results":
+                autoInputs = glob.glob(
+                        resultsPath + os.sep + "*.fas") + glob.glob(resultsPath + os.sep + "*.fasta")
+            if resultsParentName == "MACSE_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*_NT_removed_chars.*")
+            if resultsParentName == "concatenate_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*.fas") + \
+                                 glob.glob(resultsPath + os.sep + "*.fasta")
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File":  # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = self.fetchAlignmentFile(resultsPath)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    if list_alignments: autoInputs = list_alignments
+        elif mode == "HmmCleaner":
+            if resultsParentName == "mafft_results":
+                autoInputs = glob.glob(
+                        resultsPath + os.sep + "*.fas") + glob.glob(resultsPath + os.sep + "*.fasta")
+            if resultsParentName == "MACSE_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*_NT_removed_chars.*")
+            if resultsParentName == "concatenate_results":
+                autoInputs = glob.glob(resultsPath + os.sep + "*.fas") + \
+                                 glob.glob(resultsPath + os.sep + "*.fasta")
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File":  # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = self.fetchAlignmentFile(resultsPath)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    if list_alignments: autoInputs = list_alignments
+        elif mode == "MAFFT":
+            # 自动导入特殊一些
+            if resultsParentName == "extract_results":
+                PCG_NUC_files, PCG_AA_files, RNAs_files = [], [], []
+                if os.path.exists(resultsPath + os.sep + "CDS_NUC"):
+                    PCG_NUC_files = [
+                        resultsPath + os.sep + "CDS_NUC" +
+                        os.sep +
+                        i for i in os.listdir(
+                            resultsPath +
+                            os.sep +
+                            "CDS_NUC")]
+                if os.path.exists(resultsPath + os.sep + "CDS_AA"):
+                    PCG_AA_files = [
+                        resultsPath + os.sep + "CDS_AA" +
+                        os.sep +
+                        j for j in os.listdir(
+                            resultsPath +
+                            os.sep +
+                            "CDS_AA")]
+                if os.path.exists(resultsPath + os.sep + "RNAs"):
+                    RNAs_files.extend([
+                        resultsPath + os.sep + "RNAs" +
+                        os.sep +
+                        k for k in os.listdir(
+                            resultsPath +
+                            os.sep +
+                            "RNAs")])
+                if os.path.exists(resultsPath + os.sep + "rRNA"):
+                    RNAs_files.extend([
+                        resultsPath + os.sep + "rRNA" +
+                        os.sep +
+                        k for k in os.listdir(
+                            resultsPath +
+                            os.sep +
+                            "rRNA")])
+                if os.path.exists(resultsPath + os.sep + "tRNA"):
+                    RNAs_files.extend([
+                        resultsPath + os.sep + "tRNA" +
+                        os.sep +
+                        k for k in os.listdir(
+                            resultsPath +
+                            os.sep +
+                            "tRNA")])
+                if glob.glob(resultsPath + os.sep + "*.fas"):
+                    ##默认提取的情况
+                    autoInputs = glob.glob(resultsPath + os.sep + "*.fas")
+                elif PCG_AA_files or PCG_NUC_files or RNAs_files:
+                    autoInputs = (PCG_NUC_files, PCG_AA_files, RNAs_files)
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File":  # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in self.fetchAlignmentFile(resultsPath)
+                        if os.path.splitext(alignment)[1].upper() in [".FASTA", ".FAS", ".FSA"]]
+                    if list_alignments: autoInputs = list_alignments
+        elif mode == "MACSE":
+            # 自动导入特殊一些
+            if resultsParentName == "extract_results":
+                PCG_NUC_files, CDS_files = [], []
+                if os.path.exists(resultsPath + os.sep + "CDS_NUC"):
+                    # mitogenome
+                    PCG_NUC_files = [
+                        resultsPath + os.sep + "CDS_NUC" +
+                        os.sep +
+                        i for i in os.listdir(
+                            resultsPath +
+                            os.sep +
+                            "CDS_NUC")]
+                if os.path.exists(resultsPath + os.sep + "CDS"):
+                    CDS_files = [
+                        resultsPath + os.sep + "CDS" +
+                        os.sep +
+                        i for i in os.listdir(
+                            resultsPath +
+                            os.sep +
+                            "CDS")]
+                if PCG_NUC_files or CDS_files: autoInputs = PCG_NUC_files + CDS_files
+            if resultsParentName == "mafft_results":
+                autoInputs = glob.glob(
+                        resultsPath + os.sep + "*.fas") + glob.glob(resultsPath + os.sep + "*.fasta")
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File":  # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in self.fetchAlignmentFile(
+                        resultsPath) if os.path.splitext(alignment)[1].upper()
+                                                           in [".FASTA", ".FAS", ".FSA"]]
+                    if list_alignments: autoInputs = list_alignments
+        elif mode == "PartitionFinder2":
+            if resultsParentName == "concatenate_results":
+                if os.listdir(resultsPath): autoInputs = resultsPath
+        elif mode == "ModelFinder":
+            if resultsParentName == "concatenate_results":
+                input_files = sorted([resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                                      os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FAS", ".FASTA",
+                                                                         ".NEX", ".NEXUS",
+                                                                         ".ALN"]],
+                                     key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
+                input_file = input_files[0] if input_files else None
+                list_partition = [
+                    resultsPath + os.sep + i for i in os.listdir(resultsPath) if i == "partition.txt"]
+                partition_file = list_partition[0] if list_partition else None
+                if input_file or partition_file: autoInputs = [input_file, partition_file]
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File":  # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = self.fetchAlignmentFile(resultsPath)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    if list_alignments: autoInputs = [list_alignments, None]
+        elif mode == "IQ-TREE":
+            if resultsParentName == "concatenate_results":
+                input_files = sorted([resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                                      os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FAS", ".FASTA",
+                                                                         ".NEX", ".NEXUS",
+                                                                         ".ALN"]],
+                                     key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
+                input_MSA = input_files[0] if input_files else None
+                list_partition = [
+                    resultsPath + os.sep + i for i in os.listdir(resultsPath) if i == "partition.txt"]
+                partition_file = list_partition[0] if list_partition else ""
+                model = ["CAT", partition_file] if os.path.exists(
+                    partition_file) else ["", None]
+                if (model != ["", None]) or input_MSA: autoInputs = [[input_MSA], model]
+            if resultsParentName == "ModelFinder_results":
+                list_msa = []
+                model = ["", None]
+                mf_part_model = None
+                for i in os.listdir(resultsPath):
+                    if "best_scheme.nex" in i:
+                        mf_part_model = resultsPath + os.sep + i
+                    elif os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FAS", ".FASTA", ".NEX", ".NEXUS",
+                                                            ".NXS", ".ALN"]:
+                        list_msa.append(resultsPath + os.sep + i)
+                    elif os.path.splitext(i)[1].upper() == ".IQTREE":
+                        model = ["MB_normal", resultsPath + os.sep + i]
+                model = [
+                    "mf_part_model", mf_part_model] if mf_part_model else model
+                input_MSA = list_msa[0] if list_msa else None
+                if (model != ["", None]) or input_MSA: autoInputs = [[input_MSA], model]
+            if resultsParentName == "PartFind_results":
+                input_MSAs = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                              os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP"]]
+                input_MSA = input_MSAs[0] if input_MSAs else None
+                path = resultsPath + os.sep + "analysis" + \
+                       os.sep + "best_scheme.txt"
+                model = ["PF", path] if os.path.exists(path) else ["PF", None]
+                if (model != ["PF", None]) or input_MSA: autoInputs = [[input_MSA], model]
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File":  # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = self.fetchAlignmentFile(resultsPath)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    if list_alignments: autoInputs = [list_alignments, ["", None]]
+        elif mode == "MrBayes":
+            if resultsParentName == "ModelFinder_results":
+                input_MSAs = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                              os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FAS", ".FASTA", ".NEX",
+                                                                 ".NEXUS",
+                                                                 ".ALN"]]
+                input_MSA = input_MSAs[0] if input_MSAs else None
+                list_input_model_file = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                                         os.path.splitext(i)[1].upper() == ".IQTREE"]
+                input_model_file = list_input_model_file[
+                    0] if list_input_model_file else ""
+                list_part_model = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                                   "best_scheme.nex" in i]
+                input_part_model = list_part_model[
+                    0] if list_part_model else ""
+                if os.path.exists(input_part_model):
+                    f = self.read_file(input_part_model)
+                    input_model = f.read()
+                elif os.path.exists(input_model_file):
+                    f = self.read_file(input_model_file)
+                    model_content = f.read()
+                    f.close()
+                    rgx_model = re.compile(
+                        r"Best-fit model according to.+?\: (.+)")
+                    input_model = rgx_model.search(model_content).group(1)
+                else:
+                    input_model = None
+                if input_model or input_MSA: autoInputs = [input_MSA, input_model]
+            if resultsParentName == "PartFind_results":
+                input_MSAs = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                              os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP"]]
+                input_MSA = input_MSAs[0] if input_MSAs else None
+                rgx_blk = re.compile(r"(?si)begin mrbayes;(.+)end;")
+                if os.path.exists(resultsPath + os.sep + "analysis" + os.sep + "best_scheme.txt"):
+                    f = self.read_file(
+                        resultsPath + os.sep + "analysis" + os.sep + "best_scheme.txt")
+                    scheme = f.read()
+                    f.close()
+                    input_model = rgx_blk.search(scheme).group(
+                        1).strip().replace("\t", "")
+                else:
+                    input_model = None
+                if input_model or input_MSA: autoInputs = [input_MSA, input_model]
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File":  # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_alignments = self.fetchAlignmentFile(resultsPath)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    if list_alignments: autoInputs = [list_alignments, None]
+        elif mode == "parseANNT":
+            if os.path.basename(os.path.dirname(resultsPath)) == "Other_File":  # 这里的resultsPath类似于Other_File下面的files
+                # other file的自动导入
+                if os.path.isdir(resultsPath):
+                    list_docx_files = [resultsPath + os.sep + i for i in os.listdir(resultsPath)
+                                       if os.path.splitext(i)[1].upper() in [".DOCX", ".DOC", ".ODT", ".DOCM", ".DOTX",
+                                                                             ".DOTM", ".DOT"]]
+                    if list_docx_files: autoInputs = list_docx_files
+        if not autoInputs:
+            #["ModelFinder", "IQ-TREE", "MrBayes"]: [list_alignments, None]；IQ-TREE：[list_alignments, ["", None]]
+            if mode in ["ModelFinder", "MrBayes"]: autoInputs = [None, None]
+            elif mode == "IQ-TREE": autoInputs = [None, ["", None]]
+        return autoInputs
+
+    def popUpAutoDetect(self, mode, currentPath, auto_popSig, parent, dict_autoInputs=None):
         # 先找到rootpath
         rootPath = currentPath.split("GenBank_File")[0] \
             if "GenBank_File" in currentPath else currentPath.split("Other_File")[0]
         rootPath = rootPath.rstrip(r"/").rstrip(os.sep)
         if not dict_autoInputs:
-            dict_autoInputs = self.detectAvailableInputs(rootPath, mode)
+            gbWorker = WorkThread(lambda: self.detectAvailableInputs(rootPath, mode),
+                                  parent=parent)
+            self.progressDialog_search = self.myProgressDialog(
+                "Please Wait", "Searching for inputs...", busy=True, parent=parent, rewrite=True)
+            self.progressDialog_search.show()
+            self.popupAuto_break = False
+            self.progressDialog_search.canceled.connect(lambda: [setattr(self, "popupAuto_break", True),
+                                                          gbWorker.stopWork])
+            def work_finish(mode, rootPath, parent, auto_popSig):
+                # self.progressDialog_search.close()  # close会调用canceled这个信号,所以重写了QProgressDialog的closeEvent
+                if not self.popupAuto_break:
+                    self.popUpAutoDetectSub(mode, rootPath, parent, auto_popSig, self.dict_autoInputs)
+            gbWorker.start()
+            gbWorker.finished.connect(lambda: work_finish(mode, rootPath, parent,
+                                                          auto_popSig))
+        else:
+            self.popUpAutoDetectSub(mode, rootPath, parent, auto_popSig, dict_autoInputs)
+
+    def popUpAutoDetectSub(self, mode, rootPath, parent, auto_popSig=None, dict_autoInputs=None):
         if dict_autoInputs:
             # 这里造一个带有qlistwidget的dialog
             popupGui = DetectPopupGui(mode, parent)
@@ -1108,7 +1480,7 @@ class Factory(QObject, object):
                 list(dict_autoInputs), key=lambda x: os.path.basename(x))
             for path in list_paths:
                 listItemWidget = DetectItemWidget(path, rootPath, parent, dict_autoInputs[path])
-                listItemWidget.autoInputs = next(iter(dict_autoInputs[path].items()))[1]  #最近修改的
+                listItemWidget.autoInputs = next(iter(dict_autoInputs[path].items()))[1]  # 最近修改的
                 listwitem = QListWidgetItem(popupGui.listWidget_framless)
                 listwitem.setToolTip(
                     '<br><span style="color: green">&#9733;Double-click to open folder</span></body></html>    ')
@@ -1125,9 +1497,11 @@ class Factory(QObject, object):
             # 添加最大化按钮
             popupGui.setWindowFlags(
                 popupGui.windowFlags() | Qt.WindowMinMaxButtonsHint)
-            return popupGui
+            self.progressDialog_search.close() # close会调用canceled这个信号,所以重写了QProgressDialog的closeEvent
+            auto_popSig.emit(popupGui)
         else:
-            return
+            self.progressDialog_search.close()
+            auto_popSig.emit(None)
 
     def popupViewMenu(self, view, point):
         if view.indexAt(point).isValid():
@@ -1505,6 +1879,22 @@ class Factory(QObject, object):
 
     def init_check(self, parent):
         try:
+            # 判断将mainwindow里面的data的相关设置拷贝到对于workplace的设置里面
+            data_settings = QSettings(
+                self.workPlaceSettingPath + os.sep + 'data_settings.ini', QSettings.IniFormat)
+            mainwindow_settings = QSettings(
+                self.thisPath +
+                '/settings/mainwindow_settings.ini',
+                QSettings.IniFormat)
+            keys = mainwindow_settings.allKeys()
+            for key in keys:
+                if key.endswith("_displayedArray") or key.endswith("_availableInfo"):
+                    path = key.replace("_displayedArray", "").replace("_availableInfo", "")
+                    workplace_path = re.sub(r"/|\\", "_", os.path.dirname(self.workPlaceSettingPath))
+                    remainingStr = path.replace(workplace_path, "")
+                    if remainingStr.startswith("_GenBank_File"):
+                        data_settings.setValue(key, mainwindow_settings.value(key))
+                        mainwindow_settings.remove(key)
             # 删掉插件不合格的路径
             for i in ["python27", "mafft", "PF2", "gblocks", "iq-tree", "MrBayes", "tbl2asn", "RscriptPath", "mpi",
                       "perl", "java", "macse", "trimAl", "HmmCleaner"]:
@@ -1581,58 +1971,22 @@ class Factory(QObject, object):
                 "extract listed gene", None)
             if not dict_data:
                 parseANNT_settings.setValue("extract listed gene", init_value2)
-            # 删除pyqt4的文件
-            # list_names = ['Bio.KDTree._CKDTree.pyd', 'pywintypes34.dll', 'PyQt4.QtGui.pyd', 'QtXml4.dll',
-            #               'qt.conf', 'PyQt4', 'python34.dll', 'PyQt4.QtNetwork.pyd', 'mfc100u.dll',
-            #               'QtOpenGL4.dll', 'pythoncom34.dll', 'QtNetwork4.dll', 'QtSvg4.dll', 'update.zip',
-            #               'QtGui4.dll', 'QtCore4.dll', 'qt4_plugins', '.git', 'PyQt4.QtCore.pyd',
-            #               'lxml._elementpath.pyd', 'MSVCP100.dll', 'lxml.etree.pyd', 'MSVCR100.dll', 'SSLEAY32.dll']
-            # for name in list_names:
-            #     path = self.thisPath + os.sep + name
-            #     if os.path.isfile(path):
-            #         os.remove(path)
-            #     elif os.path.isdir(path):
-            #         self.remove_dir_directly(path, removeRoot=True)
-            #         try:
-            #             os.removedirs(path)
-            #         except:
-            #             pass
-            ##为了更新1.15，拷贝旧结果
-            # settings = QSettings(
-            #     self.thisPath + '/settings/setting_settings.ini', QSettings.IniFormat)
-            # settings.setFallbacksEnabled(False)
-            # current_workplace = parent.workplace_root[0]
-            # haveCopied = settings.value(os.path.normpath(current_workplace) + "copied", False)
-            # if not haveCopied:
-            #     # print(current_workplace, "not copied")
-            #     workfolders = self.fetchAllWorkFolders(current_workplace, byRoot=True)
-            #     for workfolder in workfolders:
-            #         for i in os.listdir(workfolder):
-            #             if i != ".data":
-            #                 results_folder = workfolder + os.sep + i
-            #                 if os.path.isdir(results_folder):
-            #                     if "previous_results" in os.listdir(results_folder):
-            #                         continue
-            #                     previous_results = self.creat_dirs(results_folder + os.sep + "previous_results")
-            #                     list_results_folder = os.listdir(results_folder)
-            #                     if list_results_folder:
-            #                         for j in list_results_folder:
-            #                             if j != "previous_results":
-            #                                 try:
-            #                                     shutil.move(results_folder + os.sep + j, previous_results)
-            #                                 except:
-            #                                     pass
-            # settings.setValue(os.path.normpath(current_workplace) + "copied", True)
+            # 更新1.2.1版本的时候，没有整理分类相关设置的
+            ini_data = [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
+                                               [['', '*tera', '*dea', '*dae', '*nae', ''],
+                                                ['', '', '*ida', '', '', ''],
+                                                ['', '', '', '', '', ''],
+                                                ['', '', '', '', '', ''],
+                                                ['', '', '', '', '', '']]]
+            data = self.settings_ini.value("Taxonomy Recognition", ini_data)
+            if type(data) == list:
+                #
+                new_data = OrderedDict(
+                    [("Default taxonomy settings", data)])
+                self.settings_ini.setValue("Taxonomy Recognition", new_data)
         except:
             parent.exception_signal.emit(''.join(
                 traceback.format_exception(*sys.exc_info())) + "\n")
-        # 检查软件路径
-        # self.checkPath(self.thisPath, mode="app path", parent=parent)
-        # 预定义workflow
-        # PCGAA_MAFFT_settings = QSettings(
-        #     self.thisPath +
-        #     '/settings/flowchart/PAGAA/mafft_settings.ini',
-        #     QSettings.IniFormat, parent=self)
 
     def display_check(self, array, gbManager, exceptSig, display_checkSig, progressBarSig):
         try:
@@ -2034,6 +2388,65 @@ class Factory(QObject, object):
                 path = os.path.join(self.thisPath, "plugins", "trimAl", "bin", "trimal.exe")
         return path
 
+    def autoInputDisbled(self):
+        if not hasattr(self, "mainwindow_settings"):
+            self.mainwindow_settings = QSettings(
+                self.thisPath +
+                '/settings/mainwindow_settings.ini',
+                QSettings.IniFormat, parent=self)
+            # File only, no fallback to registry or or.
+            self.mainwindow_settings.setFallbacksEnabled(False)
+        return not self.str2bool(self.mainwindow_settings.value("auto detect", "true"))
+
+    def init_judge(self, mode=None, filePath=None, parent=None):
+        if parent.isOtherFileSelected():
+            ##展示的是otherfile的工作文件夹, 只导入选择的文件
+            autoInputs = self.judgeAutoInputs(mode, resultsPath=filePath) # 判断other file的文件
+            # 特殊情况的autoInputs  modelfinder与MRBAYES：[list_alignments, None]；IQ-TREE：[list_alignments, ["", None]]
+            list_align, list_docx = parent.fetchSelectFile(filePath)
+            if mode in ["ModelFinder", "IQ-TREE", "MrBayes"]:
+                list_alignments = autoInputs[0]
+                msa = list(set(list_alignments).intersection(set(list_align)))
+                autoInputs = [msa, None] if mode != "IQ-TREE" else [msa, ["", None]]
+            else:
+                autoInputs = list(set(autoInputs).intersection(set(list_align)))
+        elif parent.stackedWidget.currentIndex() != 8: #没有展示结果界面以及选中.data的时候
+            if mode in ["ModelFinder", "MrBayes"]: autoInputs = [None, None]
+            elif mode == "IQ-TREE": autoInputs = [None, ["", None]]
+            else: autoInputs = []
+        else:
+            ##先找到可以用于自动导入的路径
+            resultsPath = parent.fetchResultsPath()
+            if not resultsPath:
+                ## 如果没有选中一个结果文件夹，自动获得最新的结果文件夹
+                if parent.isResultsFolder(filePath):
+                    subResults = self.fetchSubResults(filePath)
+                    if subResults: resultsPath = subResults[0]
+            autoInputs = self.judgeAutoInputs(mode, resultsPath=resultsPath)
+        return autoInputs
+
+    def centerWindow(self, window):
+        frameGm = window.frameGeometry()
+        screen = QApplication.desktop().screenNumber(
+            QApplication.desktop().cursor().pos())
+        centerPoint = QApplication.desktop().screenGeometry(screen).center()
+        frameGm.moveCenter(centerPoint)
+        window.move(frameGm.topLeft())
+
+    def emitCommands(self, logGuiSig, commands):
+        logGuiSig.emit("%sCommands%s\n%s\n%s" % ("=" * 45, "=" * 45, commands, "=" * 98))
+
+    def getCurrentTaxSetData(self):
+        ini_data = OrderedDict(
+            [("Default taxonomy settings", [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
+                                           [['', '*tera', '*dea', '*dae', '*nae', ''],
+                                            ['', '', '*ida', '', '', ''],
+                                            ['', '', '', '', '', ''],
+                                            ['', '', '', '', '', ''],
+                                            ['', '', '', '', '', '']]])])
+        currentTaxSetName = self.settings_ini.value("comboBox", "Default taxonomy settings")
+        return self.settings_ini.value("Taxonomy Recognition", ini_data)[currentTaxSetName]
+
 
 class WorkThread(QThread):
     # workerfinished = pyqtSignal()
@@ -2109,6 +2522,7 @@ class SeqGrab(object):  # 统计序列
 
 
 class HttpWindowDownload(QDialog):
+    errorSig = pyqtSignal(str)
 
     def __init__(self, parent=None, **dict_args):
         super(HttpWindowDownload, self).__init__(parent)
@@ -2140,6 +2554,7 @@ class HttpWindowDownload(QDialog):
         self.progressDialog.resize(354, 145)
         self.progressDialog.canceled.connect(self.cancelDownload)
         self.progress_text = ""
+        self.errorSig.connect(self.popupException)
         self.downloadFile()
 
     def startRequest(self, url):
@@ -2238,7 +2653,7 @@ class HttpWindowDownload(QDialog):
         else:
             self.parent.zipSig.emit("Unziping")
             self.zipWorker = WorkThread(
-                lambda: self.factory.unZip(self.exportPath, self.target_exe), parent=self)
+                lambda: self.factory.unZip(self.exportPath, self.target_exe, self.errorSig), parent=self)
             self.zipWorker.start()
             self.zipWorker.finished.connect(lambda : [self.parent.zipSig.emit("Unzip finished"), self.unzipFinished()])
             # self.factory.unZip(self.exportPath, self.target_exe)
@@ -2340,6 +2755,16 @@ class HttpWindowDownload(QDialog):
                 QFile.remove(self.exportPath)
             except:
                 pass
+
+    def popupException(self, exception):
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Critical)
+        msg.setText(
+            'The program encountered an unforeseen problem, please report the bug at <a href="https://github.com/dongzhang0725/PhyloSuite/issues">https://github.com/dongzhang0725/PhyloSuite/issues</a> or send an email with the detailed traceback to dongzhang0725@gmail.com')
+        msg.setWindowTitle("Error")
+        msg.setDetailedText(exception)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
 
 
 class HttpRead(QDialog):
@@ -2463,8 +2888,9 @@ class QSingleApplication(QApplication):
 
 class Parsefmt(object):
 
-    def __init__(self, error_message=""):
+    def __init__(self, error_message="", warning_message=""):
         self.error_message = error_message
+        self.warning_message = warning_message
         self.factory = Factory()
 
     def judge(self, seq):  # 要拿全部序列来判断，因为有可能会有很长的-；不过这个方法可以筛选是否为序列
@@ -2800,21 +3226,23 @@ class Parsefmt(object):
 
     # 判断pattern,以dict_taxon形式传入参数
     def which_pattern(self, dict_taxon, file):
-        list_pattern = []  # 每一个taxon的序列都验证一些类型存放到列表里面
+        list_pattern = []  # 每一个taxon的序列都验证一些类型存放到列表里面 [name, AA]
         for name, seq in dict_taxon.items():
             if len(seq) != seq.count("-"):  # 过滤掉全是-的序列，不判断
-                list_pattern.append(self.judge(seq))
-        set_pattern = set(list_pattern)  # 将其转换为集合
+                list_pattern.append([name, self.judge(seq)])
+        list_seq_types = [pattern[1] for pattern in list_pattern]
+        set_pattern = set(list_seq_types)  # 将其转换为集合
         # 长度不等于一就证明有taxon跟其他taxon类型不同
         if set_pattern and len(set_pattern) != 1:
-            self.error_message += "Warning: mixed nucleotide and AA sequences in %s!" % file
-            pattern_counter = Counter(list_pattern)
+            type_details = "Sequence types:\n" + "\n".join([":\t".join(i) for i in list_pattern]) + "\n"
+            self.warning_message += "Warning: mixed nucleotide and AA sequences in %s!\n%s" % (file, type_details)
+            pattern_counter = Counter(list_seq_types)
             most_common_pattern = pattern_counter.most_common(1)[0][0]
             return most_common_pattern
-        elif not list_pattern:
+        elif not list_seq_types:
             return "N/A"
         else:
-            return list_pattern[0]
+            return list_seq_types[0]
 
 
 class Convertfmt(object):

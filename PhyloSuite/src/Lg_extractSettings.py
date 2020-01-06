@@ -41,6 +41,8 @@ class ExtractSettings(QDialog, Ui_ExtractSettings, object):
         self.setStyleSheet(self.qss_file)
         self.tableView.installEventFilter(self)
         self.tableView.horizontalHeader().setStretchLastSection(True)
+        self.listWidget.installEventFilter(self)
+        self.listWidget_2.installEventFilter(self)
         tableView_popMenu = QMenu(self)
         edit = QAction("Edit", self,
                             statusTip="Edit select item",
@@ -181,6 +183,7 @@ class ExtractSettings(QDialog, Ui_ExtractSettings, object):
 
         # Restore geometry
         self.resize(self.GenBankExtract_settings.value('size', QSize(685, 511)))
+        self.factory.centerWindow(self)
         # self.move(self.GenBankExtract_settings.value('pos', QPoint(875, 254)))
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QPushButton):
@@ -218,13 +221,15 @@ class ExtractSettings(QDialog, Ui_ExtractSettings, object):
                 "Settings",
                 "<p style='line-height:25px; height:25px'>At least one item should be retained!</p>")
             return
-        self.dict_gbExtract_set[self.currentVersion]["Features to be extracted"] =\
-            [self.listWidget.text(i) for i in range(self.listWidget.count())]
-        self.dict_gbExtract_set[self.currentVersion][self.current_qualifier_text] = \
-            [self.listWidget_2.text(i) for i in range(self.listWidget_2.count())]
-        self.dict_gbExtract_set[self.currentVersion]["Names unification"] = \
-            [self.tableView.model().headerdata] + self.tableView.model().arraydata
-        self.GenBankExtract_settings.setValue('set_version', self.dict_gbExtract_set)
+        try:
+            self.dict_gbExtract_set[self.currentVersion]["Features to be extracted"] =\
+                [self.listWidget.text(i) for i in range(self.listWidget.count())]
+            self.dict_gbExtract_set[self.currentVersion][self.current_qualifier_text] = \
+                [self.listWidget_2.text(i) for i in range(self.listWidget_2.count())]
+            self.dict_gbExtract_set[self.currentVersion]["Names unification"] = \
+                [self.tableView.model().headerdata] + self.tableView.model().arraydata
+            self.GenBankExtract_settings.setValue('set_version', self.dict_gbExtract_set)
+        except: pass
 
     def closeEvent(self, event):
         self.guiSave()
@@ -249,6 +254,11 @@ class ExtractSettings(QDialog, Ui_ExtractSettings, object):
                 if event.key() == Qt.Key_Delete:
                     self.on_toolButton_4_clicked()
                     return True
+        if isinstance(
+                obj,
+                QListWidget):
+            if event.type() == QEvent.ChildRemoved:
+                self.depositeData()
         # return QMainWindow.eventFilter(self, obj, event) #
         # 其他情况会返回系统默认的事件处理方法。
         return super(ExtractSettings, self).eventFilter(obj, event)  # 0

@@ -33,6 +33,8 @@ class Gblocks(QDialog, Ui_Gblocks, object):
     closeSig = pyqtSignal(str, str)
     # 用于输入文件后判断用
     ui_closeSig = pyqtSignal(str)
+    ##弹出识别输入文件的信号
+    auto_popSig = pyqtSignal(QDialog)
 
     def __init__(
             self,
@@ -44,6 +46,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
             parent=None):
         super(Gblocks, self).__init__(parent)
         self.parent = parent
+        self.function_name = "Gblocks"
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         self.workPath = workPath
@@ -102,6 +105,8 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         ## brief demo
         self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-6-1-Brief-example")))
+        ##自动弹出识别文件窗口
+        self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -244,7 +249,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                                                                                            self.time_used)
             with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n"
+                        "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                         "If you use Gblocks, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -323,6 +328,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
 
         # Restore geometry
         self.resize(self.gblocks_settings.value('size', QSize(658, 500)))
+        self.factory.centerWindow(self)
         # self.move(self.gblocks_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -549,7 +555,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
             self.gb_popen = subprocess.Popen(
                 commands, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupINFO,
                 shell=True, preexec_fn=os.setsid)
-        self.logGuiSig.emit(commands)
+        self.factory.emitCommands(self.logGuiSig, commands)
         is_error = False  ##判断是否出了error
         while True:
             QApplication.processEvents()
@@ -574,6 +580,8 @@ class Gblocks(QDialog, Ui_Gblocks, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
+            with open(self.exportPath + os.sep + "PhyloSuite_Gblocks.log", "a") as f:
+                f.write(text + "\n")
 
     def gui4Log(self):
         dialog = QDialog(self)
@@ -784,15 +792,19 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         if "Show log" in text:
             self.on_pushButton_9_clicked()
 
-    def popupAutoDec(self):
-        popupUI = self.factory.popUpAutoDetect("Gblocks", self.workPath, self)
+    def popupAutoDec(self, init=False):
+        self.init = init
+        self.factory.popUpAutoDetect("Gblocks", self.workPath, self.auto_popSig, self)
+
+    def popupAutoDecSub(self, popupUI):
         if not popupUI:
-            QMessageBox.warning(
-                self,
-                "Warning",
-                "<p style='line-height:25px; height:25px'>No available file detected!</p>")
+            if not self.init:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    "<p style='line-height:25px; height:25px'>No available file detected!</p>")
             return
-        popupUI.checkBox.setVisible(False)
+        if not self.init: popupUI.checkBox.setVisible(False)
         if popupUI.exec_() == QDialog.Accepted:
             widget = popupUI.listWidget_framless.itemWidget(
                 popupUI.listWidget_framless.selectedItems()[0])

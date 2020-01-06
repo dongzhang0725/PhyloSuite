@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\PF_exe_path.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\PF_exe_path.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -11,8 +11,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_PF2ExePath(object):
     def setupUi(self, PF2ExePath):
         PF2ExePath.setObjectName("PF2ExePath")
-        PF2ExePath.resize(485, 465)
-        PF2ExePath.setMinimumSize(QtCore.QSize(410, 0))
+        PF2ExePath.resize(550, 539)
+        PF2ExePath.setMinimumSize(QtCore.QSize(550, 0))
         PF2ExePath.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(PF2ExePath)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
@@ -65,6 +65,23 @@ class Ui_PF2ExePath(object):
         self.label_14.setWordWrap(True)
         self.label_14.setObjectName("label_14")
         self.verticalLayout_4.addWidget(self.label_14)
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.label_10 = QtWidgets.QLabel(PF2ExePath)
+        self.label_10.setObjectName("label_10")
+        self.horizontalLayout.addWidget(self.label_10)
+        self.comboBox = QtWidgets.QComboBox(PF2ExePath)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.comboBox.sizePolicy().hasHeightForWidth())
+        self.comboBox.setSizePolicy(sizePolicy)
+        self.comboBox.setObjectName("comboBox")
+        self.comboBox.addItem("")
+        self.comboBox.addItem("")
+        self.comboBox.addItem("")
+        self.horizontalLayout.addWidget(self.comboBox)
+        self.verticalLayout_4.addLayout(self.horizontalLayout)
         self.groupBox_2 = QtWidgets.QGroupBox(PF2ExePath)
         self.groupBox_2.setCheckable(True)
         self.groupBox_2.setObjectName("groupBox_2")
@@ -147,6 +164,10 @@ class Ui_PF2ExePath(object):
         self.pushButton_9.setText(_translate("PF2ExePath", "Ok"))
         self.pushButton_10.setText(_translate("PF2ExePath", "Cancel"))
         self.label_14.setText(_translate("PF2ExePath", "<html><head/><body><p>If you don\'t have PartitionFinder2, please <span style=\" font-weight:600; color:#ff0000;\">download.</span> Please select one of the two ways to install PartitionFinder2 below:</p></body></html>"))
+        self.label_10.setText(_translate("PF2ExePath", "Downloading source:"))
+        self.comboBox.setItemText(0, _translate("PF2ExePath", "Github"))
+        self.comboBox.setItemText(1, _translate("PF2ExePath", "Gitlab"))
+        self.comboBox.setItemText(2, _translate("PF2ExePath", "Chinese resource"))
         self.groupBox_2.setTitle(_translate("PF2ExePath", "Install compiled PartitionFinder2 (recommended)"))
         self.pushButton_6.setText(_translate("PF2ExePath", "Download"))
         self.label_7.setText(_translate("PF2ExePath", "<html><head/><body><p>If you fail to download this, click here to download it manually.</p></body></html>"))

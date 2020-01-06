@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\launcher.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\launcher.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -13,6 +13,9 @@ class Ui_launcher(object):
         launcher.setObjectName("launcher")
         launcher.setWindowModality(QtCore.Qt.NonModal)
         launcher.resize(579, 177)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":/picture/resourses/windowIcon.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        launcher.setWindowIcon(icon)
         self.gridLayout = QtWidgets.QGridLayout(launcher)
         self.gridLayout.setObjectName("gridLayout")
         self.textEdit = QtWidgets.QTextEdit(launcher)
@@ -69,9 +72,9 @@ class Ui_launcher(object):
         sizePolicy.setHeightForWidth(self.pushButton.sizePolicy().hasHeightForWidth())
         self.pushButton.setSizePolicy(sizePolicy)
         self.pushButton.setMinimumSize(QtCore.QSize(75, 24))
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/picture/resourses/btn_ok.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.pushButton.setIcon(icon)
+        icon1 = QtGui.QIcon()
+        icon1.addPixmap(QtGui.QPixmap(":/picture/resourses/btn_ok.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.pushButton.setIcon(icon1)
         self.pushButton.setObjectName("pushButton")
         self.horizontalLayout_2.addWidget(self.pushButton)
         self.pushButton_2 = QtWidgets.QPushButton(launcher)
@@ -81,9 +84,9 @@ class Ui_launcher(object):
         sizePolicy.setHeightForWidth(self.pushButton_2.sizePolicy().hasHeightForWidth())
         self.pushButton_2.setSizePolicy(sizePolicy)
         self.pushButton_2.setMinimumSize(QtCore.QSize(75, 24))
-        icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/picture/resourses/btn_close.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.pushButton_2.setIcon(icon1)
+        icon2 = QtGui.QIcon()
+        icon2.addPixmap(QtGui.QPixmap(":/picture/resourses/btn_close.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.pushButton_2.setIcon(icon2)
         self.pushButton_2.setObjectName("pushButton_2")
         self.horizontalLayout_2.addWidget(self.pushButton_2)
         self.gridLayout.addLayout(self.horizontalLayout_2, 3, 0, 1, 1)

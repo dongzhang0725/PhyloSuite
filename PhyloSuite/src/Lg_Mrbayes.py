@@ -179,6 +179,8 @@ class MrBayes(QDialog, Ui_MrBayes, object):
     closeSig = pyqtSignal(str, str)
     # 用于输入文件后判断用
     ui_closeSig = pyqtSignal(str)
+    ##弹出识别输入文件的信号
+    auto_popSig = pyqtSignal(QDialog)
 
     def __init__(
             self,
@@ -229,6 +231,10 @@ class MrBayes(QDialog, Ui_MrBayes, object):
             self.input_nex(self.autoMSA)
         if self.input_model:
             self.input_models()
+        else:
+            if self.autoMSA:
+                if "PartFind_results" in self.autoMSA:
+                    self.judgePFresults()
         self.exception_signal.connect(self.popupException)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         self.progressSig.connect(self.runProgress)
@@ -283,6 +289,8 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         ## brief demo
         self.label_9.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-12-1-Brief-example")))
+        ##自动弹出识别文件窗口
+        self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
     def on_pushButton_clicked(self, fromText=None, nex_name="input.nex", skip=False, workflow=False, haveExportPath=False):
@@ -362,8 +370,7 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         else:
             self.commands = self.MB_exe + " \"" + nex_name + "\""
         self.mb_popen = self.factory.init_popen(self.commands)
-        self.logGuiSig.emit("cd %s\n"%self.exportPath)
-        self.logGuiSig.emit(self.commands)
+        self.factory.emitCommands(self.logGuiSig, "cd %s\n%s"%(self.exportPath, self.commands))
         self.worker = WorkThread(self.run_command, parent=self)
         self.worker.start()
 
@@ -628,6 +635,7 @@ class MrBayes(QDialog, Ui_MrBayes, object):
 
         # Restore geometry
         self.resize(self.MrBayes_settings.value('size', QSize(557, 673)))
+        self.factory.centerWindow(self)
         # self.move(self.MrBayes_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -823,6 +831,8 @@ class MrBayes(QDialog, Ui_MrBayes, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
+            with open(self.exportPath + os.sep + "PhyloSuite_MrBayes.log", "a") as f:
+                f.write(text + "\n")
 
     def save_log_to_file(self):
         content = self.textEdit_log.toPlainText()
@@ -1405,6 +1415,8 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         self.lineEdit.setText("")
         if input_MSA:
             input_MSA = input_MSA[0] if type(input_MSA) == list else input_MSA
+            if ("PartFind_results" in input_MSA) and not (model): #判断PF2是否有结果
+                self.judgePFresults()
             if not (os.path.splitext(input_MSA)[1].upper() in [".NEX", ".NXS", ".NEXUS"]):
                 convertfmt = Convertfmt(
                     **{"export_path": os.path.dirname(input_MSA), "files": [input_MSA], "export_nexi": True})
@@ -1415,16 +1427,20 @@ class MrBayes(QDialog, Ui_MrBayes, object):
             self.input_model = model
             self.input_models()
 
-    def popupAutoDec(self):
-        popupUI = self.factory.popUpAutoDetect(
-            "MrBayes", self.workPath, self)
+    def popupAutoDec(self, init=False):
+        self.init = init
+        self.factory.popUpAutoDetect(
+            "MrBayes", self.workPath, self.auto_popSig, self)
+
+    def popupAutoDecSub(self, popupUI):
         if not popupUI:
-            QMessageBox.warning(
-                self,
-                "Warning",
-                "<p style='line-height:25px; height:25px'>No available file detected!</p>")
+            if not self.init:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    "<p style='line-height:25px; height:25px'>No available file detected!</p>")
             return
-        popupUI.checkBox.setVisible(False)
+        if not self.init: popupUI.checkBox.setVisible(False)
         if popupUI.exec_() == QDialog.Accepted:
             widget = popupUI.listWidget_framless.itemWidget(
                 popupUI.listWidget_framless.selectedItems()[0])
@@ -1709,7 +1725,7 @@ class MrBayes(QDialog, Ui_MrBayes, object):
                 "xxxx generations", " generations")
         with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
             f.write(self.description +
-                    "\n\nIf you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n"
+                    "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                     "If you use MrBayes, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
 
     def judgeFinish(self):
@@ -1718,6 +1734,13 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         if not tre_file:
             return False
         return True
+
+    def judgePFresults(self):
+        QMessageBox.information(
+            self,
+            "IQ-TREE",
+            "<p style='line-height:25px; height:25px'>Cannot find \"<span style='font-weight:600; color:#ff0000;'>best_scheme.txt</span>\" in \"<span style='font-weight:600; color:#ff0000;'>analysis</span>\" folder, "
+            "PartitionFinder analysis seems to be unfinished!</p>")
 
 
 if __name__ == "__main__":

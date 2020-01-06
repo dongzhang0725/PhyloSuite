@@ -176,6 +176,8 @@ class Mafft(QDialog, Ui_mafft, object):
     ui_closeSig = pyqtSignal(str)
     # 比对完有空文件报错
     emptySig = pyqtSignal(list)
+    ##弹出识别输入文件的信号
+    auto_popSig = pyqtSignal(QDialog)
 
     def __init__(
             self,
@@ -188,6 +190,7 @@ class Mafft(QDialog, Ui_mafft, object):
             parent=None):
         super(Mafft, self).__init__(parent)
         self.parent = parent
+        self.function_name = "MAFFT"
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         self.workPath = workPath
@@ -265,6 +268,8 @@ class Mafft(QDialog, Ui_mafft, object):
         ## brief demo
         self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-2-1-Brief-example")))
+        ##自动弹出识别文件窗口
+        self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -407,7 +412,7 @@ class Mafft(QDialog, Ui_mafft, object):
                                                                                            self.time_used)
             with open(self.dict_args["exportPath"] + os.sep + "summary.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n"
+                        "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                         "If you use MAFFT, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             # 判断比对是否成功
             mafft_results = [self.dict_args["exportPath"] + os.sep + result for result in
@@ -775,6 +780,7 @@ class Mafft(QDialog, Ui_mafft, object):
 
         # Restore geometry
         self.resize(self.mafft_settings.value('size', QSize(500, 500)))
+        self.factory.centerWindow(self)
         # self.move(self.mafft_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -950,7 +956,7 @@ class Mafft(QDialog, Ui_mafft, object):
         progress_count = 0  # 有时候会有多个Progressive alignment
         base = base + (num - 1) * proportion / sums  # 当前文件到哪个base了
         each_file_proportion = proportion / sums
-        self.logGuiSig.emit(commands)
+        self.factory.emitCommands(self.logGuiSig, commands)
         rgx_Progress = re.compile(
             r"Progressive alignment (\d+? *\/ *\d+?)?\.\.\.", re.I)
         rgx_Progress_step = re.compile(r"STEP +(\d+?) *\/ *(\d+?) ", re.I)
@@ -1169,6 +1175,8 @@ class Mafft(QDialog, Ui_mafft, object):
         if re.search(r"\w+", text):
             # print(text)
             self.textEdit_log.append(text)
+            with open(self.exportPath + os.sep + "PhyloSuite_MAFFT.log", "a") as f:
+                f.write(text + "\n")
 
     def save_log_to_file(self):
         content = self.textEdit_log.toPlainText()
@@ -1257,15 +1265,19 @@ class Mafft(QDialog, Ui_mafft, object):
             self.N2P_radioButton.setDisabled(False)
             self.input()
 
-    def popupAutoDec(self):
-        popupUI = self.factory.popUpAutoDetect("MAFFT", self.workPath, self)
+    def popupAutoDec(self, init=False):
+        self.init = init
+        self.factory.popUpAutoDetect("MAFFT", self.workPath, self.auto_popSig, self)
+
+    def popupAutoDecSub(self, popupUI):
         if not popupUI:
-            QMessageBox.warning(
-                self,
-                "Warning",
-                "<p style='line-height:25px; height:25px'>No available file detected!</p>")
+            if not self.init:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    "<p style='line-height:25px; height:25px'>No available file detected!</p>")
             return
-        popupUI.checkBox.setVisible(False)
+        if not self.init: popupUI.checkBox.setVisible(False)
         if popupUI.exec_() == QDialog.Accepted:
             widget = popupUI.listWidget_framless.itemWidget(
                 popupUI.listWidget_framless.selectedItems()[0])

@@ -83,7 +83,8 @@ class Seq_matrix(object):
         self.gene_index = []
         self.dist_warning_message = OrderedDict()
         self.error_message = ""
-        self.parsefmt = Parsefmt(self.error_message)
+        self.warning_message = ""
+        self.parsefmt = Parsefmt(self.error_message, self.warning_message)
         self.dict_genes_alignments = OrderedDict()
         self.unaligned = False
         self.unaligns = []
@@ -94,12 +95,14 @@ class Seq_matrix(object):
             if self.interrupt:
                 break
             geneName = os.path.splitext(os.path.basename(eachFile))[0]
+            geneName = self.factory.refineName(geneName)
             dict_taxon = self.parsefmt.readfile(eachFile)
             set_length = set([len(dict_taxon[i]) for i in dict_taxon])
             if set_length == {0}:
                 self.list_empty_files.append(os.path.basename(eachFile))
                 continue
             self.error_message += self.parsefmt.error_message
+            self.warning_message += self.parsefmt.warning_message
             if self.factory.is_aligned(dict_taxon):
                 self.dict_genes_alignments[geneName] = dict_taxon
             else:
@@ -114,7 +117,10 @@ class Seq_matrix(object):
             QMetaObject.invokeMethod(self.parent, "popupEmptyFileWarning",
                                      Qt.BlockingQueuedConnection,
                                      Q_ARG(str, text))
-        if self.unaligned: self.dict_args["unaligned_signal"].emit(self.unaligns)
+        if self.unaligned:
+            self.dict_args["unaligned_signal"].emit(self.unaligns)
+            self.ok = False
+            return
         if self.dict_genes_alignments:
             self.supplement()
             self.concatenate()
@@ -146,6 +152,10 @@ class Seq_matrix(object):
             self.dict_args["workflow_progress"].emit(100)
             if self.error_message:
                 self.dict_args["exception_signal"].emit(self.error_message)
+            if self.warning_message:
+                QMetaObject.invokeMethod(self.parent, "popupWarning",
+                                         Qt.BlockingQueuedConnection,
+                                         Q_ARG(list, [self.warning_message]))
         # else:
         #     self.dict_args["unaligned_signal"].emit(self.unaligns)
 
@@ -179,7 +189,7 @@ class Seq_matrix(object):
             ##报错
             QMetaObject.invokeMethod(self.parent, "popupWarning",
                                      Qt.BlockingQueuedConnection,
-                                     Q_ARG(OrderedDict,self.dist_warning_message))
+                                     Q_ARG(list, [self.dist_warning_message]))
 
     def append(self):
         for self.spe_key, self.seq in self.dict_taxon.items():  # 因为读新的文件会
@@ -293,6 +303,7 @@ class Seq_matrix(object):
         self.pattern = self.parsefmt.which_pattern(
             self.dict_species, "Concatenated file")  # 得到pattern
         self.error_message += self.parsefmt.error_message
+        self.warning_message += self.parsefmt.warning_message
         self.file = ''
         self.phy_file = ' ' + \
             str(len(self.list_keys)) + ' ' + \
@@ -370,10 +381,13 @@ class Matrix(QDialog, Ui_Matrix, object):
     closeSig = pyqtSignal(str, str)
     ##用于输入文件后判断用
     ui_closeSig = pyqtSignal(str)
+    ##弹出识别输入文件的信号
+    auto_popSig = pyqtSignal(QDialog)
 
     def __init__(self, files=None, workPath=None, focusSig=None, workflow=False, parent=None):
         super(Matrix, self).__init__(parent)
         self.parent = parent
+        self.function_name = "Concatenation"
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         # 保存设置
@@ -421,6 +435,7 @@ class Matrix(QDialog, Ui_Matrix, object):
         self.comboBox_4.view().setDefaultDropAction(Qt.MoveAction)
         # self.comboBox_4.view().setSelectionMode(QAbstractItemView.MultiSelection)
         self.comboBox_4.view().installEventFilter(self)
+        self.checkBox_6.toggled.connect(lambda : self.input(self.comboBox_4.fetchListsText()))
         # 给开始按钮添加菜单
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
@@ -436,6 +451,8 @@ class Matrix(QDialog, Ui_Matrix, object):
         ## brief demo
         self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-7-1-Brief-example")))
+        ##自动弹出识别文件窗口
+        self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -508,6 +525,7 @@ class Matrix(QDialog, Ui_Matrix, object):
                 self.startButtonStatusSig.emit(
                     [self.pushButton, self.progressBar, "except", self.dict_args["exportPath"], self.qss_file,
                      self])
+                self.seqMatrix.interrupt = True
                 return
             if "draw_linear" in self.dict_args and self.dict_args["draw_linear"]:
                 self.dict_args["partition_file"] = self.seqMatrix.partition_detail
@@ -517,7 +535,7 @@ class Matrix(QDialog, Ui_Matrix, object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
             with open(self.dict_args["exportPath"] + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n\n" + self.time_used_des)
+                f.write("If you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
             if not self.seqMatrix.unaligned and not self.seqMatrix.interrupt:
                 if self.workflow:
                     ##work flow跑的
@@ -643,22 +661,35 @@ class Matrix(QDialog, Ui_Matrix, object):
             msg.setStandardButtons(QMessageBox.Ok)
             msg.exec_()
 
-    @pyqtSlot(OrderedDict)
-    def popupWarning(self, dist_warning):
+    @pyqtSlot(list)
+    def popupWarning(self, warning):
+        ## 为了统一，统一用的列表
         msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Information)
-        msg.setText(
-            "<p style='line-height:25px; height:25px'>Missing genes are replaced with '?' (see details or 'missing_genes.txt')</p>")
-        msg.setWindowTitle("Concatenation Warning")
-        max_len_taxa = len(max(list(dist_warning), key=len))
-        max_len_taxa = max_len_taxa if max_len_taxa > 7 else 7 #要大于species的占位符
-        list_detail = ["Species".ljust(max_len_taxa) + " |Missing genes"] + [str(i).ljust(max_len_taxa) + " |" + str(dist_warning[i]) for i in dist_warning]
-        # html_detail = "<html>" + "\n".join(list_detail).replace(" ", "&nbsp;") + "</html>"
-        msg.setDetailedText("\n".join(list_detail))
-        msg.setStandardButtons(QMessageBox.Ok)
-        with open(self.dict_args["exportPath"] + os.sep + "missing_genes.txt", "w", encoding="utf-8") as f:
-            f.write("\n".join(list_detail))
-        msg.exec_()
+        info = warning[0]
+        if type(info) == OrderedDict:
+            ## 有缺失基因的情况，这时候warning是个字典
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(
+                "<p style='line-height:25px; height:25px'>Missing genes are replaced with '?' (see details or 'missing_genes.txt')</p>")
+            msg.setWindowTitle("Concatenation Warning")
+            max_len_taxa = len(max(list(info), key=len))
+            max_len_taxa = max_len_taxa if max_len_taxa > 7 else 7 #要大于species的占位符
+            list_detail = ["Species".ljust(max_len_taxa) + " |Missing genes"] + [str(i).ljust(max_len_taxa) + " |" + str(info[i]) for i in info]
+            # html_detail = "<html>" + "\n".join(list_detail).replace(" ", "&nbsp;") + "</html>"
+            msg.setDetailedText("\n".join(list_detail))
+            msg.setStandardButtons(QMessageBox.Ok)
+            with open(self.dict_args["exportPath"] + os.sep + "missing_genes.txt", "w", encoding="utf-8") as f:
+                f.write("\n".join(list_detail))
+            msg.exec_()
+        elif type(info) == str:
+            # 序列中DNA和AA混合了
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText(
+                "<p style='line-height:25px; height:25px'>Mixed nucleotide and AA sequences (see details)</p>")
+            msg.setWindowTitle("Concatenation Warning")
+            msg.setDetailedText(info)
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
         # if msg.exec_() == 1024:  # QDialog.Accepted:
         #     self.seqMatrix.concatenate()
         #     if self.workflow:
@@ -712,6 +743,7 @@ class Matrix(QDialog, Ui_Matrix, object):
 
         # Restore geometry
         self.resize(self.concatenate_settings.value('size', QSize(500, 500)))
+        self.factory.centerWindow(self)
         # self.move(self.concatenate_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -816,7 +848,7 @@ class Matrix(QDialog, Ui_Matrix, object):
                 obj.setDragDropMode(QAbstractItemView.InternalMove)
                 obj.setDefaultDropAction(Qt.MoveAction)
                 list_inputs = self.comboBox_4.fetchListsText()
-                self.comboBox_4.refreshInputs(list_inputs, sort=False)
+                self.comboBox_4.refreshInputs(list_inputs, sort=False, judge=False)
         if (event.type() == QEvent.Show) and (obj == self.pushButton.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+",
                          self.dir_action.text()) or self.dir_action.text() == "Output Dir: ":
@@ -851,7 +883,7 @@ class Matrix(QDialog, Ui_Matrix, object):
                 "<p style='line-height:25px; height:25px'>%s %s empty, %s be ignored!</p>" % (str(
                     empty_files), word1, word2),
                 QMessageBox.Ok)
-        self.comboBox_4.refreshInputs(rest_files)
+        self.comboBox_4.refreshInputs(rest_files, sort=self.checkBox_6.isChecked())
 
     def isRunning(self):
         if hasattr(self, "seqMatrix") and (not self.seqMatrix.interrupt):
@@ -859,15 +891,20 @@ class Matrix(QDialog, Ui_Matrix, object):
         else:
             return False
 
-    def popupAutoDec(self):
-        popupUI = self.factory.popUpAutoDetect("Concatenation", self.workPath, self)
+    def popupAutoDec(self, init=False):
+        self.init = init
+        self.factory.popUpAutoDetect("Concatenation", self.workPath, self.auto_popSig, self)
+
+    def popupAutoDecSub(self, popupUI):
         if not popupUI:
-            QMessageBox.warning(
-                self,
-                "Warning",
-                "<p style='line-height:25px; height:25px'>No available file detected!</p>")
+            if not self.init:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    "<p style='line-height:25px; height:25px'>No available file detected!</p>")
             return
-        popupUI.checkBox.setVisible(False)
+        if not self.init:
+            popupUI.checkBox.setVisible(False)
         if popupUI.exec_() == QDialog.Accepted:
             widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
             autoInputs = widget.autoInputs

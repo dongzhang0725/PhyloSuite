@@ -533,6 +533,7 @@ class WorkFlow(QDialog, Ui_WorkFlow, object):
         qsettings = QSettings(self.thisPath + '/settings/workflow_settings.ini', QSettings.IniFormat)
         qsettings.setFallbacksEnabled(False)
         self.resize(qsettings.value('size', QSize(645, 664)))
+        self.factory.centerWindow(self)
         # self.move(qsettings.value('pos', QPoint(875, 254)))
 
         # for name, obj in inspect.getmembers(self):
@@ -640,7 +641,7 @@ class WorkFlow(QDialog, Ui_WorkFlow, object):
     def get_inputs(self, software_widget):
         exportPath = software_widget.exe_window.exportPath
         if software_widget.softWare == "MAFFT":
-            return [exportPath + os.sep + i for i in os.listdir(exportPath) if i != "summary.txt"]
+            return [exportPath + os.sep + i for i in os.listdir(exportPath) if (i != "summary.txt") and (not re.search(r"^PhyloSuite\w+\.log$", i))]
         elif software_widget.softWare == "MACSE":
             return glob.glob(exportPath + os.sep + "*_NT_removed_chars.*")
         elif software_widget.softWare == "Gblocks":
@@ -925,10 +926,10 @@ class WorkFlow(QDialog, Ui_WorkFlow, object):
 <meta http-equiv=content-type content=text/html;charset=ISO-8859-1>
 </head>
 <body>
-<div><span style="color:red; font-weight:bold;">PhyloSuite</span> (Zhang et al., 2018) was used to conduct, manage and streamline the analyses with the help of several plug-in programs: <br> ''' + self.report.replace("\n", "<br>") + "<br><br><font style='font-weight:bold; font-size:18px'>References</font>" + \
-  "<br>Zhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and " \
-  "scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. " \
-  "bioRxiv, doi: 10.1101/489088." + self.reference_report.replace("\n", "<br>") + "<br><br>" + self.time_used_des.replace("\n", "<br>") + self.exe_time_count.replace("\n", "<br>") + "<br>" + '''</div>
+<div><span style="color:red; font-weight:bold;">PhyloSuite</span> (Zhang et al., 2020) was used to conduct, manage and streamline the analyses with the help of several plug-in programs: <br> ''' + self.report.replace("\n", "<br>") + "<br><br><font style='font-weight:bold; font-size:18px'>References</font>" + \
+  "<br>Zhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable" \
+  " desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular " \
+  "Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096." + self.reference_report.replace("\n", "<br>") + "<br><br>" + self.time_used_des.replace("\n", "<br>") + self.exe_time_count.replace("\n", "<br>") + "<br>" + '''</div>
 </body>
 </html>'''
         self.dict_reports["reports"] = report_html

@@ -79,14 +79,21 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
     # modify_tableSig = pyqtSignal(QModelIndex, str)
     ##修改表格完成的信号
     modify_table_finished = pyqtSignal()
+    warning_signal = pyqtSignal(str)
 
     def __init__(self, workplace=None, parent=None):
         super(MyMainWindow, self).__init__(parent)
         MyMainWindow._Self = self
+        self.treeRootPath = workplace[0]
+        ##工作区的路径存到系统里面
+        workPlaceSettings = self.treeRootPath + os.sep + ".settings"
+        QApplication.setApplicationName("PhyloSuite_settings")
+        QApplication.setOrganizationName("PhyloSuite")
+        QSettings.setDefaultFormat(QSettings.IniFormat)
+        path_settings = QSettings()
+        path_settings.setValue("current workplace setting path", workPlaceSettings)
         self.factory = Factory()
-        # self.factory.copyOldResults(workplace) #判断并拷贝旧结果
         self.thisPath = self.factory.thisPath
-        self.workplace_root = workplace
         # 保存设置
         self.mainwindow_settings = QSettings(
             self.thisPath +
@@ -99,29 +106,33 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
             qss_file = f.read()
         # 统一界面字体
+        QSettings.setDefaultFormat(QSettings.IniFormat)
+        font_settings = QSettings()
+        font_changed = font_settings.value("font changed", False)
         if platform.system().lower() == "darwin":
-            QApplication.setFont(QFont("Arial", 12))
             self.label_6.setText(
                 self.label_6.text().replace("font-size:14pt;", "font-size:15pt;").replace("font-size:20pt;",
                                                                                           "font-size:25pt;"))
-            style = "QWidget {font: 12px;}\n\n" + qss_file
+            if not font_changed:
+                # 如果用户没有改过字体
+                qss_file = re.sub(r"^\*{font-family: (.+?); font-size: (\d+)pt;}",
+                                  "*{font-family: Arial; font-size: 12pt;}", qss_file)
+                with open(self.thisPath + os.sep + 'style.qss', "w", encoding="utf-8", errors='ignore') as f:
+                    f.write(qss_file)
         elif platform.system().lower() == "windows":
-            QApplication.setFont(QFont("Microsoft YaHei", 9))
             self.label_6.setText(
                 self.label_6.text().replace("font-size:14pt;", "font-size:13pt;"))
-            style = "QWidget {font: 12px;}\n\n" + qss_file
         elif platform.system().lower() == "linux":
             self.label_6.setText(
                 self.label_6.text().replace("font-size:14pt;", "font-size:12pt;").replace("font-size:20pt;",
                                                                                           "font-size:18pt;"))
-            style = "QWidget {font: 12px;}\n\n" + qss_file
-        self.setStyleSheet(style)
-        ##给label6添加阴影效果
-        # effect = QGraphicsDropShadowEffect(self)
-        # effect.setBlurRadius(8)  # 阴影圆角的大小
-        # effect.setColor(Qt.gray)  # 阴影的颜色
-        # effect.setOffset(-2, 2)  # 阴影偏移量
-        # self.centralWidget().setGraphicsEffect(effect)
+            if not font_changed:
+                # 如果用户没有改过字体
+                qss_file = re.sub(r"^\*{font-family: (.+?); font-size: (\d+)pt;}",
+                                  "*{font-family: Arial; font-size: 12pt;}", qss_file)
+                with open(self.thisPath + os.sep + 'style.qss', "w", encoding="utf-8", errors='ignore') as f:
+                    f.write(qss_file)
+        self.setStyleSheet(qss_file)
         # 信号和槽
         self.progressSig.connect(self.Progress)
         self.progressBarSig.connect(lambda value: self.disp_check_progress.setValue(value))
@@ -133,6 +144,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.creatFolderSig.connect(self.mkdir)
         self.restoreFolderSig.connect(self.recycled_restore)
         self.exception_signal.connect(lambda x: self.factory.popupException(self, x))
+        self.warning_signal.connect(self.popupWarning)
         self.updateSig.connect(self.UpdatesSlot)
         self.openDisplaySetSig.connect(self.on_actionDisplay_triggered)
         self.display_checkSig.connect(lambda array: self.displayTableModel.updateModel(array))
@@ -158,8 +170,9 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                 continue
             self.workplace_widget.DropDownMenu.addMenuItem(":/picture/resourses/folder-icon.png", i)
         #计算最长工作路径的有多长
-        length = QFontMetrics(QApplication.font(self)).width(max(workplace, key=len))
-        self.workplace_widget.DropDownMenu.setMinimumWidth(length+35) #让下拉菜单显示完全
+        font_ = self.font()
+        length = QFontMetrics(QFont(font_.family(), font_.pointSize())).width(max(workplace, key=len))
+        self.workplace_widget.DropDownMenu.setMinimumWidth(length+40) #让下拉菜单显示完全
         self.workplace_widget.DropDownMenu.addMenuItem(":/picture/resourses/other.png", "Others...")
         self.workplace_widget.DropDownMenu.tableWidget.itemClicked.connect(self.switchWorkPlace)
         self.workplace_widget.DropDownMenu.tableWidget.setWordWrap(True)
@@ -334,6 +347,13 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         find_tax_worms = QAction(QIcon(":/picture/resourses/Spotlight_OS_X.svg.png"), "Get taxonomy (WoRMS)", self,
                            statusTip="Get taxonomy from 'WoRMS' database",
                            triggered=lambda : self.updateTaxonomy(database="WoRMS"))
+        reorderGBbyName = QAction(QIcon(":/picture/resourses/sequence.png"), "Reorder gb file(s) by gene", self,
+                                 statusTip="Reorder GenBank file according to the specifed annotation feature (gene name) or position",
+                                 triggered=lambda : self.reorderGB(byName=True))
+        reorderGBbyPos = QAction(QIcon(":/picture/resourses/sequence.png"), "Reorder gb file(s) by position",
+                                  self,
+                                  statusTip="Reorder GenBank file according to the specifed annotation feature (gene name) or position",
+                                  triggered=lambda : self.reorderGB(byName=False))
         standard = QAction(QIcon(":/picture/resourses/normalization.png"), "Standardization", self,
                             statusTip="Standardize GenBank file",
                             triggered=self.on_Normalization_triggered)
@@ -360,6 +380,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         table_popMenu.addSeparator()
         table_popMenu.addAction(find_tax_ncbi)
         table_popMenu.addAction(find_tax_worms)
+        table_popMenu.addAction(reorderGBbyName)
+        table_popMenu.addAction(reorderGBbyPos)
         table_popMenu.addAction(standard)
         table_popMenu.addAction(extractGB)
         table_popMenu.addSeparator()
@@ -407,13 +429,79 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         remove = QAction(QIcon(":/picture/resourses/if_Delete_1493279.png"), "Remove", self,
                            statusTip="Remove",
                            triggered=self.remove_treeview4)
-        def popup(qpoint):
-            if self.treeView_4.indexAt(qpoint).isValid():
-                tree4_popMenu.exec_(QCursor.pos())
+        mafft = QAction(QIcon(":/picture/resourses/mafft1.png"), "Import to MAFFT", self,
+                        statusTip="Align with MAFFT",
+                        triggered=self.on_Mafft_triggered)
+        MACSE = QAction(QIcon(":/picture/resourses/M.png"), "Import to MACSE (for CDS)", self,
+                        statusTip="Align with MACSE",
+                        triggered=self.on_MACSE_triggered)
+        trimAl = QAction(QIcon(":/picture/resourses/icon--trim-confirm-0.png"), "Import to trimAl", self,
+                         statusTip="trimAl",
+                         triggered=self.on_actiontrimAl_triggered)
+        HmmCleaner = QAction(QIcon(":/picture/resourses/clean.png"), "Import to HmmCleaner", self,
+                             statusTip="HmmCleaner",
+                             triggered=self.on_actionHmmCleaner_triggered)
+        gblocks = QAction(QIcon(":/picture/resourses/if_simpline_22_2305632.png"), "Import to Gblocks", self,
+                          statusTip="Gblocks",
+                          triggered=self.on_actionGblocks_triggered)
+        catSeq = QAction(QIcon(":/picture/resourses/cat1.png"), "Import to Concatenate Sequence", self,
+                         statusTip="Concatenate Sequence",
+                         triggered=self.on_Concatenate_triggered)
+        cvtFMT = QAction(QIcon(":/picture/resourses/transform3.png"), "Import to Convert Sequence Format", self,
+                         statusTip="Convert Sequence Format",
+                         triggered=self.on_ConvertFMT_triggered)
+        modelfinder = QAction(QIcon(":/picture/resourses/if_tinder_334781.png"), "Import to ModelFinder", self,
+                              statusTip="Select model with ModelFinder",
+                              triggered=self.on_actionModelFinder_triggered)
+        iqtree = QAction(QIcon(":/picture/resourses/data-taxonomy-icon.png"), "Import to IQ-TREE", self,
+                         statusTip="Reconstruct tree with IQ-TREE",
+                         triggered=self.on_actionIQTREE_triggered)
+        mrbayes = QAction(QIcon(":/picture/resourses/2000px-Paris_RER_B_icon.svg.png"), "Import to MrBayes", self,
+                          statusTip="Reconstruct tree with MrBayes",
+                          triggered=self.on_actionMrBayes_triggered)
+        partfind = QAction(QIcon(":/picture/resourses/pie-chart.png"), "Import to PartitionFinder2", self,
+                          statusTip="Select partition model with PartitionFinder2",
+                          triggered=self.on_actionPartitionFinder_triggered)
 
+        def popup(qpoint):
+            index = self.treeView_4.indexAt(qpoint)
+            if not index.isValid():
+                return
+            dict_ = {"extract_results": [mafft, MACSE],
+                     "mafft_results": [MACSE, gblocks, trimAl, HmmCleaner, cvtFMT, catSeq],
+                     "MACSE_results": [gblocks, trimAl, HmmCleaner, cvtFMT, catSeq],
+                     "concatenate_results": [gblocks, trimAl, HmmCleaner, iqtree, modelfinder, partfind],
+                     "PartFind_results": [iqtree, mrbayes],
+                     "ModelFinder_results": [iqtree, mrbayes],
+                     "Gblocks_results": [cvtFMT, catSeq],
+                     "trimAl_results": [cvtFMT, catSeq],
+                     "HmmCleaner_results": [cvtFMT, catSeq],
+                     }
+            list_actions = [mafft, gblocks, trimAl, HmmCleaner, cvtFMT, catSeq, iqtree,
+                            modelfinder, partfind, MACSE, mrbayes]
+            filePath = self.treeView_4.model().filePath(index)
+            topResultsName = os.path.basename(os.path.dirname(filePath))
+            for action in list_actions:
+                if (topResultsName in dict_) and (action in dict_[topResultsName]): action.setVisible(True)
+                else: action.setVisible(False)
+            tree4_popMenu.exec_(QCursor.pos())
         tree4_popMenu.addAction(openFile)
         tree4_popMenu.addAction(openInExplore)
         tree4_popMenu.addAction(remove)
+        tree4_popMenu.addSeparator()
+        tree4_popMenu.addAction(mafft)
+        tree4_popMenu.addAction(MACSE)
+        tree4_popMenu.addAction(trimAl)
+        if platform.system().lower() in ["darwin", "linux"]:
+            tree4_popMenu.addAction(HmmCleaner)
+        tree4_popMenu.addAction(gblocks)
+        tree4_popMenu.addAction(catSeq)
+        tree4_popMenu.addAction(cvtFMT)
+        tree4_popMenu.addSeparator()
+        tree4_popMenu.addAction(modelfinder)
+        tree4_popMenu.addAction(partfind)
+        tree4_popMenu.addAction(iqtree)
+        tree4_popMenu.addAction(mrbayes)
         self.treeView_4.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView_4.customContextMenuRequested.connect(popup)
         self.treeView_4.doubleClicked.connect(lambda index: self.openResultsInWindow(self.treeView_4.model().filePath(index)))
@@ -1010,29 +1098,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         filePath, workPath = self.fetchWorkPath(mode="all")
         MAFFTpath = self.factory.programIsValid("mafft", mode="tool")
         if MAFFTpath:
-            ##先找到可以用于自动导入的路径
-            dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "MAFFT")
-            if os.path.normpath(filePath) in dict_autoInputs:
-                autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-                resultsPath = self.fetchResultsPath()
-                resultsPath = resultsPath if resultsPath else filePath
-                autoInputs = next(iter(autoInputs.items()))[1] if os.path.normpath(resultsPath) not in autoInputs else \
-                                    autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-                if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                    ##展示的是otherfile的工作文件夹, 只导入选择的文件。tableView_2必须要有文件被选择
-                    list_align, list_docx = self.fetchSelectFile(filePath)
-                    autoInputs = list(set(autoInputs).intersection(set(list_align)))
-            elif self.autoDisbled():
-                autoInputs = None
-            else:
-                popupUI = self.factory.popUpAutoDetect("MAFFT", filePath, self, dict_autoInputs)
-                # popupUI.show()
-                # autoInputs = None
-                if popupUI and popupUI.exec_() == QDialog.Accepted:
-                    widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                    autoInputs = widget.autoInputs
-                else:
-                    autoInputs = None
+            autoInputs = self.factory.init_judge(mode="MAFFT", filePath=filePath, parent=self)
             self.mafft = Mafft(
                 autoInputs=autoInputs,
                 workPath=workPath,
@@ -1043,6 +1109,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             # 添加最大化按钮
             self.mafft.setWindowFlags(self.mafft.windowFlags() | Qt.WindowMinMaxButtonsHint)
             self.mafft.show()
+            if (not autoInputs) and (not self.factory.autoInputDisbled()):
+                self.mafft.popupAutoDec(init=True)
         else:
             reply = QMessageBox.information(
                 self,
@@ -1060,28 +1128,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
     @pyqtSlot()
     def on_Concatenate_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
-        ##先找到可以用于自动导入的路径
-        dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "Concatenation")
-        if os.path.normpath(filePath) in dict_autoInputs:
-            autoInputs = dict_autoInputs[os.path.normpath(filePath)] #是一个字典
-            resultsPath = self.fetchResultsPath()
-            resultsPath = resultsPath if resultsPath else filePath
-            autoInputs = next(iter(autoInputs.items()))[1] if os.path.normpath(resultsPath) not in autoInputs else \
-                autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-            # autoInputs = next(iter(autoInputs.items()))[1] #第一个是最近修改的
-            if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                ##展示的是otherfile的工作文件夹, 只导入选择的文件
-                list_align, list_docx = self.fetchSelectFile(filePath)
-                autoInputs = list(set(autoInputs).intersection(set(list_align)))
-        elif self.autoDisbled():
-            autoInputs = None
-        else:
-            popupUI = self.factory.popUpAutoDetect("Concatenation", filePath, self, dict_autoInputs)
-            if popupUI and popupUI.exec_() == QDialog.Accepted:
-                widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                autoInputs = widget.autoInputs
-            else:
-                autoInputs = None
+        autoInputs = self.factory.init_judge(mode="Concatenation", filePath=filePath, parent=self)
         self.concatenate = Matrix(
             files=autoInputs,
             workPath=workPath,
@@ -1090,6 +1137,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         # 添加最大化按钮
         self.concatenate.setWindowFlags(self.concatenate.windowFlags() | Qt.WindowMinMaxButtonsHint)
         self.concatenate.show()
+        if (not autoInputs) and (not self.factory.autoInputDisbled()):
+            self.concatenate.popupAutoDec(init=True)
 
     @pyqtSlot()
     def on_ParseANNT_triggered(self):
@@ -1244,62 +1293,27 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                 self.setting.exec_()
             return
         ##先找到可以用于自动导入的路径
-        dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "PartitionFinder2")
-        if os.path.normpath(filePath) in dict_autoInputs:
-            autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-            resultsPath = self.fetchResultsPath()
-            resultsPath = resultsPath if resultsPath else filePath
-            autoPartFindPath = next(iter(autoInputs.items()))[1] if os.path.normpath(
-                resultsPath) not in autoInputs else \
-                autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-            # autoPartFindPath = next(iter(dict_autoInputs[os.path.normpath(filePath)].items()))[1]
-        elif self.autoDisbled():
-            autoPartFindPath = None
-        else:
-            popupUI = self.factory.popUpAutoDetect("PartitionFinder2", filePath, self, dict_autoInputs)
-            if popupUI and popupUI.exec_() == QDialog.Accepted:
-                widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                autoPartFindPath = widget.autoInputs
-            else:
-                autoPartFindPath = None
+        autoPartFindPath = self.factory.init_judge(mode="PartitionFinder2", filePath=filePath, parent=self)
         self.partfind = PartitionFinder(
             autoPartFindPath, workPath, self.focusSig, PFpath, Py27Path, False, self)
         # 添加最大化按钮
         self.partfind.setWindowFlags(self.partfind.windowFlags() | Qt.WindowMinMaxButtonsHint)
         self.partfind.show()
+        if (not autoPartFindPath) and (not self.factory.autoInputDisbled()):
+            self.partfind.popupAutoDec(init=True)
 
     @pyqtSlot()
     def on_actiontrimAl_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
         TApath = self.factory.programIsValid("trimAl", mode="tool")
         if TApath:
-            ##先找到可以用于自动导入的路径
-            dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "trimAl")
-            if os.path.normpath(filePath) in dict_autoInputs:
-                autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-                resultsPath = self.fetchResultsPath()
-                resultsPath = resultsPath if resultsPath else filePath
-                autoInputs = next(iter(autoInputs.items()))[1] if os.path.normpath(
-                    resultsPath) not in autoInputs else \
-                    autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-                # autoInputs = next(iter(autoInputs.items()))[1]  # 第一个是最近修改的
-                if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                    ##展示的是otherfile的工作文件夹, 只导入选择的文件
-                    list_align, list_docx = self.fetchSelectFile(filePath)
-                    autoInputs = list(set(autoInputs).intersection(set(list_align)))
-            elif self.autoDisbled():
-                autoInputs = None
-            else:
-                popupUI = self.factory.popUpAutoDetect("trimAl", filePath, self, dict_autoInputs)
-                if popupUI and popupUI.exec_() == QDialog.Accepted:
-                    widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                    autoInputs = widget.autoInputs
-                else:
-                    autoInputs = None
+            autoInputs = self.factory.init_judge(mode="trimAl", filePath=filePath, parent=self)
             self.trimAl = TrimAl(workPath, TApath, autoInputs, self.focusSig, False, self)
             # 添加最大化按钮
             self.trimAl.setWindowFlags(self.trimAl.windowFlags() | Qt.WindowMinMaxButtonsHint)
             self.trimAl.show()
+            if (not autoInputs) and (not self.factory.autoInputDisbled()):
+                self.trimAl.popupAutoDec(init=True)
         else:
             reply = QMessageBox.information(
                 self,
@@ -1355,67 +1369,27 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                 self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
                 self.setting.exec_()
             return
-        ##先找到可以用于自动导入的路径
-        dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "HmmCleaner")
-        if os.path.normpath(filePath) in dict_autoInputs:
-            autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-            resultsPath = self.fetchResultsPath()
-            resultsPath = resultsPath if resultsPath else filePath
-            autoInputs = next(iter(autoInputs.items()))[1] if os.path.normpath(
-                resultsPath) not in autoInputs else \
-                autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-            # autoInputs = next(iter(autoInputs.items()))[1]  # 第一个是最近修改的
-            if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                ##展示的是otherfile的工作文件夹, 只导入选择的文件
-                list_align, list_docx = self.fetchSelectFile(filePath)
-                autoInputs = list(set(autoInputs).intersection(set(list_align)))
-        elif self.autoDisbled():
-            autoInputs = None
-        else:
-            popupUI = self.factory.popUpAutoDetect("HmmCleaner", filePath, self, dict_autoInputs)
-            if popupUI and popupUI.exec_() == QDialog.Accepted:
-                widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                autoInputs = widget.autoInputs
-            else:
-                autoInputs = None
+        autoInputs = self.factory.init_judge(mode="HmmCleaner", filePath=filePath, parent=self)
         self.HmmCleaner = HmmCleaner(workPath, HmmCleanerpath, autoInputs, perl, self.focusSig, False, self)
         # 添加最大化按钮
         self.HmmCleaner.setWindowFlags(self.HmmCleaner.windowFlags() | Qt.WindowMinMaxButtonsHint)
         self.HmmCleaner.show()
+        if (not autoInputs) and (not self.factory.autoInputDisbled()):
+            self.HmmCleaner.popupAutoDec(init=True)
 
     @pyqtSlot()
     def on_actionGblocks_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
         GBpath = self.factory.programIsValid("gblocks", mode="tool")
         if GBpath:
-            ##先找到可以用于自动导入的路径
-            dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "Gblocks")
-            if os.path.normpath(filePath) in dict_autoInputs:
-                autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-                resultsPath = self.fetchResultsPath()
-                resultsPath = resultsPath if resultsPath else filePath
-                autoInputs = next(iter(autoInputs.items()))[1] if os.path.normpath(
-                    resultsPath) not in autoInputs else \
-                    autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-                # autoInputs = next(iter(autoInputs.items()))[1]  # 第一个是最近修改的
-                if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                    ##展示的是otherfile的工作文件夹, 只导入选择的文件
-                    list_align, list_docx = self.fetchSelectFile(filePath)
-                    autoInputs = list(set(autoInputs).intersection(set(list_align)))
-            elif self.autoDisbled():
-                autoInputs = None
-            else:
-                popupUI = self.factory.popUpAutoDetect("Gblocks", filePath, self, dict_autoInputs)
-                if popupUI and popupUI.exec_() == QDialog.Accepted:
-                    widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                    autoInputs = widget.autoInputs
-                else:
-                    autoInputs = None
+            autoInputs = self.factory.init_judge(mode="Gblocks", filePath=filePath, parent=self)
             self.gblocks = Gblocks(autoInputs,
                 workPath, self.focusSig, GBpath, False, self)
             # 添加最大化按钮
             self.gblocks.setWindowFlags(self.gblocks.windowFlags() | Qt.WindowMinMaxButtonsHint)
             self.gblocks.show()
+            if (not autoInputs) and (not self.factory.autoInputDisbled()):
+                self.gblocks.popupAutoDec(init=True)
         else:
             reply = QMessageBox.information(
                 self,
@@ -1435,36 +1409,14 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         filePath, workPath = self.fetchWorkPath(mode="all")
         IQpath = self.factory.programIsValid("iq-tree", mode="tool")
         if IQpath:
-            ##先找到可以用于自动导入的路径
-            dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "ModelFinder")
-            if os.path.normpath(filePath) in dict_autoInputs:
-                autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-                resultsPath = self.fetchResultsPath()
-                resultsPath = resultsPath if resultsPath else filePath
-                input_file, partition_file = next(iter(autoInputs.items()))[1] if os.path.normpath(
-                    resultsPath) not in autoInputs else \
-                    autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-                # input_file, partition_file = next(iter(dict_autoInputs[os.path.normpath(filePath)].items()))[1]
-                # dict_autoInputs[os.path.normpath(filePath)]
-                if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                    ##展示的是otherfile的工作文件夹, 只导入选择的文件，##注意otherfile导入进来的是文件的列表
-                    list_align, list_docx = self.fetchSelectFile(filePath)
-                    input_file = list(set(input_file).intersection(set(list_align)))
-                    # input_file = commonFile[0] if commonFile else None ##只要第一个
-            elif self.autoDisbled():
-                input_file, partition_file = None, None
-            else:
-                popupUI = self.factory.popUpAutoDetect("ModelFinder", filePath, self, dict_autoInputs)
-                if popupUI and popupUI.exec_() == QDialog.Accepted:
-                    widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                    input_file, partition_file = widget.autoInputs
-                else:
-                    input_file, partition_file = None, None
+            input_file, partition_file = self.factory.init_judge(mode="ModelFinder", filePath=filePath, parent=self)
             self.IQtree = ModelFinder(input_file, partition_file,
                                    workPath, self.focusSig, IQpath, False, self)
             # 添加最大化按钮
             self.IQtree.setWindowFlags(self.IQtree.windowFlags() | Qt.WindowMinMaxButtonsHint)
             self.IQtree.show()
+            if (not input_file) and (not self.factory.autoInputDisbled()):
+                self.IQtree.popupAutoDec(init=True)
         else:
             reply = QMessageBox.information(
                 self,
@@ -1484,34 +1436,14 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         filePath, workPath = self.fetchWorkPath(mode="all")
         IQpath = self.factory.programIsValid("iq-tree", mode="tool")
         if IQpath:
-            ##先找到可以用于自动导入的路径
-            dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "IQ-TREE")
-            if os.path.normpath(filePath) in dict_autoInputs:
-                autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-                resultsPath = self.fetchResultsPath()
-                resultsPath = resultsPath if resultsPath else filePath
-                input_MSA, model = next(iter(autoInputs.items()))[1] if os.path.normpath(
-                    resultsPath) not in autoInputs else \
-                    autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-                # input_MSA, model = next(iter(dict_autoInputs[os.path.normpath(filePath)].items()))[1]
-                if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                    ##展示的是otherfile的工作文件夹, 只导入选择的文件，##注意otherfile导入进来的是文件的列表
-                    list_align, list_docx = self.fetchSelectFile(filePath)
-                    input_MSA = list(set(input_MSA).intersection(set(list_align)))
-            elif self.autoDisbled():
-                input_MSA, model = (None, ["", None])
-            else:
-                popupUI = self.factory.popUpAutoDetect("IQ-TREE", filePath, self, dict_autoInputs)
-                if popupUI and popupUI.exec_() == QDialog.Accepted:
-                    widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                    input_MSA, model = widget.autoInputs
-                else:
-                    input_MSA, model = (None, ["", None])
+            input_MSA, model = self.factory.init_judge(mode="IQ-TREE", filePath=filePath, parent=self)
             self.IQtree_infer = IQTREE(input_MSA, model,
                                       workPath, self.focusSig, IQpath, False, self)
             # 添加最大化按钮
             self.IQtree_infer.setWindowFlags(self.IQtree_infer.windowFlags() | Qt.WindowMinMaxButtonsHint)
             self.IQtree_infer.show()
+            if (not input_MSA) and (not self.factory.autoInputDisbled()):
+                self.IQtree_infer.popupAutoDec(init=True)
         else:
             reply = QMessageBox.information(
                 self,
@@ -1531,31 +1463,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         filePath, workPath = self.fetchWorkPath(mode="all")
         MBpath = self.factory.programIsValid("MrBayes", mode="tool")
         if MBpath:
-            ##先找到可以用于自动导入的路径
-            dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "MrBayes")
-            if os.path.normpath(filePath) in dict_autoInputs:
-                autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-                ## other_file位置的工作文件夹也有可能
-                resultsPath = self.fetchResultsPath()
-                resultsPath = resultsPath if resultsPath else filePath
-                input_MSA, input_model = next(iter(autoInputs.items()))[1] if os.path.normpath(
-                    resultsPath) not in autoInputs else \
-                    autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-                # input_MSA, input_model = next(iter(dict_autoInputs[os.path.normpath(filePath)].items()))[1]
-                if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                    ##展示的是otherfile的工作文件夹, 只导入选择的文件，##注意otherfile导入进来的是文件的列表
-                    list_align, list_docx = self.fetchSelectFile(filePath)
-                    commonFile = list(set(input_MSA).intersection(set(list_align)))
-                    input_MSA = commonFile[0] if commonFile else None  ##只要第一个
-            elif self.autoDisbled():
-                input_MSA, input_model = (None, None)
-            else:
-                popupUI = self.factory.popUpAutoDetect("MrBayes", filePath, self, dict_autoInputs)
-                if popupUI and popupUI.exec_() == QDialog.Accepted:
-                    widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                    input_MSA, input_model = widget.autoInputs
-                else:
-                    input_MSA, input_model = (None, None)
+            input_MSA, input_model = self.factory.init_judge(mode="MrBayes", filePath=filePath, parent=self)
             if type(input_MSA) == list:
                 #otherfile的自动导入会传过来列表
                 input_MSA = input_MSA[0] if input_MSA else None
@@ -1592,6 +1500,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                 # 添加最大化按钮
                 self.MrBayes_infer.setWindowFlags(self.MrBayes_infer.windowFlags() | Qt.WindowMinMaxButtonsHint)
                 self.MrBayes_infer.show()
+                if not self.factory.autoInputDisbled():
+                    self.MrBayes_infer.popupAutoDec(init=True)
         else:
             reply = QMessageBox.information(
                 self,
@@ -1639,32 +1549,13 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
     @pyqtSlot()
     def on_ConvertFMT_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
-        ##先找到可以用于自动导入的路径
-        dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "format conversion")
-        if os.path.normpath(filePath) in dict_autoInputs:
-            autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-            resultsPath = self.fetchResultsPath()
-            resultsPath = resultsPath if resultsPath else filePath
-            autoInputs = next(iter(autoInputs.items()))[1] if os.path.normpath(resultsPath) not in autoInputs else \
-                autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-            # autoInputs = next(iter(autoInputs.items()))[1]  # 第一个是最近修改的
-            if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                ##展示的是otherfile的工作文件夹, 只导入选择的文件
-                list_align, list_docx = self.fetchSelectFile(filePath)
-                autoInputs = list(set(autoInputs).intersection(set(list_align)))
-        elif self.autoDisbled():
-            autoInputs = None
-        else:
-            popupUI = self.factory.popUpAutoDetect("format conversion", filePath, self, dict_autoInputs)
-            if popupUI and popupUI.exec_() == QDialog.Accepted:
-                widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                autoInputs = widget.autoInputs
-            else:
-                autoInputs = None
+        autoInputs = self.factory.init_judge(mode="format conversion", filePath=filePath, parent=self)
         self.convertFMT = ConvertFMT(workPath=workPath,
             focusSig=self.focusSig,
             autoFiles=autoInputs,
             parent=self)
+        if (not autoInputs) and (not self.factory.autoInputDisbled()):
+            self.convertFMT.popupAutoDec(init=True)
         # 添加最大化按钮
         self.convertFMT.setWindowFlags(self.convertFMT.windowFlags() | Qt.WindowMinMaxButtonsHint)
         self.convertFMT.show()
@@ -1715,34 +1606,13 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                 self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
                 self.setting.exec_()
             return
-        ##先找到可以用于自动导入的路径
-        dict_autoInputs = self.factory.detectAvailableInputs(self.treeRootPath, "MACSE")
-        if os.path.normpath(filePath) in dict_autoInputs:
-            autoInputs = dict_autoInputs[os.path.normpath(filePath)]
-            resultsPath = self.fetchResultsPath()
-            resultsPath = resultsPath if resultsPath else filePath
-            autoInputs = next(iter(autoInputs.items()))[1] if os.path.normpath(resultsPath) not in autoInputs else \
-                autoInputs[os.path.normpath(resultsPath)]  # 第一个是最近修改的
-            if self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes():
-                ##展示的是otherfile的工作文件夹, 只导入选择的文件。tableView_2必须要有文件被选择
-                list_align, list_docx = self.fetchSelectFile(filePath)
-                autoInputs = list(set(autoInputs).intersection(set(list_align)))
-        elif self.autoDisbled():
-            autoInputs = None
-        else:
-            popupUI = self.factory.popUpAutoDetect("MACSE", filePath, self, dict_autoInputs)
-            # popupUI.show()
-            # autoInputs = None
-            if popupUI and popupUI.exec_() == QDialog.Accepted:
-                widget = popupUI.listWidget_framless.itemWidget(popupUI.listWidget_framless.selectedItems()[0])
-                autoInputs = widget.autoInputs
-            else:
-                autoInputs = None
+        autoInputs = self.factory.init_judge(mode="MACSE", filePath=filePath, parent=self)
         self.MACSE = MACSE(workPath, self.focusSig, False, JAVApath, macseEXE, autoInputs, self)
         # 添加最大化按钮
         self.MACSE.setWindowFlags(self.MACSE.windowFlags() | Qt.WindowMinMaxButtonsHint)
         self.MACSE.show()
-
+        if (not autoInputs) and (not self.factory.autoInputDisbled()):
+            self.MACSE.popupAutoDec(init=True)
     @pyqtSlot()
     def on_GBextSetting_triggered(self):
         self.extract_setting = ExtractSettings(self)
@@ -2206,9 +2076,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
 
     def guiRestore(self):
         # Restore geometry
-        self.resize(self.mainwindow_settings.value('size', QSize(1120, 600)))
+        self.resize(self.mainwindow_settings.value('size', QSize(1195, 650)))
+        self.factory.centerWindow(self)
         if self.width() < 1120:
-            self.resize(QSize(1120, 600))
+            self.resize(QSize(1195, 650))
         # self.move(self.mainwindow_settings.value('pos', QPoint(471, 207)))
         self.list_repeat_name_num = self.mainwindow_settings.value(
             'numbered recycled name', [])
@@ -2250,36 +2121,52 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                              shortcut=QKeySequence.Delete,
                              statusTip="remove file",
                              triggered=self.removeFiles)
-        mafft = QAction(QIcon(":/picture/resourses/mafft1.png"), "MAFFT", self,
+        mafft = QAction(QIcon(":/picture/resourses/mafft1.png"), "Import to MAFFT", self,
                         statusTip="Align with MAFFT",
                         triggered=self.on_Mafft_triggered)
-        gblocks = QAction(QIcon(":/picture/resourses/if_simpline_22_2305632.png"), "Gblocks", self,
+        MACSE = QAction(QIcon(":/picture/resourses/M.png"), "Import to MACSE (for CDS)", self,
+                        statusTip="Align with MACSE",
+                        triggered=self.on_MACSE_triggered)
+        trimAl = QAction(QIcon(":/picture/resourses/icon--trim-confirm-0.png"), "Import to trimAl", self,
+                        statusTip="trimAl",
+                        triggered=self.on_actiontrimAl_triggered)
+        HmmCleaner = QAction(QIcon(":/picture/resourses/clean.png"), "Import to HmmCleaner", self,
+                        statusTip="HmmCleaner",
+                        triggered=self.on_actionHmmCleaner_triggered)
+        gblocks = QAction(QIcon(":/picture/resourses/if_simpline_22_2305632.png"), "Import to Gblocks", self,
                           statusTip="Gblocks",
                           triggered=self.on_actionGblocks_triggered)
-        catSeq = QAction(QIcon(":/picture/resourses/cat1.png"), "Concatenate Sequence", self,
+        catSeq = QAction(QIcon(":/picture/resourses/cat1.png"), "Import to Concatenate Sequence", self,
                          statusTip="Concatenate Sequence",
                          triggered=self.on_Concatenate_triggered)
-        cvtFMT = QAction(QIcon(":/picture/resourses/transform3.png"), "Convert Sequence Format", self,
+        cvtFMT = QAction(QIcon(":/picture/resourses/transform3.png"), "Import to Convert Sequence Format", self,
                          statusTip="Convert Sequence Format",
                          triggered=self.on_ConvertFMT_triggered)
-        modelfinder = QAction(QIcon(":/picture/resourses/if_tinder_334781.png"), "ModelFinder", self,
+        modelfinder = QAction(QIcon(":/picture/resourses/if_tinder_334781.png"), "Import to ModelFinder", self,
                               statusTip="Select model with ModelFinder",
                               triggered=self.on_actionModelFinder_triggered)
-        iqtree = QAction(QIcon(":/picture/resourses/data-taxonomy-icon.png"), "IQ-TREE", self,
+        iqtree = QAction(QIcon(":/picture/resourses/data-taxonomy-icon.png"), "Import to IQ-TREE", self,
                          statusTip="Reconstruct tree with IQ-TREE",
                          triggered=self.on_actionIQTREE_triggered)
-        mrbayes = QAction(QIcon(":/picture/resourses/2000px-Paris_RER_B_icon.svg.png"), "MrBayes", self,
+        mrbayes = QAction(QIcon(":/picture/resourses/2000px-Paris_RER_B_icon.svg.png"), "Import to MrBayes", self,
                           statusTip="Reconstruct tree with MrBayes",
                           triggered=self.on_actionMrBayes_triggered)
-        parseANNT = QAction(QIcon(":/picture/resourses/WORD.png"), "Parse Annotation", self,
+        parseANNT = QAction(QIcon(":/picture/resourses/WORD.png"), "Import to Parse Annotation", self,
                             statusTip="Parse Annotation",
                             triggered=self.on_ParseANNT_triggered)
+        if platform.system().lower() in ["darwin", "linux"]:
+            HmmCleaner.setVisible(True)
+        else:
+            HmmCleaner.setVisible(False)
         tableView_2_popMenu.addAction(openFile)
         tableView_2_popMenu.addAction(addFile)
         tableView_2_popMenu.addAction(saveAs)
         tableView_2_popMenu.addAction(removeFile)
         tableView_2_popMenu.addSeparator()
         tableView_2_popMenu.addAction(mafft)
+        tableView_2_popMenu.addAction(MACSE)
+        tableView_2_popMenu.addAction(trimAl)
+        tableView_2_popMenu.addAction(HmmCleaner)
         tableView_2_popMenu.addAction(gblocks)
         tableView_2_popMenu.addAction(catSeq)
         tableView_2_popMenu.addAction(cvtFMT)
@@ -2479,12 +2366,17 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             rows = list(set([index.row() for index in indices]))
             currentData = currentModel.arraydata
             list_IDs = [currentData[row][0] for row in rows]
-            gbManager = GbManager(filePath, parent=self)
-            export_content = gbManager.fetchContentsByIDs(
-                list_IDs)
             fileName = QFileDialog.getSaveFileName(
                 self, "PhyloSuite", "sequences", "GenBank Format(*.gb)")
+            gbManager = GbManager(filePath, parent=self)
             if fileName[0]:
+                # gbWorker = WorkThread(
+                #     lambda: gbManager.fetchContentsByIDs(list_IDs),
+                #     parent=self)
+                # gbWorker.start()
+                # gbWorker.finished.connect(lambda: [self.progressDialog.close(), self.display(treeIndex)])
+                export_content = gbManager.fetchContentsByIDs(
+                    list_IDs)
                 with open(fileName[0], "w", encoding="utf-8") as f:
                     f.write(export_content)
                 QMessageBox.information(
@@ -3071,16 +2963,6 @@ NC_034937.1
                 "PhyloSuite",
                 "<p style='line-height:25px; height:25px'>Can't find the queried ID!</p>")
 
-    def autoDisbled(self):
-        if not hasattr(self, "mainwindow_settings"):
-            self.mainwindow_settings = QSettings(
-                self.thisPath +
-                '/settings/mainwindow_settings.ini',
-                QSettings.IniFormat, parent=self)
-            # File only, no fallback to registry or or.
-            self.mainwindow_settings.setFallbacksEnabled(False)
-        return not self.factory.str2bool(self.mainwindow_settings.value("auto detect", "true"))
-
     def fetchWorkPath(self, mode="gb"):
         treeIndex = self.treeView.currentIndex()
         filePath = self.tree_model.filePath(treeIndex)
@@ -3097,7 +2979,12 @@ NC_034937.1
         if hasattr(self, "treeView_4") and hasattr(self, "tree_model4"):
             treeIndex = self.treeView_4.currentIndex()
             if treeIndex:
-                resultsPath = self.tree_model4.filePath(treeIndex)
+                resultsPath = os.path.normpath(self.tree_model4.filePath(treeIndex))
+                rootpath = os.path.normpath(self.tree_model4.rootPath())
+                if resultsPath.startswith(rootpath):
+                    while os.path.dirname(resultsPath) != rootpath:
+                        # 得到最接近根的那个结果路径
+                        resultsPath = os.path.dirname(resultsPath)
                 return resultsPath
         return
 
@@ -3573,3 +3460,41 @@ NC_034937.1
     # def convertFMT4MrBayes(self, dict_args):
     #     convertfmt = Convertfmt(**dict_args)
     #     return convertfmt.f3
+
+    def isOtherFileSelected(self):
+        return self.stackedWidget.currentIndex() == 2 and self.tableView_2.selectedIndexes()
+
+    def reorderGB(self, byName=True):
+        treeIndex = self.treeView.currentIndex()
+        filePath = self.tree_model.filePath(treeIndex)
+        indices = self.tableView.selectedIndexes()
+        if indices:
+            target = None
+            start = None
+            if byName:
+                name, ok = QInputDialog.getText(
+                    self, 'Set gene name', 'Gene name:')
+                if ok: target = name
+            else:
+                pos, ok = QInputDialog.getInt(self, "Set start position", "Position:", 0, 0, 9999999999999999, 1)
+                if ok: start = pos
+            gbManager = GbManager(filePath, parent=self)
+            self.progressDialog = self.factory.myProgressDialog(
+                "Please Wait", "reordering...", parent=self)
+            self.progressDialog.show()
+            currentModel = self.tableView.model()
+            currentData = currentModel.arraydata
+            rows = sorted(set(index.row() for index in
+                              indices), reverse=True)
+            list_IDs = [currentData[row][0] for row in rows]
+            self.progressSig.emit(5)
+            gbWorker = WorkThread(lambda: gbManager.reorder(list_IDs, 5, 95, self.progressSig, target, start, self.warning_signal),
+                                  parent=self)
+            gbWorker.start()
+            gbWorker.finished.connect(self.progressDialog.close)
+
+    def popupWarning(self, text):
+        QMessageBox.warning(
+            self,
+            "Warning",
+            "<p style='line-height:25px; height:25px'>%s</p>"%text)

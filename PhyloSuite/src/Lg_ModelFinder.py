@@ -34,6 +34,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
     closeSig = pyqtSignal(str, str)
     # 用于输入文件后判断用
     ui_closeSig = pyqtSignal(str)
+    ##弹出识别输入文件的信号
+    auto_popSig = pyqtSignal(QDialog)
 
     def __init__(
             self,
@@ -46,6 +48,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             parent=None):
         super(ModelFinder, self).__init__(parent)
         self.parent = parent
+        self.function_name = "ModelFinder"
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         self.workPath = workPath
@@ -119,6 +122,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         ## brief demo
         self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-9-1-Brief-example")))
+        ##自动弹出识别文件窗口
+        self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -129,7 +134,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.command = self.getCMD()
             if self.command:
                 self.MF_popen = self.factory.init_popen(self.command)
-                self.logGuiSig.emit(self.command)
+                self.factory.emitCommands(self.logGuiSig, self.command)
                 self.worker = WorkThread(self.run_command, parent=self)
                 self.worker.start()
         except:
@@ -239,9 +244,9 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
             softWare = self.comboBox_5.currentText()
-            if softWare in ["BEAST1", "BEAST2"]:
+            if softWare in ["BEAST1 (NUC)", "BEAST2 (NUC)", "BEAST (AA)"]:
                 str1 = self.description + " " + self.parseResults() +\
-                    "\n\nIf you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n" \
+                    "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n" \
                     "If you use ModelFinder, please cite:\n" + self.reference + \
                     "\n\nhttps://justinbagley.rbind.io/2016/10/11/setting-dna-substitution-models-beast/\nDetails for setting substitution models in %s\n" % softWare
                 array = [[i] for i in str1.split(
@@ -251,7 +256,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             else:
                 with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
                     f.write(self.description + " " + self.parseResults() +
-                            "\n\nIf you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n"
+                            "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                             "If you use ModelFinder, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -326,6 +331,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
 
         # Restore geometry
         self.resize(self.modelfinder_settings.value('size', QSize(500, 500)))
+        self.factory.centerWindow(self)
         # self.move(self.modelfinder_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -564,6 +570,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
+            with open(self.exportPath + os.sep + "PhyloSuite_ModelFinder.log", "a") as f:
+                f.write(text + "\n")
 
     def save_log_to_file(self):
         content = self.textEdit_log.toPlainText()
@@ -714,16 +722,20 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.lineEdit_3.setText(os.path.basename(path))
             self.lineEdit_3.setToolTip(path)
 
-    def popupAutoDec(self):
-        popupUI = self.factory.popUpAutoDetect(
-            "ModelFinder", self.workPath, self)
+    def popupAutoDec(self, init=False):
+        self.init = init
+        self.factory.popUpAutoDetect(
+            "ModelFinder", self.workPath, self.auto_popSig, self)
+
+    def popupAutoDecSub(self, popupUI):
         if not popupUI:
-            QMessageBox.warning(
-                self,
-                "Warning",
-                "<p style='line-height:25px; height:25px'>No available file detected!</p>")
+            if not self.init:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    "<p style='line-height:25px; height:25px'>No available file detected!</p>")
             return
-        popupUI.checkBox.setVisible(False)
+        if not self.init: popupUI.checkBox.setVisible(False)
         if popupUI.exec_() == QDialog.Accepted:
             widget = popupUI.listWidget_framless.itemWidget(
                 popupUI.listWidget_framless.selectedItems()[0])
@@ -842,7 +854,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
 
     def model2beast_des(self):
         softWare = self.comboBox_5.currentText()
-        if softWare == "BEAST1":
+        if softWare == "BEAST1 (NUC)":
             return [['Best-fit substitution model', '(Base) Model to select in BEAUti', 'Additional specifications in BEAUti'],
                     ['JC69', 'JC69', 'None '],
                     ['TrN', 'TN93', 'None '],
@@ -859,7 +871,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     ['TVMef', 'GTR',
                      'unchecking AG rate operator and setting base Frequencies to "All Equal"'],
                     ['GTR', 'GTR', 'None']]
-        else:
+        elif softWare == "BEAST2 (NUC)":
             return [['Best-fit substitution model', '(Base) Model to select in BEAUti 2', 'Additional specifications in BEAUti 2'],
                     ['JC69', 'JC69', 'None '],
                     ['TrN', 'TN93', 'None'],
@@ -877,6 +889,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     ['TVMef', 'GTR',
                      'fix the AG rate parameter to 1.0 (uncheck the "estimate" box), and also set base Frequencies to "All Equal"'],
                     ['GTR', 'GTR', ' None']]
+        else:
+            return []
 
     def switchPart(self, state):
         if state:
@@ -903,10 +917,11 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             os.chdir(self.exportPath)  # 因为用了-pre，所以要先切换目录到该文件夹
             inputFile = os.path.basename(
                 shutil.copy(alignment, self.exportPath))
-            pre = " -pre \"%s\""%(inputFile + "." + self.comboBox_5.currentText().lower().replace("-", "_"))
+            pre = " -pre \"%s\""%self.factory.refineName(inputFile + "." + self.comboBox_5.currentText().lower().replace("-", "_"))
             # use_model_for = " -m MF" if self.comboBox_5.currentText() == "IQ-TREE" else " -m TESTONLY -mset %s"%self.comboBox_5.currentText().lower()
             if self.comboBox_5.currentText() == "IQ-TREE":
                 if self.checkBox_2.isChecked():
+                    print(self.lineEdit_3.toolTip())
                     if self.checkBox.isChecked() and self.lineEdit_3.toolTip() and self.lineEdit_3.isEnabled():  # partition
                         #确保勾选了partition以及输入了文件
                         use_model_for = " -m TESTNEWMERGEONLY"
@@ -917,11 +932,13 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                         use_model_for = " -m TESTMERGEONLY"
                     else:
                         use_model_for = " -m TESTONLY"
-            elif self.comboBox_5.currentText() in ["BEAST1", "BEAST2"]:
+            elif self.comboBox_5.currentText() in ["BEAST1 (NUC)", "BEAST2 (NUC)"]:
                 use_model_for = " -mset JC69,TrN,TrNef,K80,K2P,F81,HKY,SYM,TIM,TVM,TVMef,GTR -mrate E,G"
+            elif self.comboBox_5.currentText() in ["BEAST (AA)"]:
+                use_model_for = " -mset Blosum62,cpREV,JTT,mtREV,WAG,LG,Dayhoff -mrate E,G"
             else:
                 use_model_for = " -m TESTONLY -mset %s" % self.comboBox_5.currentText().lower() \
-                    if not self.checkBox.isChecked() else " -m TESTMERGEONLY -mset %s" % self.comboBox_5.currentText().lower()
+                    if ((not self.checkBox.isChecked()) or (not self.lineEdit_3.toolTip())) else " -m TESTMERGEONLY -mset %s" % self.comboBox_5.currentText().lower()
             criterion_org = re.search(
                 r"\((\w+)\)", self.comboBox_4.currentText()).group(1)
             criterion = " -%s" % criterion_org if criterion_org != "BIC" else ""
@@ -997,7 +1014,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         self.command = cmd
         if self.command:
             self.MF_popen = self.factory.init_popen(self.command)
-            self.logGuiSig.emit(self.command)
+            self.factory.emitCommands(self.logGuiSig, self.command)
             self.worker = WorkThread(self.run_command, parent=self)
             self.worker.start()
 

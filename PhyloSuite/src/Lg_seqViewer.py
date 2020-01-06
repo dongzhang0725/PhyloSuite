@@ -372,6 +372,7 @@ class Seq_viewer(QMainWindow, Ui_Seq_viewer, object):
 
         # Restore geometry
         self.resize(self.Seq_viewer_setting.value('size', QSize(1346, 641)))
+        self.factory.centerWindow(self)
         # self.move(self.Seq_viewer_setting.value('pos', QPoint(60, 60)))
         self.font = self.Seq_viewer_setting.value("display font")
         self.dict_foreColor = self.Seq_viewer_setting.value("foreground colors")

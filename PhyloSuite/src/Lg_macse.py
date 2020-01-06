@@ -66,7 +66,7 @@ def run(dict_args, command, file, num):
     # 存log文件
     with open(file + ".log", "a", encoding="utf-8") as log_file:
         log_file.write(command + "\n")
-        run.queue.put(("log", "Command: " + command))
+        run.queue.put(("log", "%sCommands%s\n%s\n%s" % ("=" * 45, "=" * 45, command, "=" * 98)))
         fileBase = os.path.basename(file)
         rgx_init_dist = re.compile(
             r"compute initial pairwise distances", re.I)  #3
@@ -136,6 +136,8 @@ class MACSE(QDialog, Ui_MACSE, object):
     closeSig = pyqtSignal(str, str)
     # 比对完有空文件报错
     emptySig = pyqtSignal(str)
+    ##弹出识别输入文件的信号
+    auto_popSig = pyqtSignal(QDialog)
 
     def __init__(
             self,
@@ -148,6 +150,7 @@ class MACSE(QDialog, Ui_MACSE, object):
             parent=None):
         super(MACSE, self).__init__(parent)
         self.parent = parent
+        self.function_name = "MACSE"
         self.workflow = workflow
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
@@ -212,6 +215,8 @@ class MACSE(QDialog, Ui_MACSE, object):
         ## brief demo
         self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-3-1-Brief-example")))
+        ##自动弹出识别文件窗口
+        self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -383,7 +388,7 @@ class MACSE(QDialog, Ui_MACSE, object):
             self.time_used)
             with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
                 f.write(
-                    self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n"
+                    self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                                        "If you use MACSE, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if (not self.interrupt) and (not has_error):
                 self.pool = None
@@ -465,6 +470,7 @@ class MACSE(QDialog, Ui_MACSE, object):
 
         # Restore geometry
         self.resize(self.MACSE_settings.value('size', QSize(679, 693)))
+        self.factory.centerWindow(self)
         # self.move(self.MACSE_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -660,6 +666,8 @@ class MACSE(QDialog, Ui_MACSE, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
+            with open(self.exportPath + os.sep + "PhyloSuite_MACSE.log", "a") as f:
+                f.write(text + "\n")
 
     def save_log_to_file(self):
         content = self.textEdit_log.toPlainText()
@@ -902,15 +910,19 @@ class MACSE(QDialog, Ui_MACSE, object):
         '''判断程序是否运行,依赖进程是否存在来判断'''
         return hasattr(self, "pool") and self.pool and not self.interrupt
 
-    def popupAutoDec(self):
-        popupUI = self.factory.popUpAutoDetect("MACSE", self.workPath, self)
+    def popupAutoDec(self, init=False):
+        self.init = init
+        self.factory.popUpAutoDetect("MACSE", self.workPath, self.auto_popSig, self)
+
+    def popupAutoDecSub(self, popupUI):
         if not popupUI:
-            QMessageBox.warning(
-                self,
-                "Warning",
-                "<p style='line-height:25px; height:25px'>No available file detected!</p>")
+            if not self.init:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    "<p style='line-height:25px; height:25px'>No available file detected!</p>")
             return
-        popupUI.checkBox.setVisible(False)
+        if not self.init: popupUI.checkBox.setVisible(False)
         if popupUI.exec_() == QDialog.Accepted:
             widget = popupUI.listWidget_framless.itemWidget(
                 popupUI.listWidget_framless.selectedItems()[0])

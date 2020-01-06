@@ -35,10 +35,10 @@ class DisplaySettings(QDialog, Ui_DisplaySettings, object):
         # 设置比例
         self.splitter.setStretchFactor(1, 7)
         # 保存主界面设置
-        self.mainwindow_settings = QSettings(
-            self.thisPath + '/settings/mainwindow_settings.ini', QSettings.IniFormat)
+        self.data_settings = QSettings(
+            self.factory.workPlaceSettingPath + os.sep + 'data_settings.ini', QSettings.IniFormat)
         # File only, no fallback to registry or or.
-        self.mainwindow_settings.setFallbacksEnabled(False)
+        self.data_settings.setFallbacksEnabled(False)
         # 保存设置
         self.display_settings = QSettings(
             self.thisPath + '/settings/display_settings.ini', QSettings.IniFormat)
@@ -93,7 +93,7 @@ class DisplaySettings(QDialog, Ui_DisplaySettings, object):
         itemsTextList = [self.listWidget.item(i).text() for i in range(self.listWidget.count())]
         arrayManager = ArrayManager(self.array)
         new_array = arrayManager.updateArrayByColheader(itemsTextList)
-        self.mainwindow_settings.setValue(key, new_array)
+        self.data_settings.setValue(key, new_array)
         ##然后是有新的列就读取对应数据，如果没有新的列就直接展示
 
     def guiSave(self):
@@ -112,31 +112,32 @@ class DisplaySettings(QDialog, Ui_DisplaySettings, object):
         #                 obj.itemText(i) for i in range(obj.count())]
         #             allItems.remove(text)
         #             sortItems = [text] + allItems
-        #             self.mainwindow_settings.setValue(name, sortItems)
+        #             self.data_settings.setValue(name, sortItems)
         #     if isinstance(obj, QCheckBox):
         #         state = obj.isChecked()
-        #         self.mainwindow_settings.setValue(name, state)
+        #         self.data_settings.setValue(name, state)
         #     if isinstance(obj, QRadioButton):
         #         state = obj.isChecked()
-        #         self.mainwindow_settings.setValue(name, state)
+        #         self.data_settings.setValue(name, state)
 
     def guiRestore(self):
 
         # Restore geometry
         self.resize(self.display_settings.value('size', QSize(685, 511)))
+        self.factory.centerWindow(self)
         # self.move(self.display_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QListWidget):
                 key = re.sub(r"/|\\", "_", self.workPath) + "_displayedArray"
-                self.array = self.mainwindow_settings.value(key, None)  #每点一个工作区，就会自动初始化一个，所以一般不会none
+                self.array = self.data_settings.value(key, None)  #每点一个工作区，就会自动初始化一个，所以一般不会none
                 if self.array:
                     displayed_info = self.array[0]
                     self.updatelistWidget(None, displayed_info)
             if isinstance(obj, QTreeView):
                 self.updateTreee()
                 # key = re.sub(r"/|\\", "_", self.workPath) + "_availableInfo"
-                # value = self.mainwindow_settings.value(
+                # value = self.data_settings.value(
                 #     key, None)  #每点一个工作区，就会自动初始化一个，所以一般不会none
                 # treeModel = TreeModel(value)
                 # obj.setModel(treeModel)
@@ -149,7 +150,7 @@ class DisplaySettings(QDialog, Ui_DisplaySettings, object):
 
     def updateTreee(self):
         key = re.sub(r"/|\\", "_", self.workPath) + "_availableInfo"
-        value = self.mainwindow_settings.value(
+        value = self.data_settings.value(
             key, None)  # 每点一个工作区，就会自动初始化一个，所以一般不会none
         treeModel = TreeModel(value)
         self.treeView.setModel(treeModel)

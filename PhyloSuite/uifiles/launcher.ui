@@ -16,6 +16,10 @@
   <property name="windowTitle">
    <string>Set workplace</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="../myRes.qrc">
+    <normaloff>:/picture/resourses/windowIcon.png</normaloff>:/picture/resourses/windowIcon.png</iconset>
+  </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
     <widget class="QTextEdit" name="textEdit">
@@ -134,7 +138,7 @@ padding: 2px;
         <string>Ok</string>
        </property>
        <property name="icon">
-        <iconset resource="myRes.qrc">
+        <iconset resource="../myRes.qrc">
          <normaloff>:/picture/resourses/btn_ok.png</normaloff>:/picture/resourses/btn_ok.png</iconset>
        </property>
       </widget>
@@ -157,7 +161,7 @@ padding: 2px;
         <string>Cancel</string>
        </property>
        <property name="icon">
-        <iconset resource="myRes.qrc">
+        <iconset resource="../myRes.qrc">
          <normaloff>:/picture/resourses/btn_close.png</normaloff>:/picture/resourses/btn_close.png</iconset>
        </property>
       </widget>
@@ -167,7 +171,7 @@ padding: 2px;
   </layout>
  </widget>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections/>
 </ui>

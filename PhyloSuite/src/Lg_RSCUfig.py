@@ -19,6 +19,7 @@ import platform
 
 class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
     exception_signal = pyqtSignal(str)  # 定义所有类都可以使用的信号
+    warning_signal = pyqtSignal(str)
     progressSig = pyqtSignal(int)  # 控制进度条
     startButtonStatusSig = pyqtSignal(list)
 
@@ -52,6 +53,7 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
         # 恢复用户的设置
         self.guiRestore()
         self.exception_signal.connect(self.popupException)
+        self.warning_signal.connect(self.popupWarning)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         self.progressSig.connect(self.runProgress)
         self.listWidget_3.installEventFilter(self)
@@ -160,14 +162,28 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
             # subprocess.call([self.RscriptPath, "--vanilla", rscriptPath], shell=True)
             subprocess.call("%s --vanilla %s"%(self.RscriptPath, rscriptPath), shell=True)
             self.progressSig.emit(100)
-            self.startButtonStatusSig.emit(
-                [
-                    self.pushButton,
-                    self.progressBar,
-                    "stop",
-                    self.exportPath,
-                    self.qss_file,
-                    self])
+            if not os.path.exists(self.RSCUpath):
+                self.warning_signal.emit("No RSCU figure generated! The R packages \"ggplot2\" or \"ggpubr\" may not be installed properly. You may:<br>"
+                    "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>1</span>. Install \"ggplot2\" and \"ggpubr\" manually, restart PhyloSuite and try again<br>"
+                    "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>2</span>. Execute \"rscu_scripts.r\" script: <span style='font-weight:600; color:#ff0000;'>Rscript rscu_scripts.r</span><br>"
+                    "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>3</span>. Copy the content of \"rscu_scripts.r\" and paste it into Rstudio or Rgui to execute")
+                self.startButtonStatusSig.emit(
+                    [
+                        self.pushButton,
+                        self.progressBar,
+                        "except",
+                        self.exportPath,
+                        self.qss_file,
+                        self])
+            else:
+                self.startButtonStatusSig.emit(
+                    [
+                        self.pushButton,
+                        self.progressBar,
+                        "stop",
+                        self.exportPath,
+                        self.qss_file,
+                        self])
             if os.path.exists(self.exportPath + os.sep + "Rplots.pdf"):
                 os.remove(self.exportPath + os.sep + "Rplots.pdf")
             self.focusSig.emit(self.exportPath)
@@ -175,7 +191,7 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
             with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n\n" + self.time_used_des)
+                f.write("If you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
         except BaseException:
             self.exceptionInfo = ''.join(
                 traceback.format_exception(
@@ -218,10 +234,12 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
                 if name in ["pushButton_color", "pushButton_color_2", "pushButton_color_3", "pushButton_color_4"]:
                     color = obj.palette().color(1)
                     self.DrawRSCUfig_settings.setValue(name, color.name())
+
     def guiRestore(self):
 
         # Restore geometry
         self.resize(self.DrawRSCUfig_settings.value('size', QSize(500, 500)))
+        self.factory.centerWindow(self)
         # self.move(self.DrawRSCUfig_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -315,57 +333,7 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
                 self.listWidget_3.addItem(item)
 
     def rscu2fig(self):
-        script = '''multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
-  library(grid)
-
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-
-  numPlots = length(plots)
-
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                    ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-
- if (numPlots==1) {
-    print(plots[[1]])
-
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
-}
-#move to current dir
-thisFile <- function() {
-        cmdArgs <- commandArgs(trailingOnly = FALSE)
-        needle <- "--file="
-        match <- grep(needle, cmdArgs)
-        if (length(match) > 0) {
-                # Rscript
-                return(normalizePath(sub(needle, "", cmdArgs[match])))
-        } else {
-                # 'source'd via R console
-                return(normalizePath(sys.frames()[[1]]$ofile))
-        }
-}
-setwd(dirname(thisFile()))
-
-# auto install missing packages
+        script = '''# auto install missing packages
 list.of.packages <- c("ggplot2", "ggpubr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages, repos="http://cran.us.r-project.org")
@@ -376,7 +344,7 @@ scaleFUN <- function(x) sprintf("%.2f", x)  #可以设置坐标轴显示的小�
         sums = len(self.dict_args["dict_files_title"])
         for num, i in enumerate(self.dict_args["dict_files_title"]):
             self.Order_name = self.factory.int2word(num + 1).strip().replace(" ","_")
-            self.rscu_file = os.path.normpath(i).replace("\\", "\\\\")
+            self.rscu_file = os.path.normpath(i).replace("\\", "/")
             self.latin_name = self.dict_args["dict_files_title"][i]
             self.spe_number = str(num + 1)
             allfig.append(self.spe_number)
@@ -407,10 +375,11 @@ p <- ggplot(data = {self.Order_name}, mapping = aes(x = x{self.Order_name}, y = 
         self.allfignum = "p" + ",p".join(allfig)
         self.str_matrix = ",".join(["1"]*len(self.dict_args["dict_files_title"]) + ["%.2f" %(1/self.dict_args["height proportion"])])  # (1,1,1,0.5)
         self.nrow = str(len(self.dict_args["dict_files_title"]) + 1)
+        self.RSCUpath = os.path.normpath(self.exportPath + os.sep + "RSCU.pdf").replace("\\", "/")
         script += '''
 library("ggpubr")
 pall <- ggarrange({self.allfignum}, heights=c({self.str_matrix}), ncol=1, nrow={self.nrow}, align ="v")
-pdf("RSCU.pdf",width={self.dict_args[Figure width]},height={self.dict_args[Figure height]}) ## 如果觉得比例不合适，可以适当调整width和height的大小。
+pdf("{self.RSCUpath}",width={self.dict_args[Figure width]},height={self.dict_args[Figure height]}) ## 如果觉得比例不合适，可以适当调整width和height的大小。
 pall
 dev.off() 
 '''.format(self=self)
@@ -458,3 +427,9 @@ dev.off()
             return True
         # 其他情况会返回系统默认的事件处理方法。
         return super(DrawRSCUfig, self).eventFilter(obj, event)  # 0
+
+    def popupWarning(self, text):
+        QMessageBox.warning(
+            self,
+            "Warning",
+            "<p style='line-height:25px; height:25px'>%s</p>" % text)

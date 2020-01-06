@@ -2,11 +2,14 @@
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
+  <property name="windowModality">
+   <enum>Qt::WindowModal</enum>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1152</width>
+    <width>1207</width>
     <height>630</height>
    </rect>
   </property>
@@ -17,7 +20,7 @@
    <string>PhyloSuite</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="myRes.qrc">
+   <iconset resource="../myRes.qrc">
     <normaloff>:/picture/resourses/windowIcon.png</normaloff>:/picture/resourses/windowIcon.png</iconset>
   </property>
   <property name="iconSize">
@@ -76,7 +79,7 @@
         <bool>true</bool>
        </property>
        <property name="currentIndex">
-        <number>4</number>
+        <number>6</number>
        </property>
        <widget class="QWidget" name="page">
         <layout class="QGridLayout" name="gridLayout">
@@ -621,7 +624,7 @@
               </property>
               <property name="font">
                <font>
-                <family>Arial</family>
+                <family>Microsoft YaHei</family>
                 <pointsize>7</pointsize>
                </font>
               </property>
@@ -629,7 +632,7 @@
                <string notr="true"/>
               </property>
               <property name="text">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:20pt; font-weight:600;&quot;&gt;PhyloSuite v1.1.16&lt;/span&gt;&lt;/p&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-family:'Calibri,sans-serif'; font-size:14pt; font-weight:600;&quot;&gt;A desktop platform for streamlined molecular sequence data management and state of the art evolutionary phylogenetics studies&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Home page: &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=&quot;https://dongzhang0725.github.io&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;https://dongzhang0725.github.io&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Usage and test run: &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;Test run can be found &lt;/span&gt;&lt;a href=&quot;https://dongzhang0725.github.io/dongzhang0725.github.io/example/&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;. You may view a brief demo for each function via the inbuilt &lt;/span&gt;&lt;img src=&quot;:/picture/resourses/help.gif&quot;/&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt; button. &lt;/span&gt;&lt;a href=&quot;https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/quick_start/&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;Quick Start &lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Bug report:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/dongzhang0725/PhyloSuite/issues&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/dongzhang0725/PhyloSuite/issues&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt; or send email to dongzhang0725@gmail.com.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Citation:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;Zhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088. (&lt;/span&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Download as: &lt;/span&gt;&lt;a href=&quot;RIS&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;RIS&lt;/span&gt;&lt;/a&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;a href=&quot; XML&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;XML&lt;/span&gt;&lt;/a&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;a href=&quot;ENW&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;ENW&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:20pt; font-weight:600;&quot;&gt;PhyloSuite v1.2.1&lt;/span&gt;&lt;/p&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-family:'Calibri,sans-serif'; font-size:14pt; font-weight:600;&quot;&gt;A desktop platform for streamlined molecular sequence data management and state of the art evolutionary phylogenetics studies&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Home page: &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=&quot;https://dongzhang0725.github.io&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;https://dongzhang0725.github.io&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Usage and test run: &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;Test run can be found &lt;/span&gt;&lt;a href=&quot;https://dongzhang0725.github.io/dongzhang0725.github.io/example/&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;. You may view a brief demo for each function via the inbuilt &lt;/span&gt;&lt;img src=&quot;:/picture/resourses/help.gif&quot;/&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt; button. &lt;/span&gt;&lt;a href=&quot;https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/quick_start/&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;Quick Start &lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Bug report:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;a href=&quot;https://groups.google.com/forum/#!forum/phylosuite&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;Google group&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;, &lt;/span&gt;&lt;a href=&quot;https://github.com/dongzhang0725/PhyloSuite/issues&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;GitHub issue&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt; or send email to dongzhang0725@gmail.com.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Citation:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;Zhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096. (&lt;/span&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Download as: &lt;/span&gt;&lt;a href=&quot;RIS&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;RIS&lt;/span&gt;&lt;/a&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;a href=&quot; XML&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;XML&lt;/span&gt;&lt;/a&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;a href=&quot;ENW&quot;&gt;&lt;span style=&quot; font-size:14pt; text-decoration: underline; color:#0000ff;&quot;&gt;ENW&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
@@ -722,7 +725,7 @@
               <string>...</string>
              </property>
              <property name="icon">
-              <iconset resource="myRes.qrc">
+              <iconset resource="../myRes.qrc">
                <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
              </property>
              <property name="checkable">
@@ -742,7 +745,7 @@
               <string>...</string>
              </property>
              <property name="icon">
-              <iconset resource="myRes.qrc">
+              <iconset resource="../myRes.qrc">
                <normaloff>:/picture/resourses/interface-controls-text-wrap-512.png</normaloff>:/picture/resourses/interface-controls-text-wrap-512.png</iconset>
              </property>
              <property name="checkable">
@@ -762,7 +765,7 @@
               <string>...</string>
              </property>
              <property name="icon">
-              <iconset resource="myRes.qrc">
+              <iconset resource="../myRes.qrc">
                <normaloff>:/picture/resourses/Save-icon.png</normaloff>:/picture/resourses/Save-icon.png</iconset>
              </property>
              <property name="checkable">
@@ -1021,7 +1024,7 @@
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="myRes.qrc">
+               <iconset resource="../myRes.qrc">
                 <normaloff>:/picture/resourses/workflow.png</normaloff>:/picture/resourses/workflow.png</iconset>
               </property>
               <property name="iconSize">
@@ -1126,7 +1129,7 @@
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="myRes.qrc">
+               <iconset resource="../myRes.qrc">
                 <normaloff>:/Menu/resourses/Menu/menubar-add-column.png</normaloff>:/Menu/resourses/Menu/menubar-add-column.png</iconset>
               </property>
               <property name="iconSize">
@@ -1222,7 +1225,7 @@
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="myRes.qrc">
+               <iconset resource="../myRes.qrc">
                 <normaloff>:/Menu/resourses/Menu/dna_report.png</normaloff>:/Menu/resourses/Menu/dna_report.png</iconset>
               </property>
               <property name="iconSize">
@@ -1315,7 +1318,7 @@
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="myRes.qrc">
+               <iconset resource="../myRes.qrc">
                 <normaloff>:/Menu/resourses/Menu/tree_structure.png</normaloff>:/Menu/resourses/Menu/tree_structure.png</iconset>
               </property>
               <property name="iconSize">
@@ -1408,7 +1411,7 @@
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="myRes.qrc">
+               <iconset resource="../myRes.qrc">
                 <normaloff>:/Menu/resourses/Menu/circle-dot.png</normaloff>:/Menu/resourses/Menu/circle-dot.png</iconset>
               </property>
               <property name="iconSize">
@@ -1501,7 +1504,7 @@
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="myRes.qrc">
+               <iconset resource="../myRes.qrc">
                 <normaloff>:/picture/resourses/gears.png</normaloff>:/picture/resourses/gears.png</iconset>
               </property>
               <property name="iconSize">
@@ -1594,7 +1597,7 @@
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="myRes.qrc">
+               <iconset resource="../myRes.qrc">
                 <normaloff>:/picture/resourses/4efd74e7b5526747487bff84332893e1_icon.png</normaloff>:/picture/resourses/4efd74e7b5526747487bff84332893e1_icon.png</iconset>
               </property>
               <property name="iconSize">
@@ -1687,7 +1690,7 @@
                <string/>
               </property>
               <property name="icon">
-               <iconset resource="myRes.qrc">
+               <iconset resource="../myRes.qrc">
                 <normaloff>:/picture/resourses/about-us.png</normaloff>:/picture/resourses/about-us.png</iconset>
               </property>
               <property name="iconSize">
@@ -1771,7 +1774,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections/>
 </ui>

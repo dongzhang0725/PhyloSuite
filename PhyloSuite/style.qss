@@ -1,26 +1,4 @@
-/*QWidget#mafft,  QWidget#Settings, QWidget#launcher, QWidget#GBeditor, QWidget#Extractor, QWidget#Matrix{
-background-color: #FCFCF5;
-}*/
-
-/*QTreeView {
-	background-color: #FCFCF5;
-}*/
-
-
-/*QStackedWidget {
-	background-color: #A0A0A0;
-}*/
-
-/* QTableView {
-    selection-color: white; 
-    selection-background-color: rgb(245, 105, 87);
-    outline: 0;
-} */
-
-/* QTableView::item:hover {
-    background: #0078D7;
-    color: white;
-} */
+*{font-family: Microsoft YaHei; font-size: 10pt;}
 
 QTableView::item:selected {background: rgb(240, 116, 100); color: white; border: 0px;}
 

@@ -1005,8 +1005,8 @@ class GbManager(QObject, object):
             self.exception_signal = parent.exception_signal
         # self.factory = Factory()
         # self.messageSig.connect(lambda message, type: self.factory.popupMessage(self.parent, message, type))
-        self.mainwindow_settings = QSettings(
-            self.thisPath + '/settings/mainwindow_settings.ini', QSettings.IniFormat)
+        self.data_settings = QSettings(
+            self.factory.workPlaceSettingPath + os.sep + 'data_settings.ini', QSettings.IniFormat)
         self.interrupt = False
 
     def merge_gbRecords(self, genbanks=None, byHandle=False):
@@ -1038,20 +1038,10 @@ class GbManager(QObject, object):
                 processSig.emit(base + (num+1)*proportion/len(files))
         return all_content
 
-    def fetchTaxonomy(self):
-        self.settings_ini = QSettings(self.thisPath + '/settings/setting_settings.ini', QSettings.IniFormat)
-        self.settings_ini.setFallbacksEnabled(False)
-        ini_data = [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
-                    [['', '*tera', '*dea', '*dae', '*nae', ''],
-                     ['', '', '*ida', '', '', ''],
-                     ['', '', '', '', '', ''],
-                     ['', '', '', '', '', ''],
-                     ['', '', '', '', '', '']]]
-        return self.settings_ini.value("Taxonomy Recognition", ini_data)
-
     def fetchLineages(self, list_taxonomy, organism, source_feature, updateMode=False):
         ##update是更新界面数据，这种情况下，不能以source的分类群注释为准
-        lineages_name, array1 = self.fetchTaxonomy()
+        lineages_name, array = self.factory.getCurrentTaxSetData()
+        array1 = copy.deepcopy(array)
         array1.insert(0, lineages_name)
         zip_array = list(zip(*array1))
         dict_taxonomy = {i[0]: i[1:] for i in zip_array}
@@ -1164,11 +1154,11 @@ class GbManager(QObject, object):
 
     def fetch_array(self):
         default_info = ["ID", "Organism", "Length", "AT%", "Latest modified"]
-        requiredTaxonomy = self.fetchTaxonomy()[0]
+        requiredTaxonomy = self.factory.getCurrentTaxSetData()[0]
         default_info[
         2:2] = requiredTaxonomy  # 将分类信息插入到列表中间  ["ID", "Organism", list_of_taxonomy, "Length", "AT%", "Latest modified"]
         name = re.sub(r"/|\\", "_", self.filePath) + "_displayedArray"
-        displayedArray = self.mainwindow_settings.value(name, [default_info])  # 界面展示的，header+array
+        displayedArray = self.data_settings.value(name, [default_info])  # 界面展示的，header+array
         if not displayedArray:
             ##有时候是none的时候
             displayedArray = [default_info]
@@ -1235,10 +1225,10 @@ class GbManager(QObject, object):
     def fetchAvailableInfo(self):
         # 存的时候用路径作为键
         name = re.sub(r"/|\\", "_", self.filePath) + "_availableInfo"
-        array4tree = self.mainwindow_settings.value(name, None)
+        array4tree = self.data_settings.value(name, None)
         if not array4tree:
             ##没有的时候就初始化一个
-            requiredTaxonomy = self.fetchTaxonomy()[0]
+            requiredTaxonomy = self.factory.getCurrentTaxSetData()[0]
             list_source = []
             list_reference = ["author(s)", "title(s)", "journal(s)", "pubmed ID(s)", "comment(s)"]
             list_annotations = ["ID", "Length", "AT%", "Name", "Organism", "Definition", "Date", "Keywords",
@@ -1250,7 +1240,7 @@ class GbManager(QObject, object):
                 ["Reference", list_reference],
                 ["Sources", list_source]
             ]
-            self.mainwindow_settings.setValue(name, array4tree)
+            self.data_settings.setValue(name, array4tree)
         return array4tree
 
     def fetchContentsByIDs(self, IDs, base=None, proportion=None, processSig=None):
@@ -1295,7 +1285,7 @@ class GbManager(QObject, object):
         annotations = gb_record.annotations
         ###用于判断各个信息属于哪一类###
         name = re.sub(r"/|\\", "_", self.filePath) + "_availableInfo"
-        arrar4tree = self.mainwindow_settings.value(name, self.fetchAvailableInfo())
+        arrar4tree = self.data_settings.value(name, self.fetchAvailableInfo())
         # print(arrar4tree)
         ###得到键和信息名字的映射关系###
         name_key_mapping = self.fetch_name_key_mapping()
@@ -1358,7 +1348,7 @@ class GbManager(QObject, object):
     def updateAvailableInfo(self, list_added_records=None, base=None, proportion=None, processSig=None):
         '''主要更新用于展示的source feature'''
         array4tree = self.fetchAvailableInfo()  # 初始化
-        requiredTaxonomy = self.fetchTaxonomy()[0]  ##如果分类群有变化，可以在这里更新
+        requiredTaxonomy = self.factory.getCurrentTaxSetData()[0]  ##如果分类群有变化，可以在这里更新
         if list_added_records:
             # merged_index = self.merge_gbIndex(genbank, base=base, proportion=None, processSig=None) ##前面的步骤好像也花了不少时间
             length = len(list_added_records)
@@ -1379,12 +1369,12 @@ class GbManager(QObject, object):
         array4tree[1][1] = requiredTaxonomy
         # 存的时候用路径作为键
         name = re.sub(r"/|\\", "_", self.filePath) + "_availableInfo"
-        self.mainwindow_settings.setValue(name, array4tree)
+        self.data_settings.setValue(name, array4tree)
 
     def updateAvailableInfo_2(self, genbank=None, base=None, proportion=None, processSig=None):
         ##导入的是文件名字, 删除模式专用
         array4tree = self.fetchAvailableInfo()  # 初始化
-        requiredTaxonomy = self.fetchTaxonomy()[0]  ##如果分类群有变化，可以在这里更新
+        requiredTaxonomy = self.factory.getCurrentTaxSetData()[0]  ##如果分类群有变化，可以在这里更新
         if genbank:
             merged_index = self.merge_gbIndex(genbank)
             list_source = []  # 如果是删除模式，就要重新读source
@@ -1404,7 +1394,7 @@ class GbManager(QObject, object):
         array4tree[1][1] = requiredTaxonomy
         # 存的时候用路径作为键
         name = re.sub(r"/|\\", "_", self.filePath) + "_availableInfo"
-        self.mainwindow_settings.setValue(name, array4tree)
+        self.data_settings.setValue(name, array4tree)
 
     def updateArrayByInfo(self, base=None, proportion=None, processSig=None):
         '''扫描矩阵，如果发现有信息没有被提取，就补充提取然后保存'''
@@ -1530,10 +1520,12 @@ class GbManager(QObject, object):
                     ##有改变才存
                     SeqIO.write(gb_record, self.fetchRecordPath(ID), "genbank")
                     list_added_records.append(gb_record)
+                # print(3, self.factory.getCurrentTaxSetData())
                 ###提取需要的信息
                 gb_record_array = self.extractRequiredInfo(gb_record, requiredInfos)
                 # gb_record_array.append(str(gb_record.seq))
                 array.append(gb_record_array)
+                # print(4, self.factory.getCurrentTaxSetData())
                 # self.list_Names.append(ID)
                 if processSig:
                     num += 1
@@ -1545,6 +1537,7 @@ class GbManager(QObject, object):
             else:
                 self.updateAvailableInfo(list_added_records)
             self.saveArray(array)
+            # print(6, self.factory.getCurrentTaxSetData())
         except:
             try:
                 if os.path.exists(self.fetchRecordPath(ID)):
@@ -1581,7 +1574,7 @@ class GbManager(QObject, object):
                 organism = gb_record.annotations["organism"]
                 if findLineage:
                     ## 自动从NCBI识别分类群
-                    requiredLineageNames = self.fetchTaxonomy()[0]
+                    requiredLineageNames = self.factory.getCurrentTaxSetData()[0]
                     if database == "NCBI":
                         self.update_NCBI_lineages(requiredLineageNames, organism, source_feature)
                     elif database == "WoRMS":
@@ -1623,7 +1616,7 @@ class GbManager(QObject, object):
 
     def saveArray(self, array):
         name = re.sub(r"/|\\", "_", self.filePath) + "_displayedArray"
-        self.mainwindow_settings.setValue(name, array)  # 界面展示的，header+array
+        self.data_settings.setValue(name, array)  # 界面展示的，header+array
 
     def highlightRepeatIDs(self):
         allIndex = self.fetchAllIndex()
@@ -1839,7 +1832,7 @@ class GbManager(QObject, object):
         header_title = header[column]
         ###用于判断各个信息属于哪一类###
         name = re.sub(r"/|\\", "_", self.filePath) + "_availableInfo"
-        arrar4tree = self.mainwindow_settings.value(name, [])
+        arrar4tree = self.data_settings.value(name, [])
         ###得到键和信息名字的映射关系###
         name_key_mapping = self.fetch_name_key_mapping()
         # print(ID, new_text, header_title, row, column, arrar4tree[0][1])
@@ -1985,6 +1978,62 @@ class GbManager(QObject, object):
                 exec("source_feature.qualifiers[lineage] = aphia_object.%s"%tax_name)
         return source_feature
 
+    def reorder(self, list_IDs, base, proportion, processSig, target=None, start=None, warning_signal=None):
+        ###提取的设置
+        self.GenBankExtract_settings = QSettings(
+            self.thisPath + '/settings/GenBankExtract_settings.ini', QSettings.IniFormat)
+        # File only, no fallback to registry or or.
+        self.GenBankExtract_settings.setFallbacksEnabled(False)
+        self.dict_gbExtract_set = self.GenBankExtract_settings.value("set_version")
+        listGB_paths = [self.fetchRecordPath(ID) for ID in list_IDs]
+        total = len(listGB_paths)
+        has_send_warning = False
+        for num, file_path in enumerate(listGB_paths):
+            try:
+                new_record = None
+                gb = SeqIO.parse(file_path, "genbank")
+                gb_record = next(gb)
+                features = gb_record.features
+                if target:
+                    # 如果不是指定的起始位置
+                    for feature in features:
+                        # 得到qualifiers
+                        key = "Qualifiers to be recognized (%s):" % feature.type
+                        included_qualifiers = self.dict_gbExtract_set[key] if key in self.dict_gbExtract_set \
+                            else ["product", "gene", "note"]
+                        name = None
+                        for i in included_qualifiers:
+                            if i in feature.qualifiers:
+                                name = feature.qualifiers[i][0]
+                                break
+                        if name == target:
+                            start = int(feature.location.start) + 1
+                            break
+                    if start:
+                        new_record = gb_record[start - 1:] + gb_record[:start - 1]
+                        new_record.dbxrefs = gb_record.dbxrefs[:]
+                        new_record.annotations = gb_record.annotations.copy()
+                        ##加上source
+                        new_record.features.insert(0, gb_record.features[0])
+                elif start:
+                    # 指定起始位置
+                    start_positions = [int(feature_.location.start) + 1 for feature_ in features]
+                    if start in start_positions:
+                        new_record = gb_record[start - 1:] + gb_record[:start - 1]
+                        new_record.dbxrefs = gb_record.dbxrefs[:]
+                        new_record.annotations = gb_record.annotations.copy()
+                        ##加上source
+                        new_record.features.insert(0, gb_record.features[0])
+                    else:
+                        if not has_send_warning:
+                            warning_signal.emit("Selected position must correspond to a start position of a gene!")
+                            has_send_warning = True
+                            # 给个提示
+                if new_record: SeqIO.write(new_record, file_path, "genbank")
+                processSig.emit(base + ((num+1)/total)*proportion)
+            except: pass
+
+
 class GBextract(object):
     def __init__(self, **dict_args):
         super(GBextract, self).__init__()
@@ -2035,6 +2084,8 @@ class GBextract(object):
         self.itolLength = "DATASET_SIMPLEBAR\nSEPARATOR COMMA\nDATASET_LABEL,genome length bar\nCOLOR,#ffff00\nWIDTH,1000\nMARGIN,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nBAR_ZERO,12000\nDATA\n"
         #         基因组AT含量条形图
         self.itolAT = "DATASET_SIMPLEBAR\nSEPARATOR COMMA\nDATASET_LABEL,AT content bar\nCOLOR,#ffff00\nWIDTH,1000\nMARGIN,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nBAR_ZERO,50\nDATA\n"
+        #         基因组GC skew条形图
+        self.itolGCskew = "DATASET_SIMPLEBAR\nSEPARATOR COMMA\nDATASET_LABEL,GC skew bar\nCOLOR,#ffff00\nWIDTH,1000\nMARGIN,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nBAR_ZERO,0\nDATA\n"
         #         基因组ATCG数量堆积图
         self.itolLength_stack = "DATASET_MULTIBAR\nSEPARATOR COMMA\nDATASET_LABEL,ATCG multi bar chart\nCOLOR,#ff0000\nWIDTH,1000\nMARGIN,0\nSHOW_INTERNAL,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nALIGN_FIELDS,0\nFIELD_LABELS,A,T,C,G\nFIELD_COLORS,#2a9087,#5c2936,#913e40,#2366a1\nDATA\n"
         self.colours = []
@@ -2260,6 +2311,7 @@ class GBextract(object):
             self.dict_itol_gb[self.usedName] = self.name
             seqStat = SeqGrab(self.str_seq)
             self.itolAT += self.usedName + "," + seqStat.AT_percent + "\n"
+            self.itolGCskew += self.usedName + "," + seqStat.GC_skew + "\n"
             self.itolLength += self.usedName + "," + seqStat.size + "\n"
             A, T, C, G = str(
                 self.str_seq.upper().count('A')), str(
@@ -2462,6 +2514,8 @@ class GBextract(object):
             f.write(itol_gb_labels)
         with open(itolPath + os.sep + 'itolAT.txt', 'w', encoding="utf-8") as f2:
             f2.write(self.itolAT)
+        with open(itolPath + os.sep + 'itolGCskew.txt', 'w', encoding="utf-8") as f2:
+            f2.write(self.itolGCskew)
         with open(itolPath + os.sep + 'itolLength.txt', 'w', encoding="utf-8") as f3:
             f3.write(self.itolLength)
         with open(itolPath + os.sep + 'itolLength_stack.txt', 'w', encoding="utf-8") as f4:
@@ -2520,7 +2574,7 @@ class GBextract(object):
         ovlap_path = self.exportPath + os.sep + 'overlapping_regions'
         if self.dict_NCR_regions and os.path.exists(ncr_path):
             list_species = list(set(itertools.chain.from_iterable(self.dict_NCR_regions.values())))
-            csv_header = "Summary of intergenic regions among species\nOrganism," + ",".join(self.dict_NCR_regions.keys()) + "\n"
+            csv_header = "Summary of intergenic regions among species\nOrganism," + ",".join(self.dict_NCR_regions.keys()) + ",Count\n"
             csv = []
             for spe in list_species:
                 list_ = [spe]
@@ -2529,13 +2583,14 @@ class GBextract(object):
                         list_.append("Y")
                     else:
                         list_.append("N")
+                list_.append(str(list_.count("Y")))
                 csv.append(list_)
             with open(ncr_path + os.sep + 'intergenic_regions_summary.csv', 'w', encoding="utf-8") as f4:
                 text = csv_header + "\n".join([",".join(i) for i in csv]) + "\nY: Yes; N: No"
                 f4.write(text)
         if self.dict_overlapping_regions and os.path.exists(ovlap_path):
             list_species = list(set(itertools.chain.from_iterable(self.dict_overlapping_regions.values())))
-            csv_header = "Summary of overlapping regions among species\nOrganism," + ",".join(self.dict_overlapping_regions.keys()) + "\n"
+            csv_header = "Summary of overlapping regions among species\nOrganism," + ",".join(self.dict_overlapping_regions.keys()) + ",Count\n"
             csv = []
             for spe in list_species:
                 list_ = [spe]
@@ -2544,6 +2599,7 @@ class GBextract(object):
                         list_.append("Y")
                     else:
                         list_.append("N")
+                list_.append(str(list_.count("Y")))
                 csv.append(list_)
             with open(ovlap_path + os.sep + 'overlapping_regions_summary.csv', 'w', encoding="utf-8") as f4:
                 text = csv_header + "\n".join([",".join(i) for i in csv]) + "\nY: Yes; N: No"
@@ -3101,9 +3157,10 @@ class GBextract_MT(GBextract, object):
         self.dict_orgTable[self.ID] = self.orgTable
         self.linear_order += self.gene_order + '\n'
         # 密码子偏倚分析
-        codonBias = CodonBias(self.PCGs_strim, self.code_table, path=self.exportPath)
-        list_cBias = codonBias.getCodonBias()
-        self.codon_bias += ",".join(["PCGs"] + list_cBias) + "," + self.taxonmy + "\n"
+        if self.dict_args["cal_codon_bias"]:
+            codonBias = CodonBias(self.PCGs_strim, self.code_table, path=self.exportPath)
+            list_cBias = codonBias.getCodonBias()
+            self.codon_bias += ",".join(["PCGs"] + list_cBias) + "," + self.taxonmy + "\n"
 
     def check_Absence(self):
         if len(self.list_pro) != 0:  # 有些物种缺失部分基因
@@ -3289,9 +3346,10 @@ class GBextract_MT(GBextract, object):
         ##间隔区提取
         self.refresh_pairwise_feature(new_name)
         ##密码子偏倚分析
-        codonBias = CodonBias(RSCU_seq, self.code_table, path=self.exportPath)
-        list_cBias = codonBias.getCodonBias()
-        self.codon_bias += ",".join([new_name] + list_cBias) + "," + self.taxonmy + "\n"
+        if self.dict_args["cal_codon_bias"]:
+            codonBias = CodonBias(RSCU_seq, self.code_table, path=self.exportPath)
+            list_cBias = codonBias.getCodonBias()
+            self.codon_bias += ",".join([new_name] + list_cBias) + "," + self.taxonmy + "\n"
 
     def rRNA_(self):
         new_name = self.fetchGeneName()
@@ -3744,9 +3802,10 @@ class GBextract_MT(GBextract, object):
 
         with open(CDSpath + os.sep + 'thirdCodonSkew.csv', 'w', encoding="utf-8") as f7:
             f7.write(self.thirdCodonSkew)
-        # 生成密码子偏倚统计
-        with open(CDSpath + os.sep + 'codon_bias.csv', 'w', encoding="utf-8") as f11:
-            f11.write(self.codon_bias)
+        # # 生成密码子偏倚统计
+        if self.dict_args["cal_codon_bias"]:
+            with open(CDSpath + os.sep + 'codon_bias.csv', 'w', encoding="utf-8") as f11:
+                f11.write(self.codon_bias)
 
         with open(statFilePath + os.sep + 'gbAccNum.csv', 'w', encoding="utf-8") as f8:
             f8.write(self.name_gb)

@@ -394,23 +394,20 @@
           <property name="styleSheet">
            <string notr="true">QWidget#widget_container_2 {border: 1px ridge gray; background-color: white}</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_3">
-           <property name="spacing">
-            <number>2</number>
-           </property>
+          <layout class="QGridLayout" name="gridLayout_6">
            <property name="leftMargin">
-            <number>0</number>
+            <number>5</number>
            </property>
            <property name="topMargin">
-            <number>0</number>
+            <number>3</number>
            </property>
            <property name="rightMargin">
-            <number>0</number>
+            <number>5</number>
            </property>
            <property name="bottomMargin">
-            <number>0</number>
+            <number>3</number>
            </property>
-           <item>
+           <item row="0" column="0">
             <widget class="QTableView" name="tableView_2">
              <property name="acceptDrops">
               <bool>true</bool>
@@ -438,7 +435,7 @@
              </attribute>
             </widget>
            </item>
-           <item>
+           <item row="1" column="0">
             <layout class="QGridLayout" name="gridLayout_2" columnstretch="1,1">
              <item row="0" column="0">
               <widget class="QPushButton" name="pushButton_6">
@@ -446,7 +443,7 @@
                 <string>Add Row</string>
                </property>
                <property name="icon">
-                <iconset resource="myRes.qrc">
+                <iconset resource="../myRes.qrc">
                  <normaloff>:/picture/resourses/table_row_add_after.png</normaloff>:/picture/resourses/table_row_add_after.png</iconset>
                </property>
               </widget>
@@ -468,7 +465,7 @@
                   <string>Add Column</string>
                  </property>
                  <property name="icon">
-                  <iconset resource="myRes.qrc">
+                  <iconset resource="../myRes.qrc">
                    <normaloff>:/picture/resourses/table_column_add_after.png</normaloff>:/picture/resourses/table_column_add_after.png</iconset>
                  </property>
                 </widget>
@@ -497,7 +494,7 @@
                 <string>Delete Row</string>
                </property>
                <property name="icon">
-                <iconset resource="myRes.qrc">
+                <iconset resource="../myRes.qrc">
                  <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
                </property>
               </widget>
@@ -508,10 +505,92 @@
                 <string>Delete Column</string>
                </property>
                <property name="icon">
-                <iconset resource="myRes.qrc">
+                <iconset resource="../myRes.qrc">
                  <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
                </property>
               </widget>
+             </item>
+             <item row="2" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_3">
+               <item>
+                <widget class="QComboBox" name="comboBox"/>
+               </item>
+               <item>
+                <widget class="QToolButton" name="toolButton_3">
+                 <property name="toolTip">
+                  <string>Add</string>
+                 </property>
+                 <property name="text">
+                  <string>...</string>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../myRes.qrc">
+                   <normaloff>:/picture/resourses/add-icon.png</normaloff>:/picture/resourses/add-icon.png</iconset>
+                 </property>
+                 <property name="autoRaise">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QToolButton" name="toolButton_4">
+                 <property name="toolTip">
+                  <string>Delete</string>
+                 </property>
+                 <property name="text">
+                  <string>...</string>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../myRes.qrc">
+                   <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
+                 </property>
+                 <property name="autoRaise">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="Line" name="line">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QToolButton" name="toolButton_6">
+                 <property name="toolTip">
+                  <string>Import settings</string>
+                 </property>
+                 <property name="text">
+                  <string>...</string>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../myRes.qrc">
+                   <normaloff>:/picture/resourses/import.png</normaloff>:/picture/resourses/import.png</iconset>
+                 </property>
+                 <property name="autoRaise">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QToolButton" name="toolButton_5">
+                 <property name="toolTip">
+                  <string>Export settings</string>
+                 </property>
+                 <property name="text">
+                  <string>...</string>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../myRes.qrc">
+                   <normaloff>:/picture/resourses/up.png</normaloff>:/picture/resourses/up.png</iconset>
+                 </property>
+                 <property name="autoRaise">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
             </layout>
            </item>
@@ -540,11 +619,92 @@
            <string notr="true">QWidget#widget_container {border: 1px ridge gray; background-color: white}</string>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_2">
-           <property name="topMargin">
-            <number>30</number>
-           </property>
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout">
+             <item>
+              <widget class="QLabel" name="label_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>General</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QWidget" name="widget_3" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">border-top: 1px solid gray;
+margin-top: 5px;</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_5">
+             <property name="leftMargin">
+              <number>10</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Font:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="ComLineEdit" name="lineEdit">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Arial</string>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>Size:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="ComLineEdit" name="lineEdit_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>10</string>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
              <item>
               <widget class="QLabel" name="label">
                <property name="sizePolicy">
@@ -645,9 +805,14 @@ margin-top: 5px;</string>
    <extends>QLabel</extends>
    <header>src.CustomWidget.h</header>
   </customwidget>
+  <customwidget>
+   <class>ComLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>src.CustomWidget.h</header>
+  </customwidget>
  </customwidgets>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections/>
 </ui>

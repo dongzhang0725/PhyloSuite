@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\ModelFinder.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\ModelFinder.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -221,6 +221,7 @@ class Ui_ModelFinder(object):
         self.comboBox_5.addItem("")
         self.comboBox_5.addItem("")
         self.comboBox_5.addItem("")
+        self.comboBox_5.addItem("")
         self.gridLayout_2.addWidget(self.comboBox_5, 3, 1, 1, 1)
         self.checkBox_2 = QtWidgets.QCheckBox(self.groupBox)
         self.checkBox_2.setAutoRepeat(False)
@@ -335,8 +336,9 @@ class Ui_ModelFinder(object):
         self.comboBox_5.setItemText(1, _translate("ModelFinder", "Mrbayes"))
         self.comboBox_5.setItemText(2, _translate("ModelFinder", "RAxML"))
         self.comboBox_5.setItemText(3, _translate("ModelFinder", "PhyML"))
-        self.comboBox_5.setItemText(4, _translate("ModelFinder", "BEAST1"))
-        self.comboBox_5.setItemText(5, _translate("ModelFinder", "BEAST2"))
+        self.comboBox_5.setItemText(4, _translate("ModelFinder", "BEAST1 (NUC)"))
+        self.comboBox_5.setItemText(5, _translate("ModelFinder", "BEAST2 (NUC)"))
+        self.comboBox_5.setItemText(6, _translate("ModelFinder", "BEAST (AA)"))
         self.checkBox_2.setText(_translate("ModelFinder", "FreeRate heterogeneity [+R]"))
         self.groupBox_3.setTitle(_translate("ModelFinder", "Run"))
         self.pushButton.setText(_translate("ModelFinder", "Start"))

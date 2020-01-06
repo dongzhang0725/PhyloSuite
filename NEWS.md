@@ -1,5 +1,22 @@
 # Release Note
 
+## PhyloSuite v1.2.1 (2020-01-06, Mon)
++ Updated citation for PhyloSuite
++ Added launch image
++ Changed the icon
++ Added a google group for PhyloSuite
++ Fixed a bug that caused PhyloSuite to crash when there are too large data in one workplace 
++ Added shortcuts for available downstream analyses for each function (after it is finished)
++ Added context menu for each results folder to import the results into downstream functions 
++ Added the option of different settings for each project
++ Added AA model for Beast to the Modelfinder analysis
++ Added an option that allows users to export/import taxonomy settings
++ Added a sorting function to Concatenation
++ Added several resources for plugins installation
++ Added a function to reorder the GenBank file
++ Added a function to change the font in PhyloSuite
++ Optimized some functions
+
 ## PhyloSuite v1.1.16 (2019-08-12, Mon)
 + Enabled IQ-TREE to select multiple outgroups
 + Added overlapping and intergenic regions to extraction function

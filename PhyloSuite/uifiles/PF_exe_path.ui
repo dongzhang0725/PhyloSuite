@@ -6,13 +6,13 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>485</width>
-    <height>465</height>
+    <width>550</width>
+    <height>539</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>410</width>
+    <width>550</width>
     <height>0</height>
    </size>
   </property>
@@ -73,7 +73,7 @@
            <string>Ok</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/btn_ok.png</normaloff>:/picture/resourses/btn_ok.png</iconset>
           </property>
          </widget>
@@ -84,7 +84,7 @@
            <string>Cancel</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/btn_close.png</normaloff>:/picture/resourses/btn_close.png</iconset>
           </property>
          </widget>
@@ -100,7 +100,7 @@
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/Open_folder_add_512px_1186192_easyicon.net.png</normaloff>:/picture/resourses/Open_folder_add_512px_1186192_easyicon.net.png</iconset>
         </property>
         <property name="iconSize">
@@ -134,6 +134,42 @@
     </widget>
    </item>
    <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label_10">
+       <property name="text">
+        <string>Downloading source:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <item>
+        <property name="text">
+         <string>Github</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gitlab</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Chinese resource</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
       <string>Install compiled PartitionFinder2 (recommended)</string>
@@ -148,7 +184,7 @@
          <string>Download</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/Install.png</normaloff>:/picture/resourses/Install.png</iconset>
         </property>
        </widget>
@@ -203,7 +239,7 @@
             <string>Download</string>
            </property>
            <property name="icon">
-            <iconset resource="myRes.qrc">
+            <iconset resource="../myRes.qrc">
              <normaloff>:/picture/resourses/Install.png</normaloff>:/picture/resourses/Install.png</iconset>
            </property>
           </widget>
@@ -295,7 +331,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections/>
 </ui>

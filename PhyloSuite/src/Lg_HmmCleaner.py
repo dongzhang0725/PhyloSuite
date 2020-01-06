@@ -41,7 +41,7 @@ def run(dict_args, command, file):
     run.queue.put(("popen", popen.pid))
     # 存log文件
     with open(file + ".log", "a", encoding="utf-8") as log_file:
-        run.queue.put(("log", "Command: " + command))
+        run.queue.put(("log", "%sCommands%s\n%s\n%s" % ("=" * 45, "=" * 45, command, "=" * 98)))
         is_error = False
         while True:
             try:
@@ -82,6 +82,8 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
     # 用于flowchart自动popup combobox等操作
     showSig = pyqtSignal(QDialog)
     closeSig = pyqtSignal(str, str)
+    ##弹出识别输入文件的信号
+    auto_popSig = pyqtSignal(QDialog)
 
     def __init__(
             self,
@@ -94,6 +96,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
             parent=None):
         super(HmmCleaner, self).__init__(parent)
         self.parent = parent
+        self.function_name = "HmmCleaner"
         self.workflow = workflow
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
@@ -152,6 +155,8 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
         ## brief demo
         self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-5-1-Brief-example")))
+        ##自动弹出识别文件窗口
+        self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -288,7 +293,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
                 self.time_used)
             with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
                 f.write(
-                    self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n"
+                    self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                                        "If you use HmmCleaner, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if (not self.interrupt) and (not has_error):
                 self.pool = None
@@ -364,6 +369,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
 
         # Restore geometry
         self.resize(self.HmmCleaner_settings.value('size', QSize(490, 380)))
+        self.factory.centerWindow(self)
         # self.move(self.HmmCleaner_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -543,6 +549,8 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
+            with open(self.exportPath + os.sep + "PhyloSuite_HmmCleaner.log", "a") as f:
+                f.write(text + "\n")
 
     def save_log_to_file(self):
         content = self.textEdit_log.toPlainText()
@@ -731,15 +739,19 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
                 "<p style='line-height:25px; height:25px'>\"Ali\" format cannot be used by the downstream programs "
                 "(e.g. IQ-TREE), please uncheck it if you are going to use this result for other functions.</p>")
 
-    def popupAutoDec(self):
-        popupUI = self.factory.popUpAutoDetect("HmmCleaner", self.workPath, self)
+    def popupAutoDec(self, init=False):
+        self.init = init
+        self.factory.popUpAutoDetect("HmmCleaner", self.workPath, self.auto_popSig, self)
+
+    def popupAutoDecSub(self, popupUI):
         if not popupUI:
-            QMessageBox.warning(
-                self,
-                "Warning",
-                "<p style='line-height:25px; height:25px'>No available file detected!</p>")
+            if not self.init:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    "<p style='line-height:25px; height:25px'>No available file detected!</p>")
             return
-        popupUI.checkBox.setVisible(False)
+        if not self.init: popupUI.checkBox.setVisible(False)
         if popupUI.exec_() == QDialog.Accepted:
             widget = popupUI.listWidget_framless.itemWidget(
                 popupUI.listWidget_framless.selectedItems()[0])

@@ -221,6 +221,7 @@ In case of excessive usage of the E-utilities, NCBI will attempt to contact a us
 
         # Restore geometry
         self.resize(self.addFiles_settings.value('size', QSize(500, 500)))
+        self.factory.centerWindow(self)
         # self.move(self.addFiles_settings.value('pos', QPoint(875, 254)))
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):

@@ -941,7 +941,7 @@ class ParseANNT(QDialog, Ui_parseANNT, Factory):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
             with open(self.dict_args["exportPath"] + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n\n" + self.time_used_des)
+                f.write("If you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
         except BaseException:
             self.exceptionInfo = ''.join(
                 traceback.format_exception(
@@ -1040,6 +1040,7 @@ class ParseANNT(QDialog, Ui_parseANNT, Factory):
 
         # Restore geometry
         self.resize(self.parseANNT_settings.value('size', QSize(500, 500)))
+        self.factory.centerWindow(self)
         # self.move(self.parseANNT_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -1105,17 +1106,6 @@ class ParseANNT(QDialog, Ui_parseANNT, Factory):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-#     splash = QSplashScreen(
-#         QPixmap(":/picture/resourses/mmexport1486369397954.png"))
-#     splash.show()
-#     app.processEvents()
-#     splash.showMessage("Dong dong love fang fang", Qt.AlignCenter, Qt.white)
-#     time.sleep(2)
-#     splash.showMessage("Dong dong ai fang fang", Qt.AlignCenter, Qt.white)
-#     time.sleep(2)
-#     splash.showMessage("Dong dong like fang fang", Qt.AlignCenter, Qt.white)
-#     time.sleep(2)
     PhyloSuite = ParseANNT()
     PhyloSuite.show()
-#     splash.finish(PhyloSuite)
     sys.exit(app.exec_())

@@ -101,7 +101,9 @@ class Launcher(QDialog, Ui_launcher, object):
 
         # Restore geometry
         self.resize(self.launcher_settings.value('size', QSize(457, 20)))
+        self.factory.centerWindow(self)
         # self.move(self.launcher_settings.value('pos', QPoint(875, 254)))
+
         # 恢复checkbox
         LauncherState = self.launcher_settings.value("ifLaunch", "false")
         self.checkBox.setChecked(self.factory.str2bool(LauncherState))

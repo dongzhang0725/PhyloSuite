@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\about.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\about.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -22,7 +22,8 @@ class Ui_about(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.label = QtWidgets.QLabel(about)
         self.label.setText("")
-        self.label.setPixmap(QtGui.QPixmap(":/picture/resourses/phylosuite_logo.png"))
+        self.label.setPixmap(QtGui.QPixmap(":/picture/resourses/about_fig.png"))
+        self.label.setScaledContents(False)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName("label")
         self.verticalLayout.addWidget(self.label)
@@ -54,7 +55,7 @@ class Ui_about(object):
     def retranslateUi(self, about):
         _translate = QtCore.QCoreApplication.translate
         about.setWindowTitle(_translate("about", "About PhyloSuite"))
-        self.label_2.setText(_translate("about", "<html><head/><body><p align=\"center\"><span style=\" font-size:14pt;\">PhyloSuite</span><span style=\" font-size:14pt; vertical-align:super;\">®</span><span style=\" font-size:14pt;\"> v1.1.16</span></p><p align=\"center\"><span style=\" font-size:14pt;\">Copyright © 2018 Zhang D., Gao F., Wang G. et al.</span></p><p align=\"center\"><span style=\" font-size:14pt;\">Presented by Zhang D., Gao F., Wang G. et al.</span></p><p align=\"center\"><span style=\" font-size:14pt;\">Email: dongzhang0725@gmail.com</span></p><p align=\"center\"><span style=\" font-size:14pt;\">WebSite: </span><a href=\"https://github.com/dongzhang0725/PhyloSuite\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">https://github.com/dongzhang0725/PhyloSuite</span></a></p></body></html>"))
+        self.label_2.setText(_translate("about", "<html><head/><body><p align=\"center\"><span style=\" font-size:14pt;\">PhyloSuite</span><span style=\" font-size:14pt; vertical-align:super;\">®</span><span style=\" font-size:14pt;\"> v1.2.1</span></p><p align=\"center\"><span style=\" font-size:14pt;\">Copyright © 2020 Zhang D., Gao F., Wang G. et al.</span></p><p align=\"center\"><span style=\" font-size:14pt;\">Presented by Zhang D., Gao F., Wang G. et al.</span></p><p align=\"center\"><span style=\" font-size:14pt;\">Email: dongzhang0725@gmail.com</span></p><p align=\"center\"><span style=\" font-size:14pt;\">WebSite: </span><a href=\"https://github.com/dongzhang0725/PhyloSuite\"><span style=\" font-size:14pt; text-decoration: underline; color:#0000ff;\">https://github.com/dongzhang0725/PhyloSuite</span></a></p></body></html>"))
 
 from uifiles import myRes_rc
 

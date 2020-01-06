@@ -38,6 +38,8 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
     closeSig = pyqtSignal(str, str)
     # 用于输入文件后判断用
     ui_closeSig = pyqtSignal(str)
+    ##弹出识别输入文件的信号
+    auto_popSig = pyqtSignal(QDialog)
 
     def __init__(
             self,
@@ -50,6 +52,7 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
             parent=None):
         super(PartitionFinder, self).__init__(parent)
         self.parent = parent
+        self.function_name = "PartitionFinder2"
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         self.workPath = workPath
@@ -134,7 +137,8 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
         ## brief demo
         self.label_12.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
             "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-10-1-Brief-example")))
-
+        ##自动弹出识别文件窗口
+        self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
     def on_pushButton_5_clicked(self):
@@ -155,7 +159,7 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
             self.commands = PFcmd
             self.textEdit_log.clear()  # 清空log
             self.PF2_popen = self.factory.init_popen(self.commands)
-            self.logGuiSig.emit(self.commands)
+            self.factory.emitCommands(self.logGuiSig, self.commands)
             self.worker = WorkThread(self.run_command, parent=self)
             self.worker.start()
 
@@ -331,7 +335,7 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
                                                                                            self.time_used)
             with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite, please cite:\nZhang, D., Gao, F., Li, W.X., Jakovlić, I., Zou, H., Zhang, J., and Wang, G.T. (2018). PhyloSuite: an integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. bioRxiv, doi: 10.1101/489088.\n"
+                        "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                         "If you use PartitionFinder 2, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -430,6 +434,7 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
 
     def guiRestore(self):
 
+        self.factory.centerWindow(self)
         # Restore geometry
         self.resize(
             self.partitionfinder_settings.value('size', QSize(500, 500)))
@@ -516,12 +521,15 @@ separate = (Gene1_codon1) (Gene1_codon2) (Gene1_codon3) (intron);"""
                     if os.path.exists(partition):
                         with open(partition, encoding="utf-8", errors='ignore') as file1:
                             line1 = file1.readline()
-                            rgx = re.compile(r"(.+)=(\d+)-(\d+);")
+                            rgx = re.compile(r"(.+) *= *(\d+) *\- *(\d+)(\\3)?;")
                             while not rgx.search(line1):
                                 line1 = file1.readline()
                             block_content = ""
                             while rgx.search(line1):
-                                block_content += line1
+                                name = rgx.search(line1).group(1)
+                                name_new = self.factory.refineName(name.strip(), remain_words="-")
+                                line1_new = re.sub(r"(.+) *= *(\d+) *\- *(\d+)(\\3)?;", r"%s=\2-\3\4"%name_new, line1)
+                                block_content += line1_new
                                 line1 = file1.readline()
                         obj.setText(block_content)
 
@@ -1254,6 +1262,8 @@ models = {self.models};\n# MODEL SELECCTION #\nmodel_selection = {self.model_sel
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
+            with open(self.exportPath + os.sep + "PhyloSuite_PartitionFinder.log", "a") as f:
+                f.write(text + "\n")
 
     def setWordWrap(self):
         button = self.sender()
@@ -1308,16 +1318,20 @@ models = {self.models};\n# MODEL SELECCTION #\nmodel_selection = {self.model_sel
                 self.textEdit.setText(PF_partition.strip())
                 self.textEdit_2.setText(PF_partition.strip())
 
-    def popupAutoDec(self):
-        popupUI = self.factory.popUpAutoDetect(
-            "PartitionFinder2", self.workPath, self)
+    def popupAutoDec(self, init=False):
+        self.init = init
+        self.factory.popUpAutoDetect(
+            "PartitionFinder2", self.workPath, self.auto_popSig, self)
+
+    def popupAutoDecSub(self, popupUI):
         if not popupUI:
-            QMessageBox.warning(
-                self,
-                "Warning",
-                "<p style='line-height:25px; height:25px'>No available file detected!</p>")
+            if not self.init:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    "<p style='line-height:25px; height:25px'>No available file detected!</p>")
             return
-        popupUI.checkBox.setVisible(False)
+        if not self.init: popupUI.checkBox.setVisible(False)
         if popupUI.exec_() == QDialog.Accepted:
             widget = popupUI.listWidget_framless.itemWidget(
                 popupUI.listWidget_framless.selectedItems()[0])
