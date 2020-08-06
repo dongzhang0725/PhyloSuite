@@ -129,7 +129,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             if not font_changed:
                 # 如果用户没有改过字体
                 qss_file = re.sub(r"^\*{font-family: (.+?); font-size: (\d+)pt;}",
-                                  "*{font-family: Arial; font-size: 12pt;}", qss_file)
+                                  "*{font-family: Arial; font-size: 10pt;}", qss_file)
                 with open(self.thisPath + os.sep + 'style.qss', "w", encoding="utf-8", errors='ignore') as f:
                     f.write(qss_file)
         self.setStyleSheet(qss_file)
@@ -2786,14 +2786,20 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         elif item.text() == "About":
             self.on_About_triggered()
         elif item.text() == "Documentation":
-            QDesktopServices.openUrl(QUrl(
-                "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/"))
+            country = self.factory.path_settings.value("country", "UK")
+            url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/" if \
+                country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/"
+            QDesktopServices.openUrl(QUrl(url))
         elif item.text() == "Operation":
-            QDesktopServices.openUrl(QUrl(
-                "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-1-1-Brief-example"))
+            country = self.factory.path_settings.value("country", "UK")
+            url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#4-1-1-Brief-example" if \
+                country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-1-1-Brief-example"
+            QDesktopServices.openUrl(QUrl(url))
         elif item.text() == "Examples":
-            QDesktopServices.openUrl(QUrl(
-                "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/example.zip"))
+            country = self.factory.path_settings.value("country", "UK")
+            url = "http://phylosuite.jushengwu.com/example.zip" if \
+                country == "China" else "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/example.zip"
+            QDesktopServices.openUrl(QUrl(url))
 
     def highlight_identical_sequences(self):
         if self.highlight_identical_btn.toolTip() == "Clean Identical Sequences":
@@ -2929,7 +2935,15 @@ NC_034937.1
         arrayMAN = ArrayManager(reverse_array)
         self.found_rows = arrayMAN.get_index_by_IDs(list_IDs)
         self.current_find_IDs = 0
-        self.switchFindIDs()
+        # # 选中全部行
+        indexes = [self.displayTableModel.index(row, 0) for row in self.found_rows]
+        mode = QItemSelectionModel.Select | QItemSelectionModel.Rows
+        selectModel = self.tableView.selectionModel()
+        selectModel.selectionChanged.connect(lambda:
+                                             self.statusBar().showMessage(str(len(set([i.row() for i in
+                                                                                       self.tableView.selectedIndexes()]))) + " sequence(s) selected"))
+        [selectModel.select(index, mode) for index in indexes]
+        # self.switchFindIDs()
         if len(self.found_rows) > 1:
             dialog.label.setVisible(False)
             self.textEdit_IDs.setVisible(False)
@@ -3149,9 +3163,10 @@ NC_034937.1
                     self.updateAPP()
             else:
                 popupUI.label.setText("New version <span style='font-weight:600; color:#ff0000;'>%s</span> found. "
-                                      "<br>Please use '<span style='font-weight:600; color:#ff0000;'>"
-                                      "pip install --upgrade PhyloSuite</span>' "
-                                      "to update."%new_version)
+                                      "<br>To update, please click the '<span style='font-weight:600; color:#ff0000;'>Update now</span>' "
+                                      "button below<br> or use '<span style='font-weight:600; color:#ff0000;'>"
+                                      "pip install --upgrade PhyloSuite</span>' if you use the Python version"
+                                      "."%new_version)
                 popupUI.exec_()
         else:
             if mode == "check":
@@ -3292,6 +3307,16 @@ NC_034937.1
                     self,
                     "PhyloSuite",
                     "<p style='line-height:25px; height:25px'>File saved successfully!</p>")
+        elif qtext.strip() == "here":
+            country = self.factory.path_settings.value("country", "UK")
+            url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/example/" if \
+                country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/example/"
+            QDesktopServices.openUrl(QUrl(url))
+        elif qtext.strip() == "Quick Start":
+            country = self.factory.path_settings.value("country", "UK")
+            url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/quick_start/" if \
+                country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/quick_start/"
+            QDesktopServices.openUrl(QUrl(url))
         else:
             QDesktopServices.openUrl(QUrl(qtext))
 

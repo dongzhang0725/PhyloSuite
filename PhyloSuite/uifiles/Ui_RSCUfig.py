@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\RSCUfig.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\RSCUfig.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -69,11 +69,14 @@ class Ui_RSCUfig(object):
         self.horizontalLayout.addWidget(self.label_16)
         spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem1)
+        self.label_3 = QtWidgets.QLabel(self.groupBox)
+        self.label_3.setObjectName("label_3")
+        self.horizontalLayout.addWidget(self.label_3)
         self.label_2 = ClickedLableGif(self.groupBox)
         self.label_2.setText("")
         self.label_2.setObjectName("label_2")
         self.horizontalLayout.addWidget(self.label_2)
-        self.gridLayout.addLayout(self.horizontalLayout, 1, 0, 1, 1)
+        self.gridLayout.addLayout(self.horizontalLayout, 1, 0, 1, 2)
         self.groupBox_2 = QtWidgets.QGroupBox(self.splitter)
         self.groupBox_2.setObjectName("groupBox_2")
         self.gridLayout_6 = QtWidgets.QGridLayout(self.groupBox_2)
@@ -237,6 +240,7 @@ class Ui_RSCUfig(object):
         self.listWidget_3.setToolTip(_translate("RSCUfig", "Try to drag to reorder"))
         self.toolButton_T.setShortcut(_translate("RSCUfig", "Del"))
         self.label_16.setText(_translate("RSCUfig", "<html><head/><body><p>Try to drag <span style=\" font-weight:600; color:#ff0105;\">RSCU</span> tables (<span style=\" font-weight:600; color:#ff0000;\">_stack.csv</span>) and drop here</p></body></html>"))
+        self.label_3.setText(_translate("RSCUfig", "Demo:"))
         self.label_2.setToolTip(_translate("RSCUfig", "Brief example"))
         self.groupBox_2.setTitle(_translate("RSCUfig", "Parameters"))
         self.label_4.setText(_translate("RSCUfig", "Order on the x-axis:"))

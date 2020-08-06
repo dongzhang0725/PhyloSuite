@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import glob
 import re
 from collections import OrderedDict
 
@@ -62,17 +63,17 @@ dict_url = {
                 "tbl2asn": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/tbl2asn.zip"
             },
             "Chinese resource": {
-                "mafft": "https://pyqt5.com/data/phylosuite/mafft.zip",
+                "mafft": "http://phylosuite.jushengwu.com/plugins/mafft.zip",
                 "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
                 "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe",
-                "gblocks": "https://pyqt5.com/data/phylosuite/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "https://pyqt5.com/data/phylosuite/iqtree-1.6.8-Windows.zip",
-                "MrBayes": "https://pyqt5.com/data/phylosuite/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "https://pyqt5.com/data/phylosuite/PartitionFinder_win64.zip",
-                "PF2": "https://pyqt5.com/data/phylosuite/partitionfinder-2.1.1.zip",
-                "macse": "https://pyqt5.com/data/phylosuite/macse_v2.03.jar.zip",
-                "trimAl": "https://pyqt5.com/data/phylosuite/trimal.v1.2rev59.zip",
-                "tbl2asn": "https://pyqt5.com/data/phylosuite/tbl2asn.zip"
+                "gblocks": "http://phylosuite.jushengwu.com/plugins/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "http://phylosuite.jushengwu.com/plugins/iqtree-1.6.8-Windows.zip",
+                "MrBayes": "http://phylosuite.jushengwu.com/plugins/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "http://phylosuite.jushengwu.com/plugins/PartitionFinder_win64.zip",
+                "PF2": "http://phylosuite.jushengwu.com/plugins/partitionfinder-2.1.1.zip",
+                "macse": "http://phylosuite.jushengwu.com/plugins/macse_v2.03.jar.zip",
+                "trimAl": "http://phylosuite.jushengwu.com/plugins/trimal.v1.2rev59.zip",
+                "tbl2asn": "http://phylosuite.jushengwu.com/plugins/tbl2asn.zip"
             }
         },
         "32bit": {
@@ -116,17 +117,17 @@ dict_url = {
                 "tbl2asn": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/tbl2asn.zip"
             },
             "Chinese resource": {
-                "mafft": "https://pyqt5.com/data/phylosuite/mafft-7.304-win32.zip",
+                "mafft": "http://phylosuite.jushengwu.com/plugins/mafft-7.304-win32.zip",
                 "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
                 "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe",
-                "gblocks": "https://pyqt5.com/data/phylosuite/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "https://pyqt5.com/data/phylosuite/iqtree-1.6.8-Windows32.zip",
-                "MrBayes": "https://pyqt5.com/data/phylosuite/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "https://pyqt5.com/data/phylosuite/PartitionFinder_win32.zip",
-                "PF2": "https://pyqt5.com/data/phylosuite/partitionfinder-2.1.1.zip",
-                "macse": "https://pyqt5.com/data/phylosuite/macse_v2.03.jar.zip",
-                "trimAl": "https://pyqt5.com/data/phylosuite/trimal.v1.2rev59.zip",
-                "tbl2asn": "https://pyqt5.com/data/phylosuite/tbl2asn.zip"
+                "gblocks": "http://phylosuite.jushengwu.com/plugins/Gblocks_Windows_0.91b.zip",
+                "iq-tree": "http://phylosuite.jushengwu.com/plugins/iqtree-1.6.8-Windows32.zip",
+                "MrBayes": "http://phylosuite.jushengwu.com/plugins/MrBayes-3.2.6_WIN32_x64.zip",
+                "compiled PF2": "http://phylosuite.jushengwu.com/plugins/PartitionFinder_win32.zip",
+                "PF2": "http://phylosuite.jushengwu.com/plugins/partitionfinder-2.1.1.zip",
+                "macse": "http://phylosuite.jushengwu.com/plugins/macse_v2.03.jar.zip",
+                "trimAl": "http://phylosuite.jushengwu.com/plugins/trimal.v1.2rev59.zip",
+                "tbl2asn": "http://phylosuite.jushengwu.com/plugins/tbl2asn.zip"
             }
         }
     },
@@ -166,15 +167,15 @@ dict_url = {
                 "macse": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/macse_v2.03.jar.zip",
             },
             "Chinese resource": {
-                "mafft": "https://pyqt5.com/data/phylosuite/mafft-7.407-mac.zip",
+                "mafft": "http://phylosuite.jushengwu.com/plugins/mafft-7.407-mac.zip",
                 "Rscript": "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg",
                 "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg",
-                "gblocks": "https://pyqt5.com/data/phylosuite/Gblocks_OSX_0.91b.zip",
-                "iq-tree": "https://pyqt5.com/data/phylosuite/iqtree-1.6.8-MacOSX.zip",
-                "MrBayes": "https://pyqt5.com/data/phylosuite/MrBayes-3.2.6_MACx64.zip",
-                "compiled PF2": "https://pyqt5.com/data/phylosuite/PartitionFinder_mac.zip",
-                "PF2": "https://pyqt5.com/data/phylosuite/partitionfinder-2.1.1.zip",
-                "macse": "https://pyqt5.com/data/phylosuite/macse_v2.03.jar.zip",
+                "gblocks": "http://phylosuite.jushengwu.com/plugins/Gblocks_OSX_0.91b.zip",
+                "iq-tree": "http://phylosuite.jushengwu.com/plugins/iqtree-1.6.8-MacOSX.zip",
+                "MrBayes": "http://phylosuite.jushengwu.com/plugins/MrBayes-3.2.6_MACx64.zip",
+                "compiled PF2": "http://phylosuite.jushengwu.com/plugins/PartitionFinder_mac.zip",
+                "PF2": "http://phylosuite.jushengwu.com/plugins/partitionfinder-2.1.1.zip",
+                "macse": "http://phylosuite.jushengwu.com/plugins/macse_v2.03.jar.zip",
             }
         }
     }
@@ -209,8 +210,10 @@ class LG_exePath(QDialog, Ui_ExePath, object):
         self.pushButton.setFocus()
         self.lineEdit.installEventFilter(self)
         self.label_4.linkActivated.connect(self.exe_link)
-        self.label_6.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/"
+        self.label_6.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         self.comboBox.currentTextChanged.connect(self.switchRes)
         if platform.system().lower() in ["darwin", "windows"]:
             self.toolButton_3.setStyleSheet("QToolButton {background: transparent;}")
@@ -268,6 +271,9 @@ class LG_exePath(QDialog, Ui_ExePath, object):
         else:
             if path.endswith("HmmCleaner.pl"):
                 ##dependencies没有配置成功
+                country = self.factory.path_settings.value("country", "UK")
+                url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-4-HmmCleaner-configuration" if \
+                    country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-4-HmmCleaner-configuration"
                 QMessageBox.critical(
                     self,
                     "Settings",
@@ -275,9 +281,9 @@ class LG_exePath(QDialog, Ui_ExePath, object):
                     "<a href=\"https://cpandeps.grinnz.com/?dist=Bio-MUST-Apps-HmmCleaner&phase=build&perl_version=v5.30.0&style=table\">"
                     "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">dependencies</span></a> "
                     "(e.g. Bio-FastParsers) of HmmCleaner are not installed. You can install HmmCleaner following this " \
-                    "<a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-4-HmmCleaner-configuration\">" \
+                    "<a href=\"%s\">" \
                     "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">instruction</a>." \
-                    "</span></p>")
+                    "</span></p>"%url)
             elif self.flag not in ["python27"]: #python27和java有自己的提醒
                 QMessageBox.critical(
                     self,
@@ -387,8 +393,10 @@ class LG_PF2_exePath(QDialog, Ui_PF2ExePath, object):
         with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
             self.qss_file = f.read()
         self.setStyleSheet(self.qss_file)
-        self.label_9.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/"
+        self.label_9.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         self.comboBox.currentTextChanged.connect(self.switchRes)
         self.switchRes("Github")
         self.adjustSize()
@@ -494,7 +502,10 @@ class Setting(QDialog, Ui_Settings, object):
         self.thisPath = self.factory.thisPath
         self.setupUi(self)
         self.currentPath = self.thisPath
-        self.factory.init_check(self)
+        iniCheckWorker = WorkThread(lambda: self.factory.init_check(self),
+                                    parent=self)
+        iniCheckWorker.start()
+        # self.factory.init_check(self)
         ##信号槽
         self.comboBox.currentTextChanged.connect(self.judgeSettings)
         self.settings = QSettings(
@@ -639,8 +650,10 @@ class Setting(QDialog, Ui_Settings, object):
             self.tableWidget.setRowHidden(self.dict_name_row["perl"], True)
             self.tableWidget.setRowHidden(self.dict_name_row["HmmCleaner"], True)
         ## brief demo
-        self.label_6.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-4-1-Lineage-recognition")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#4-4-1-Lineage-recognition" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-4-1-Lineage-recognition"
+        self.label_6.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         self.installFinishedSig.connect(self.Install_finished)
         ##设置白色背景
         p = self.tableWidget.palette()
@@ -656,6 +669,28 @@ class Setting(QDialog, Ui_Settings, object):
 
     def fetch_os_bit(self):
         return "64bit" if platform.machine().endswith('64') else "32bit"
+
+    @pyqtSlot()
+    def on_pushButton_clicked(self):
+        """
+        restore settings
+        """
+        reply = QMessageBox.question(
+            self,
+            "Settings",
+            "<p style='line-height:25px; height:25px'>Please confirm that you decided to restore the settings "
+            "to default.</p>",
+            QMessageBox.Yes,
+            QMessageBox.Cancel)
+        if reply == QMessageBox.Yes:
+            list_ini = glob.glob(self.factory.thisPath + os.sep + 'settings' + os.sep + "*.ini")
+            for i in list_ini:
+                if os.path.exists(i):
+                    try: os.remove(i)
+                    except: pass
+            QMessageBox.information(
+                self, "Settings", "<p style='line-height:25px; height:25px'>Settings restored successfully! "
+                                  "Please restart PhyloSuite now</p>")
 
     @pyqtSlot()
     def on_download_mafft_button_clicked(self):
@@ -1375,15 +1410,18 @@ class Setting(QDialog, Ui_Settings, object):
             label2 = "HmmCleaner:"
             label3 = "<html><head/><body><p>If you don\'t have HmmCleaner, please <span style=\" font-weight:600; color:#ff0000;\">configure</span>.</p></body></html>"
             self.installStatus(flag, "start")
+            country = self.factory.path_settings.value("country", "UK")
+            url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-4-HmmCleaner-configuration" if \
+                country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-4-HmmCleaner-configuration"
             link = "<html><head/><body><p>Please install HmmCleaner following this " \
-                   "<a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-4-HmmCleaner-configuration\">" \
+                   "<a href=\"%s\">" \
                    "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">instruction</a>" \
                    "</span>. If you are adding HmmCleaner to environment variables, when you finish the installation," \
                    " you need to close and reopen PhyloSuite to see if it installed successfully" \
                    " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the HmmCleaner executable" \
                    " file (<span style=\" font-weight:600; color:#ff0000;\">HmmCleaner.pl</span>) manually (using options above).</p>" \
                    "<span style=\" font-weight:600; color:#ff0000;\">Please note that HmmCleaner also relies on Perl 5 " \
-                   "and HMMER (all executables from HMMER have to be added in the environment variable $PATH).</span></body></html>"
+                   "and HMMER (all executables from HMMER have to be added in the environment variable $PATH).</span></body></html>"%url
             if platform.system().lower() == "windows":
                 placeholdertext = "C:path-to-HmmCleaner/HmmCleaner.pl"
                 self.HmmCleaner_target = "HmmCleaner.pl"

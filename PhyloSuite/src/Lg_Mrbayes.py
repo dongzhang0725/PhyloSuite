@@ -287,8 +287,10 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         self.pushButton_2.toolButton.setMenu(menu2)
         self.pushButton_2.toolButton.menu().installEventFilter(self)
         ## brief demo
-        self.label_9.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-12-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-12-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-12-1-Brief-example"
+        self.label_9.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
@@ -359,7 +361,7 @@ class MrBayes(QDialog, Ui_MrBayes, object):
                 model_des = self.model4des
             else:
                 model_des = "N/A"
-        self.description = '''Bayesian Inference phylogenies were inferred using MrBayes 3.2.6 (Ronquist et al., 2012) under %s model (%s parallel runs, %s generations), in which the the initial %s sampled data were discarded as burn-in.''' % (
+        self.description = '''Bayesian Inference phylogenies were inferred using MrBayes 3.2.6 (Ronquist et al., 2012) under %s model (%s parallel runs, %s generations), in which the initial %s sampled data were discarded as burn-in.''' % (
             model_des, runs, generations, burnin)
         self.reference = "Ronquist, F., Teslenko, M., van der Mark, P., Ayres, D.L., Darling, A., Höhna, S., Larget, B., Liu, L., Suchard, M.A., Huelsenbeck, J.P., 2012. MrBayes 3.2: efficient Bayesian phylogenetic inference and model choice across a large model space. Syst. Biol. 61, 539-542."
         if self.checkBox_4.isEnabled() and self.checkBox_4.isChecked():
@@ -477,13 +479,16 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         """
         if self.isRunning():
             if (not silence) and (not self.workflow):
+                country = self.factory.path_settings.value("country", "UK")
+                url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-12-1-Brief-example" if \
+                    country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-12-1-Brief-example"
                 reply = QMessageBox.question(
                     self,
                     "Confirmation",
                     "<p style='line-height:25px; height:25px'>MrBayes is still running, terminate it? <br>Tips:<br>"
                     "--You can infer the tree via the \"red down arrow\".<br>"
                     "--You can continue this analysis via the \"Continue Previous Analysis\" Button.<br>"
-                    "--For a brief example, please click <a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-9-1-Brief-example\">here</a></p>",
+                    "--For a brief example, please click <a href=\"%s\">here</a></p>"%url,
                     QMessageBox.Yes,
                     QMessageBox.Cancel)
             else:
@@ -554,9 +559,12 @@ class MrBayes(QDialog, Ui_MrBayes, object):
             if not self.interrupt:
                 ok = self.judgeFinish()
                 if not ok:
+                    country = self.factory.path_settings.value("country", "UK")
+                    url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#7-3-MrBayes-does-not-work" if \
+                        country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-3-MrBayes-does-not-work"
                     self.mrbayes_exception.emit("MrBayes stopped abnormally. Click <span style='font-weight:600; color:#ff0000;'>Show log</span> to see detail! You may copy the command (%s)"
-                                                " to the terminal to debug it. For further details, please visit"
-                                                " <a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-3-MrBayes-does-not-work\">here</a>."%self.MB_exe)
+                                                " to the terminal to debug it. For details, please visit"
+                                                " <a href=\"%s\">here</a>."%(self.MB_exe, url))
                     status = "except"
                 else:
                     status = "stop"
@@ -634,7 +642,9 @@ class MrBayes(QDialog, Ui_MrBayes, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.MrBayes_settings.value('size', QSize(557, 673)))
+        height = 750 if platform.system().lower() == "darwin" else 594
+        size = self.factory.judgeWindowSize(self.MrBayes_settings, 896, height)
+        self.resize(size)
         self.factory.centerWindow(self)
         # self.move(self.MrBayes_settings.value('pos', QPoint(875, 254)))
 
@@ -831,7 +841,7 @@ class MrBayes(QDialog, Ui_MrBayes, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
-            with open(self.exportPath + os.sep + "PhyloSuite_MrBayes.log", "a") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_MrBayes.log", "a", errors='ignore') as f:
                 f.write(text + "\n")
 
     def save_log_to_file(self):
@@ -1535,7 +1545,8 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         self.viewworker = WorkThread(
             self.viewResultsEarly_workFun, parent=self)
         self.viewworker.finished.connect(lambda:
-                                         [self.progressDialog.close(), self.stop_early_message()])
+                                         [self.progressDialog.close(), self.stop_early_message(),
+                                          self.focusSig.emit(self.exportPath)])
         self.viewworker.start()
 
     def viewResultsEarly_workFun(self):

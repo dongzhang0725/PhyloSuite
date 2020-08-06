@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>444</width>
+    <width>558</width>
     <height>416</height>
    </rect>
   </property>
@@ -129,7 +129,7 @@
            <string/>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
           </property>
           <property name="iconSize">
@@ -180,11 +180,18 @@
           </property>
           <property name="sizeHint" stdset="0">
            <size>
-            <width>40</width>
+            <width>135</width>
             <height>20</height>
            </size>
           </property>
          </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Demo:</string>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="ClickedLableGif" name="label_2">
@@ -243,7 +250,7 @@
          <string>Start</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
         </property>
        </widget>
@@ -254,7 +261,7 @@
          <string>Cancel</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
         </property>
        </widget>
@@ -293,7 +300,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections/>
 </ui>

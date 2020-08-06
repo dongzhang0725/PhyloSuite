@@ -270,8 +270,10 @@ class CompareTable(QDialog, Ui_compareTable, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-14-2-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-14-2-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-14-2-1-Brief-example"
+        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -397,7 +399,7 @@ class CompareTable(QDialog, Ui_compareTable, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.CompareTable_settings.value('size', QSize(500, 500)))
+        self.resize(self.factory.judgeWindowSize(self.CompareTable_settings, 652, 483))
         self.factory.centerWindow(self)
         # self.move(self.CompareTable_settings.value('pos', QPoint(875, 254)))
 

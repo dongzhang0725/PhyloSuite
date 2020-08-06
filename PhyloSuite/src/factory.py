@@ -38,6 +38,7 @@ class Factory(QObject, object):
         QSettings.setDefaultFormat(QSettings.IniFormat)
         self.path_settings = QSettings()
         self.thisPath = self.path_settings.value("thisPath", thisPath)
+        self.country = self.path_settings.value("country", "China")
         self.workPlaceSettingPath = self.path_settings.value("current workplace setting path", thisPath)
         self.settings_ini = QSettings(
             self.thisPath + '/settings/setting_settings.ini', QSettings.IniFormat)
@@ -262,6 +263,7 @@ class Factory(QObject, object):
 
     def ctrl_startButton_status(self, list_):
         button, progressbar, state, path, qss, parent = list_
+        if (type(progressbar) != list) and progressbar.maximum()==0: progressbar.setMaximum(100)  # 取消busy状态
         if state == "start":
             button.setEnabled(False)  # 使之失效
             button.setStyleSheet(
@@ -468,7 +470,7 @@ class Factory(QObject, object):
         #                                     }''')
         progressDialog.setMinimumWidth(260)
         if busy:
-            progressDialog.setMaximum(0)
+            # progressDialog.setMaximum(0)
             progressDialog.setMaximum(0)
         return progressDialog
 
@@ -564,8 +566,10 @@ class Factory(QObject, object):
 
     def is_aligned(self, dict_taxon):  # 判定序列是否比对过
         list_lenth = []
+        d_ = {}
         for i in dict_taxon:
             list_lenth.append(len(dict_taxon[i]))
+            d_[i] = len(dict_taxon[i])
         if len(set(list_lenth)) == 1:
             return True
         else:
@@ -1879,7 +1883,34 @@ class Factory(QObject, object):
 
     def init_check(self, parent):
         try:
-            # 判断将mainwindow里面的data的相关设置拷贝到对于workplace的设置里面
+            # 删掉插件不合格的路径
+            for i in ["python27", "mafft", "PF2", "gblocks", "iq-tree", "MrBayes", "tbl2asn", "RscriptPath", "mpi",
+                      "perl", "java", "macse", "trimAl", "HmmCleaner"]:
+                path = self.settings_ini.value(i, "")
+                if path and not os.path.exists(path):
+                    self.settings_ini.setValue(i, "")
+            # 更新1.2.1版本的时候，没有整理分类相关设置的
+            ini_data = [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
+                        [['', '*tera', '*dea', '*dae', '*nae', ''],
+                         ['', '', '*ida', '', '', ''],
+                         ['', '', '', '', '', ''],
+                         ['', '', '', '', '', ''],
+                         ['', '', '', '', '', '']]]
+            data = self.settings_ini.value("Taxonomy Recognition", ini_data)
+            if type(data) == list:
+                new_data = OrderedDict(
+                    [("Default taxonomy settings", data)])
+                self.settings_ini.setValue("Taxonomy Recognition", new_data)
+            # 检查是否中国用户
+            import json
+            import urllib.request
+            try:
+                with urllib.request.urlopen("https://geolocation-db.com/json/") as url:
+                    data = json.loads(url.read().decode())
+                    country = data["country_name"]
+                self.path_settings.setValue("country", country)
+            except: pass
+            # 判断将mainwindow里面的data的相关设置拷贝到对应workplace的设置里面
             data_settings = QSettings(
                 self.workPlaceSettingPath + os.sep + 'data_settings.ini', QSettings.IniFormat)
             mainwindow_settings = QSettings(
@@ -1895,12 +1926,6 @@ class Factory(QObject, object):
                     if remainingStr.startswith("_GenBank_File"):
                         data_settings.setValue(key, mainwindow_settings.value(key))
                         mainwindow_settings.remove(key)
-            # 删掉插件不合格的路径
-            for i in ["python27", "mafft", "PF2", "gblocks", "iq-tree", "MrBayes", "tbl2asn", "RscriptPath", "mpi",
-                      "perl", "java", "macse", "trimAl", "HmmCleaner"]:
-                path = self.settings_ini.value(i, "")
-                if path and not os.path.exists(path):
-                    self.settings_ini.setValue(i, "")
             # 初始化extract settings
             GenBankExtract_settings = QSettings(
                 self.thisPath + '/settings/GenBankExtract_settings.ini', QSettings.IniFormat)
@@ -1971,19 +1996,6 @@ class Factory(QObject, object):
                 "extract listed gene", None)
             if not dict_data:
                 parseANNT_settings.setValue("extract listed gene", init_value2)
-            # 更新1.2.1版本的时候，没有整理分类相关设置的
-            ini_data = [['Class', 'Order', 'Superfamily', 'Family', 'Subfamily', 'Genus'],
-                                               [['', '*tera', '*dea', '*dae', '*nae', ''],
-                                                ['', '', '*ida', '', '', ''],
-                                                ['', '', '', '', '', ''],
-                                                ['', '', '', '', '', ''],
-                                                ['', '', '', '', '', '']]]
-            data = self.settings_ini.value("Taxonomy Recognition", ini_data)
-            if type(data) == list:
-                #
-                new_data = OrderedDict(
-                    [("Default taxonomy settings", data)])
-                self.settings_ini.setValue("Taxonomy Recognition", new_data)
         except:
             parent.exception_signal.emit(''.join(
                 traceback.format_exception(*sys.exc_info())) + "\n")
@@ -2053,7 +2065,9 @@ class Factory(QObject, object):
                 content = f.read()
                 current_version = re.search(
                     r"## *PhyloSuite v([^ ]+?) \(", content).group(1)
-            if platform.system().lower() == "windows":
+            if self.path_settings.value("country", "UK") == "China":
+                version_url = "http://phylosuite.jushengwu.com/NEWS.md"
+            elif platform.system().lower() == "windows":
                 version_url = "https://github.com/dongzhang0725/PhyloSuite/blob/master/NEWS.md"
             elif platform.system().lower() == "darwin":
                 version_url = "https://github.com/dongzhang0725/PhyloSuite_Mac/blob/master/NEWS.md"
@@ -2061,7 +2075,6 @@ class Factory(QObject, object):
                 version_url = "https://github.com/dongzhang0725/PhyloSuite_linux/blob/master/NEWS.md"
             else:
                 return
-
             def slot(urlContent):
                 # 如果是error开始的字符串，这里写一下
                 if urlContent.startswith("Error"):
@@ -2069,11 +2082,18 @@ class Factory(QObject, object):
                         urlContent += "\nUpdate: please check network connection"
                         exceptSig.emit(urlContent)
                     return
-                rgx = re.compile(
-                    r"(?sm)(<h2>.+?PhyloSuite v([^ ]+?) \(.+?</h2>.+?<ul>.+?</ul>)\s+?(?=<h2>|</article>)")
-                rgx_search = rgx.search(urlContent)
-                description = rgx_search.group(1)
-                new_version = rgx_search.group(2)
+                if "<h2>" not in urlContent:
+                    # 国内源，匹配markdown内容
+                    rgx = re.compile(r"(?s)## *PhyloSuite v([^ ]+?) \(.+?\)\n(.+?)## PhyloSuite")
+                    rgx_search = rgx.search(urlContent)
+                    description = rgx_search.group(2).replace("\n", "<br>").replace(" ", "&nbsp;")
+                    new_version = rgx_search.group(1)
+                else:
+                    rgx = re.compile(
+                        r"(?sm)(<h2>.*?PhyloSuite v([^ ]+?) \(.+?</h2>.+?<ul>.+?</ul>)\s+?(?=<h2>|</article>)")
+                    rgx_search = rgx.search(urlContent)
+                    description = rgx_search.group(1)
+                    new_version = rgx_search.group(2)
                 # print(current_version, new_version, description)
                 updateSig.emit(current_version, new_version, description)
             httpread = HttpRead(parent=parent)
@@ -2097,18 +2117,21 @@ class Factory(QObject, object):
         print(exception)
         msg = QMessageBox(parent)
         msg.setIcon(QMessageBox.Critical)
+        country = self.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins"
         if (platform.system().lower() == "linux") and ("Error creating SSL context" in exception):
             msg.setWindowTitle("Network error")
             msg.setText(
                 "<p style='line-height:25px; height:25px'>Network library malfunction while checking for updates, "
                 "see <a href=\"https://github.com/barryvdh/laravel-snappy/issues/217\">https://github.com/barryvdh/laravel-snappy/issues/217</a> for resolutions! "
-                "Alternatively, you also can update PhyloSuite manually following this <a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins\">instruction</a></p>")
+                "Alternatively, you also can update PhyloSuite manually following this <a href=\"%s\">instruction</a></p>"%url)
         elif exception.endswith("Update: please check network connection"):
             msg.setWindowTitle("Update failed")
             msg.setText(
                 "<p style='line-height:25px; height:25px'>Please check your network connection! "
                 "Alternatively, you also can update PhyloSuite manually following this "
-                "<a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins\">instruction</a></p>")
+                "<a href=\"%s\">instruction</a></p>"%url)
         elif exception.endswith("GenBank file parse failed"):
             msg.setWindowTitle("GenBank file parse failed")
             msg.setText(
@@ -2446,6 +2469,11 @@ class Factory(QObject, object):
                                             ['', '', '', '', '', '']]])])
         currentTaxSetName = self.settings_ini.value("comboBox", "Default taxonomy settings")
         return self.settings_ini.value("Taxonomy Recognition", ini_data)[currentTaxSetName]
+
+    def judgeWindowSize(self, setting, width, height):
+        qsize = setting.value('size', QSize(width, height))
+        width_, height_ = qsize.width(), qsize.height()
+        return qsize if width_ >= width and height_ >= height else QSize(width, height)
 
 
 class WorkThread(QThread):

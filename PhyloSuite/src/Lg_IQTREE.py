@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import glob
 import multiprocessing
 import re
 import shutil
@@ -131,17 +131,20 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-11-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-11-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-11-1-Brief-example"
+        self.label.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
-    def on_pushButton_clicked(self):
+    def on_pushButton_clicked(self, cmd_directly=False):
         """
         execute program
         """
-        self.command = self.getCMD()
+        self.command = self.getCMD() if not cmd_directly else cmd_directly[0]
+        self.cmd_directly = cmd_directly
         if self.command:
             # self.IQ_popen = self.factory.init_popen(self.command)
             self.worker = WorkThread(self.run_command, parent=self)
@@ -218,6 +221,66 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                         self.qss_file,
                         self])
 
+    @pyqtSlot()
+    def on_pushButton_continue_clicked(self):
+        """
+        continue
+        """
+        if self.isRunning():
+            QMessageBox.information(
+                self,
+                "IQ-TREE",
+                "<p style='line-height:25px; height:25px'>IQ-TREE is running!</p>")
+            return
+        resultsPath = None
+        ##choose work folder
+        if os.path.exists(self.workPath + os.sep + "IQtree_results"):
+            list_result_dirs = sorted([i for i in os.listdir(self.workPath + os.sep + "IQtree_results")
+                                       if os.path.isdir(self.workPath + os.sep + "IQtree_results" + os.sep + i)],
+                                      key=lambda x: os.path.getmtime(
+                                          self.workPath + os.sep + "IQtree_results" + os.sep + x), reverse=True)
+            if list_result_dirs:
+                item, ok = QInputDialog.getItem(self, "Choose previous results",
+                                                "Previous results:", list_result_dirs, 0, False)
+                if ok and item:
+                    resultsPath = self.workPath + os.sep + "IQtree_results" + os.sep + item
+        else:
+            QMessageBox.information(
+                self,
+                "IQ-TREE",
+                "<p style='line-height:25px; height:25px'>No previous IQ-TREE analysis found in %s!</p>" % os.path.normpath(
+                    self.workPath))
+            return
+        if not resultsPath: return
+        has_cmd = False
+        if os.path.exists(resultsPath + os.sep + "PhyloSuite_IQ-TREE.log"):
+            with open(resultsPath + os.sep + "PhyloSuite_IQ-TREE.log", encoding="utf-8", errors='ignore') as f:
+                rgx = re.compile(r"(?s)\=+?Commands\=+?\n(.+?)\n\={3,}")
+                rgx_search = rgx.search(f.read())
+                if rgx_search:
+                    cmd = rgx_search.group(1)
+                    cmd = cmd.replace("\n", " ")
+                    has_cmd = True
+        else:
+            ## 用IQTREE自带的log文件来获取
+            list_log_files = glob.glob(resultsPath + os.sep + "*.log")
+            for i in list_log_files:
+                with open(i) as f1:
+                    content = f1.read()
+                    rgx_search = re.search(r"^Command: (.+?)\n", content)
+                    if rgx_search:
+                        cmd = rgx_search.group(1)
+                        has_cmd = True
+        if has_cmd:
+            self.interrupt = False
+            self.on_pushButton_clicked(cmd_directly=[cmd, resultsPath])
+        else:
+            QMessageBox.information(
+                self,
+                "IQ-TREE",
+                "<p style='line-height:25px; height:25px'>No IQ-TREE command found in %s!</p>" % os.path.normpath(
+                    resultsPath))
+
     def run_command(self):
         try:
             time_start = datetime.datetime.now()
@@ -230,10 +293,24 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                     self.qss_file,
                     self])
             files = self.comboBox_11.fetchListsText()
-            if len(files) == 1:
+            if hasattr(self, "cmd_directly") and self.cmd_directly:
                 self.output_dir_name = self.factory.fetch_output_dir_name(self.dir_action)
                 self.exportPath = self.factory.creat_dirs(self.workPath +
-                                                          os.sep + "IQtree_results" + os.sep + self.output_dir_name)
+                                                          os.sep + "IQtree_results" + os.sep + self.output_dir_name)\
+                                  if not self.cmd_directly[1] else self.cmd_directly[1]
+                self.description = ""
+                self.reference = "Nguyen, L.T., Schmidt, H.A., von Haeseler, A., Minh, B.Q., 2015. IQ-TREE: a fast and effective stochastic algorithm for estimating maximum-likelihood phylogenies. Mol. Biol. Evol. 32, 268-274.\n" \
+                                 "Minh, B.Q., Nguyen, M.A., von Haeseler, A., 2013. Ultrafast approximation for phylogenetic bootstrap. Mol. Biol. Evol. 30, 1188-1195."
+                ok = QMetaObject.invokeMethod(self, "fetchPopen",
+                                              Qt.BlockingQueuedConnection, Q_RETURN_ARG(bool),
+                                              Q_ARG(str, self.command))
+                self.factory.emitCommands(self.logGuiSig, self.command)
+                self.continue_IQ()
+            elif len(files) == 1:
+                if ("-safe" not in self.command) or (not hasattr(self, "exportPath")):
+                    self.output_dir_name = self.factory.fetch_output_dir_name(self.dir_action)
+                    self.exportPath = self.factory.creat_dirs(self.workPath +
+                                                              os.sep + "IQtree_results" + os.sep + self.output_dir_name)
                 ok1 = QMetaObject.invokeMethod(self, "rmvDir",
                                                Qt.BlockingQueuedConnection, Q_RETURN_ARG(bool),
                                                Q_ARG(str, self.exportPath))
@@ -286,6 +363,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             self.time_used = str(time_end - time_start)
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
+
             with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
                 f.write(self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                         "If you use IQ-TREE and Ultrafast bootstrap, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
@@ -364,7 +442,9 @@ class IQTREE(QDialog, Ui_IQTREE, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.iqtree_settings.value('size', QSize(556, 675)))
+        height = 700 if platform.system().lower() == "darwin" else 568
+        size = self.factory.judgeWindowSize(self.iqtree_settings, 859, height)
+        self.resize(size)
         self.factory.centerWindow(self)
         # self.move(self.iqtree_settings.value('pos', QPoint(875, 254)))
 
@@ -454,11 +534,15 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                     self.factory.str2bool(value))  # restore checkbox
 
     def runProgress(self, num):
-        oldValue = self.progressBar.value()
-        done_int = int(num)
-        if done_int > oldValue:
-            self.progressBar.setProperty("value", done_int)
-            QCoreApplication.processEvents()
+        if num == 99999:
+            self.progressBar.setMaximum(0)
+            self.progressBar.setMinimum(0)
+        else:
+            oldValue = self.progressBar.value()
+            done_int = int(num)
+            if done_int > oldValue:
+                self.progressBar.setProperty("value", done_int)
+                QCoreApplication.processEvents()
 
     def popupException(self, exception):
         print(exception)
@@ -476,12 +560,23 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             reply = QMessageBox.question(
                 self,
                 "IQ-TREE",
-                "<p style='line-height:25px; height:25px'>%s. Do you want to redun the analysis and overwrite all output files?</p>" % text.replace(
+                "<p style='line-height:25px; height:25px'>%s. Do you want to redo the analysis and overwrite all output files?</p>" % text.replace(
                     "redo", ""),
                 QMessageBox.Yes, QMessageBox.No)
             if reply == QMessageBox.Yes:
                 self.interrupt = False
-                self.run_with_CMD(self.command + " -redo")
+                self.on_pushButton_clicked(cmd_directly=[self.command + " -redo", self.exportPath])
+                # self.run_with_CMD(self.command + " -redo")
+        elif text.endswith("-safe"):
+            reply = QMessageBox.question(
+                self,
+                "IQ-TREE",
+                "<p style='line-height:25px; height:25px'>An error happened! Do you want to run again with the "
+                "safe likelihood kernel via '-safe' option</p>",
+                QMessageBox.Yes, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                self.interrupt = False
+                self.run_with_CMD(self.command + " -safe")
         else:
             QMessageBox.information(
                 self,
@@ -623,7 +718,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
-            with open(self.exportPath + os.sep + "PhyloSuite_IQ-TREE.log", "a") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_IQ-TREE.log", "a", errors='ignore') as f:
                 f.write(text + "\n")
 
     def save_log_to_file(self):
@@ -875,6 +970,42 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                     text = re.search(
                         r"(?m)(^Checkpoint.+?a previous run successfully finished)", out_line).group(1)
                     self.iq_tree_exception.emit(text + "redo")
+                # safe
+                if re.search(r"via '?-safe'? option", out_line):
+                    self.interrupt = True
+                    text = "error"
+                    self.iq_tree_exception.emit(text + "-safe")
+            else:
+                break
+        if is_error:
+            self.interrupt = True
+            self.iq_tree_exception.emit(
+                "Error happened! Click <span style='font-weight:600; color:#ff0000;'>Show log</span> to see detail!")
+        self.IQ_popen = None
+
+    def continue_IQ(self):
+        is_error = False  ##判断是否出了error
+        self.progressSig.emit(99999)
+        while True:
+            QApplication.processEvents()
+            if self.isRunning():
+                try:
+                    out_line = self.IQ_popen.stdout.readline().decode("utf-8", errors="ignore")
+                except UnicodeDecodeError:
+                    out_line = self.IQ_popen.stdout.readline().decode("gbk", errors="ignore")
+                if out_line == "" and self.IQ_popen.poll() is not None:
+                    break
+                text = out_line.strip() if out_line != "\n" else "\n"
+                # print(text)
+                self.logGuiSig.emit(text)
+                if re.search(r"^ERROR", out_line):
+                    is_error = True
+                # redo
+                if re.search(r"(?m)(^Checkpoint.+?a previous run successfully finished)", out_line):
+                    self.interrupt = True
+                    text = re.search(
+                        r"(?m)(^Checkpoint.+?a previous run successfully finished)", out_line).group(1)
+                    self.iq_tree_exception.emit(text + "redo")
             else:
                 break
         if is_error:
@@ -1021,7 +1152,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                                    "F1X4": "Codon F1X4", "F3X4": "Codon F3X4"}
             has_F, has_R, has_G, has_I = False, False, False, False
             for i in model_split[1:]:
-                if "F" in i:
+                if i == "F":
                     text = dict_state_freq_rev[i.upper()]
                     index = self.comboBox_4.findText(text, Qt.MatchFixedString)
                     if index >= 0:
@@ -1261,7 +1392,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             SH_aLrt = " -alrt %d" % self.spinBox_5.value() if self.checkBox_6.isChecked() else ""
             abayes = " -abayes" if self.checkBox_7.isChecked() else ""
             wbt = " -wbt" if self.checkBox_5.isChecked() else ""
-            branch_support = bootstrap + SH_aLrt + abayes + wbt
+            branch_support = SH_aLrt + bootstrap + abayes + wbt
             # outgroup
             outgroups = [self.comboBox_10.itemText(i) for i in range(self.comboBox_10.count())
                          if self.comboBox_10.model().item(i).checkState() == Qt.Checked]
@@ -1337,6 +1468,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             gridLayout.addWidget(pushButton, 2, 0, 1, 1)
             gridLayout.addWidget(pushButton_2, 2, 1, 1, 1)
             pushButton.clicked.connect(
+                # lambda: [self.on_pushButton_clicked(cmd_directly=[self.textEdit_cmd.toPlainText(), None]), dialog.close()])
                 lambda: [self.run_with_CMD(self.textEdit_cmd.toPlainText()), dialog.close()])
             pushButton_2.clicked.connect(dialog.close)
             dialog.setWindowFlags(

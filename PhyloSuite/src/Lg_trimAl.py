@@ -50,7 +50,7 @@ def run(dict_args, command, file):
             preexec_fn=os.setsid)
     run.queue.put(("popen", popen.pid))
     # 存log文件
-    with open(dict_args["exportPath"] + os.sep + fileBase_ + ".log", "a", encoding="utf-8") as log_file:
+    with open(dict_args["exportPath"] + os.sep + fileBase_ + ".log", "a", encoding="utf-8", errors='ignore') as log_file:
         log_file.write(command + "\n")
         run.queue.put(("log", "%sCommands%s\n%s\n%s" % ("=" * 45, "=" * 45, command, "=" * 98)))
         is_error = False
@@ -184,8 +184,10 @@ class TrimAl(QDialog, Ui_trimAl, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-4-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-4-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-4-1-Brief-example"
+        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
@@ -427,7 +429,7 @@ class TrimAl(QDialog, Ui_trimAl, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.trimAl_settings.value('size', QSize(732, 595)))
+        self.resize(self.factory.judgeWindowSize(self.trimAl_settings, 748, 594))
         self.factory.centerWindow(self)
         # self.move(self.trimAl_settings.value('pos', QPoint(875, 254)))
 
@@ -643,7 +645,7 @@ class TrimAl(QDialog, Ui_trimAl, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
-            with open(self.exportPath + os.sep + "PhyloSuite_TrimAl_.log", "a") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_TrimAl_.log", "a", errors='ignore') as f:
                 f.write(text + "\n")
 
     def save_log_to_file(self):

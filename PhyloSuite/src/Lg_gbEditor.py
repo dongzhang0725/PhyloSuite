@@ -216,6 +216,7 @@ class GbEditor(QDialog, Ui_GBeditor, object):
         self.settings_ini = QSettings(self.thisPath + '/settings/setting_settings.ini', QSettings.IniFormat)
         self.settings_ini.setFallbacksEnabled(False)
         self.setupUi(self)
+        # self.splitter.setStretchFactor(1, 7)
         self.allcontent = nmlgb.allContent
         self.errors = nmlgb.errors
         self.warings = nmlgb.warnings
@@ -440,7 +441,7 @@ class GbEditor(QDialog, Ui_GBeditor, object):
 
     def guiRestore(self):
         # Restore geometry
-        self.resize(self.gbEditor_settings.value('size', QSize(600, 600)))
+        self.resize(self.factory.judgeWindowSize(self.gbEditor_settings, 807, 612))
         self.factory.centerWindow(self)
         # self.move(self.gbEditor_settings.value('pos', QPoint(875, 254)))
 

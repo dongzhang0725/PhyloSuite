@@ -315,8 +315,10 @@ class WorkFlow(QDialog, Ui_WorkFlow, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-13-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-13-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-13-1-Brief-example"
+        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         self.listWidget_workflow.itemDoubleClicked.connect(lambda itemwidget: self.listWidget_workflow.itemWidget(itemwidget).exe_window.exec_())
         widgets = (self.gridLayout.itemAt(i).widget() for i in range(self.gridLayout.count()))
         self.list_allcheckbox = [widget for widget in widgets if isinstance(widget, QCheckBox)]
@@ -768,11 +770,12 @@ class WorkFlow(QDialog, Ui_WorkFlow, object):
                 modelfinder.lineEdit.setEnabled(False)
                 modelfinder.lineEdit_2.clear()
                 modelfinder.lineEdit_2.setEnabled(False)
-                modelfinder.lineEdit_3.clear()
-                modelfinder.lineEdit_3.setEnabled(False)
+                modelfinder.textEdit.clear()
+                # modelfinder.lineEdit_3.setEnabled(False)
                 modelfinder.pushButton_3.setEnabled(False)
+                modelfinder.pushButton_continue.setEnabled(False)
                 modelfinder.pushButton_4.setEnabled(False)
-                modelfinder.pushButton_22.setEnabled(False)
+                # modelfinder.pushButton_22.setEnabled(False)
             modelfinder.pushButton.setEnabled(False)
             modelfinder.pushButton_2.setEnabled(False)
             self.modelfinder_progressBar = software_widget.progressBar
@@ -811,6 +814,7 @@ class WorkFlow(QDialog, Ui_WorkFlow, object):
             self.iqtree.pushButton_2.setEnabled(False)
             self.iqtree.pushButton_3.setEnabled(False)
             self.iqtree.pushButton_22.setEnabled(False)
+            self.iqtree.pushButton_continue.setEnabled(False)
             self.iqtree_progressBar = software_widget.progressBar
             self.iqtree.workflow_progress.connect(self.iqtree_progress)
             return self.iqtree

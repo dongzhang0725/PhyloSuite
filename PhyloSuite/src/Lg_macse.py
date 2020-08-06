@@ -213,8 +213,10 @@ class MACSE(QDialog, Ui_MACSE, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-3-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-3-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-3-1-Brief-example"
+        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
@@ -469,7 +471,7 @@ class MACSE(QDialog, Ui_MACSE, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.MACSE_settings.value('size', QSize(679, 693)))
+        self.resize(self.factory.judgeWindowSize(self.MACSE_settings, 826, 590))
         self.factory.centerWindow(self)
         # self.move(self.MACSE_settings.value('pos', QPoint(875, 254)))
 
@@ -666,7 +668,7 @@ class MACSE(QDialog, Ui_MACSE, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
-            with open(self.exportPath + os.sep + "PhyloSuite_MACSE.log", "a") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_MACSE.log", "a", errors='ignore') as f:
                 f.write(text + "\n")
 
     def save_log_to_file(self):

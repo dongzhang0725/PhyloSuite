@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\HmmCleaner.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\HmmCleaner.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -18,8 +18,8 @@ class Ui_HmmCleaner(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.groupBox_4 = QtWidgets.QGroupBox(HmmCleaner)
         self.groupBox_4.setObjectName("groupBox_4")
-        self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.groupBox_4)
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.gridLayout_2 = QtWidgets.QGridLayout(self.groupBox_4)
+        self.gridLayout_2.setObjectName("gridLayout_2")
         self.horizontalLayout_5 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_5.setObjectName("horizontalLayout_5")
         self.label_4 = QtWidgets.QLabel(self.groupBox_4)
@@ -48,7 +48,7 @@ class Ui_HmmCleaner(object):
         self.pushButton_3.setText("")
         self.pushButton_3.setObjectName("pushButton_3")
         self.horizontalLayout_5.addWidget(self.pushButton_3)
-        self.verticalLayout_2.addLayout(self.horizontalLayout_5)
+        self.gridLayout_2.addLayout(self.horizontalLayout_5, 0, 0, 1, 1)
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
         self.label_5 = QtWidgets.QLabel(self.groupBox_4)
@@ -57,11 +57,14 @@ class Ui_HmmCleaner(object):
         self.horizontalLayout_3.addWidget(self.label_5)
         spacerItem = QtWidgets.QSpacerItem(58, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout_3.addItem(spacerItem)
+        self.label_3 = QtWidgets.QLabel(self.groupBox_4)
+        self.label_3.setObjectName("label_3")
+        self.horizontalLayout_3.addWidget(self.label_3)
         self.label_7 = ClickedLableGif(self.groupBox_4)
         self.label_7.setText("")
         self.label_7.setObjectName("label_7")
         self.horizontalLayout_3.addWidget(self.label_7)
-        self.verticalLayout_2.addLayout(self.horizontalLayout_3)
+        self.gridLayout_2.addLayout(self.horizontalLayout_3, 1, 0, 1, 1)
         self.verticalLayout.addWidget(self.groupBox_4)
         self.groupBox_2 = QtWidgets.QGroupBox(HmmCleaner)
         self.groupBox_2.setObjectName("groupBox_2")
@@ -245,6 +248,7 @@ class Ui_HmmCleaner(object):
         self.groupBox_4.setTitle(_translate("HmmCleaner", "Input"))
         self.label_4.setText(_translate("HmmCleaner", "Input:"))
         self.label_5.setText(_translate("HmmCleaner", "<html><head/><body><p>Click <a href=\"https://metacpan.org/pod/release/ARNODF/Bio-MUST-Apps-HmmCleaner-0.180750/bin/HmmCleaner.pl\"><span style=\" text-decoration: underline; color:#0000ff;\">here</span></a> to learn more about HmmCleaner.</p></body></html>"))
+        self.label_3.setText(_translate("HmmCleaner", "Demo:"))
         self.label_7.setToolTip(_translate("HmmCleaner", "Brief example"))
         self.groupBox_2.setTitle(_translate("HmmCleaner", "Parameter"))
         self.label.setToolTip(_translate("HmmCleaner", "Cost parameters that defines the low similarity segments detected by HmmCleaner"))

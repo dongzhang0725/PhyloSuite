@@ -16,8 +16,7 @@ QComboBox {
     padding: 1px 2px 1px 2px;
     min-width: 7 em;
     background-color: white;
-    font: 12px;
-    height: 22px;
+    /* height: 22px; */
     selection-background-color: #BDD7FD;
     selection-color: black;
     /* border-top-color: rgb(218, 216, 216) */
@@ -27,7 +26,7 @@ QComboBox {
 QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
-    width: 20px;
+    /* width: 20px; */
     border-left-width: 1px;
     border-left-color: darkgray;
     border-left-style: solid; /* just a single line */
@@ -65,8 +64,8 @@ min-width: 7 em;
 border-style:none;
 border:1px solid #B2B6B9;
 color:#000000;
-font: 12px;
-height: 22px;
+/* font: 12px;
+height: 22px; */
 background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #E1E4E6,stop:1 #CCD3D9);
 }
 QPushButton#pushButton_partition:hover {
@@ -102,8 +101,8 @@ QPushButton#pushButton_input1, QPushButton#pushButton_input2{
     padding: 1px 2px 1px 2px;
     min-width: 7 em;
     background-color: white;
-    font: 12px;
-    height: 22px;
+    /* font: 12px;
+    height: 22px; */
     text-align: left;
     }
 
@@ -125,7 +124,7 @@ QPushButton::menu-indicator {
     subcontrol-position: right center;
     subcontrol-origin: padding;
     width: 15px;
-    height: 15px;
+    /* height: 15px; */
     right: 5px;
     border-left: 1px solid gray;
     border-image: url(:/picture/resourses/1485528481_arrow-down-01.png);
@@ -283,7 +282,7 @@ QLineEdit {
     background: white;  
     selection-background-color: green; 
     selection-color:white;
-    height: 22px;
+    /* height: 22px; */
 }
 
 QLineEdit:hover {
@@ -320,7 +319,7 @@ QAbstractSpinBox:down-button
 QAbstractSpinBox::up-arrow,QAbstractSpinBox::up-arrow:disabled,QAbstractSpinBox::up-arrow:off {  
     image: url(:/picture/resourses/up_arrow_disabled.png);  
     width: 10px;  
-    height: 10px;  
+    /* height: 10px;   */
 }  
 QAbstractSpinBox::up-arrow:hover  
 {  
@@ -332,7 +331,7 @@ QAbstractSpinBox::down-arrow,QAbstractSpinBox::down-arrow:disabled,QAbstractSpin
 {  
     image: url(:/picture/resourses/down_arrow_disabled.png);  
     width: 10px;  
-    height: 10px;  
+    /* height: 10px;   */
 }  
 QAbstractSpinBox::down-arrow:hover  
 {  
@@ -432,11 +431,11 @@ QRadioButton:disabled
 {  
     color: #76797C;  
 }  
-QRadioButton::indicator  
+/* QRadioButton::indicator  
 {  
     width: 26px;  
     height: 26px;  
-}  
+}   */
   
 QRadioButton::indicator:unchecked  
 {  
@@ -589,8 +588,8 @@ QDateEdit
     padding: 1px 2px 1px 2px;
     min-width: 7 em;
     background-color: white;
-    font: 12px;
-	height: 22px;
+    /* font: 12px;
+	height: 22px; */
 }
 
 

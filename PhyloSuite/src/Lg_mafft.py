@@ -221,22 +221,6 @@ class Mafft(QDialog, Ui_mafft, object):
         # 恢复用户的设置
         self.guiRestore()
         self.sortAutoInputs(autoInputs)
-        # if autoInputs:
-        #     self.PCG_NUC_files, self.PCG_AA_files, self.RNAs_files = autoInputs
-        #     self.checkBox_2.setChecked(True)
-        #     self.input()
-        #     self.checkRadio()
-        # else:
-        #     # 如果没有导入序列，就设置非mt模式
-        #     self.PCG_NUC_files, self.PCG_AA_files, self.RNAs_files = "", "", ""
-        #     self.checkBox_2.setDisabled(True)
-        #     self.AA_radioButton_2.setDisabled(True)
-        #     self.PCG_radioButton_2.setDisabled(True)
-        #     self.RNAs_radioButton_2.setDisabled(True)
-        #     self.normal_radioButton.setDisabled(False)
-        #     self.codon_radioButton.setDisabled(False)
-        #     self.N2P_radioButton.setDisabled(False)
-        #     self.input()
         self.PCG_radioButton_2.toggled.connect(self.input)
         self.AA_radioButton_2.toggled.connect(self.input)
         self.RNAs_radioButton_2.toggled.connect(self.input)
@@ -266,8 +250,10 @@ class Mafft(QDialog, Ui_mafft, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-2-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-2-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-2-1-Brief-example"
+        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
@@ -779,7 +765,7 @@ class Mafft(QDialog, Ui_mafft, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.mafft_settings.value('size', QSize(500, 500)))
+        self.resize(self.factory.judgeWindowSize(self.mafft_settings, 647, 483))
         self.factory.centerWindow(self)
         # self.move(self.mafft_settings.value('pos', QPoint(875, 254)))
 
@@ -1175,7 +1161,7 @@ class Mafft(QDialog, Ui_mafft, object):
         if re.search(r"\w+", text):
             # print(text)
             self.textEdit_log.append(text)
-            with open(self.exportPath + os.sep + "PhyloSuite_MAFFT.log", "a") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_MAFFT.log", "a", errors='ignore') as f:
                 f.write(text + "\n")
 
     def save_log_to_file(self):

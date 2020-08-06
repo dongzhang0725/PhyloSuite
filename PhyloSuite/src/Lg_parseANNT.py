@@ -779,8 +779,10 @@ class ParseANNT(QDialog, Ui_parseANNT, Factory):
         # 恢复用户的设置
         self.guiRestore()
         ## brief demo
-        self.label_5.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-14-1-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-14-1-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-14-1-1-Brief-example"
+        self.label_5.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
 
     @pyqtSlot()
     def on_pushButton_3_clicked(self):
@@ -1039,7 +1041,8 @@ class ParseANNT(QDialog, Ui_parseANNT, Factory):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.parseANNT_settings.value('size', QSize(500, 500)))
+        size = self.factory.judgeWindowSize(self.parseANNT_settings, 712, 515)
+        self.resize(size)
         self.factory.centerWindow(self)
         # self.move(self.parseANNT_settings.value('pos', QPoint(875, 254)))
 

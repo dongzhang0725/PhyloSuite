@@ -25,8 +25,8 @@
      <property name="title">
       <string>Input</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_2">
-      <item>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout_5">
         <item>
          <widget class="QLabel" name="label_4">
@@ -84,7 +84,7 @@
         </item>
        </layout>
       </item>
-      <item>
+      <item row="1" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
          <widget class="QLabel" name="label_5">
@@ -108,6 +108,13 @@
            </size>
           </property>
          </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Demo:</string>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="ClickedLableGif" name="label_7">
@@ -460,7 +467,7 @@
          <string>Start</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
         </property>
        </widget>
@@ -471,7 +478,7 @@
          <string>Stop</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
         </property>
        </widget>
@@ -504,7 +511,7 @@
          <string>Show log</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/Eye_Care_Services-512.png</normaloff>:/picture/resourses/Eye_Care_Services-512.png</iconset>
         </property>
        </widget>
@@ -540,7 +547,7 @@
   <tabstop>pushButton_9</tabstop>
  </tabstops>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections/>
 </ui>

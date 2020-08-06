@@ -110,7 +110,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/add-icon.png</normaloff>:/picture/resourses/add-icon.png</iconset>
           </property>
           <property name="autoRaise">
@@ -215,7 +215,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/import.png</normaloff>:/picture/resourses/import.png</iconset>
           </property>
           <property name="autoRaise">
@@ -232,7 +232,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/up.png</normaloff>:/picture/resourses/up.png</iconset>
           </property>
           <property name="autoRaise">
@@ -249,7 +249,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/add-icon.png</normaloff>:/picture/resourses/add-icon.png</iconset>
           </property>
           <property name="autoRaise">
@@ -266,7 +266,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
           </property>
           <property name="autoRaise">
@@ -394,7 +394,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/add-icon.png</normaloff>:/picture/resourses/add-icon.png</iconset>
           </property>
           <property name="autoRaise">
@@ -476,7 +476,7 @@
         <number>10</number>
        </property>
        <property name="value">
-        <number>200</number>
+        <number>1</number>
        </property>
        <property name="displayIntegerBase">
         <number>10</number>
@@ -528,7 +528,7 @@
         <string>Version</string>
        </property>
        <property name="icon">
-        <iconset resource="myRes.qrc">
+        <iconset resource="../myRes.qrc">
          <normaloff>:/picture/resourses/version-control-icon_88399.png</normaloff>:/picture/resourses/version-control-icon_88399.png</iconset>
        </property>
       </widget>
@@ -545,7 +545,7 @@
         <string>import/export settings</string>
        </property>
        <property name="icon">
-        <iconset resource="myRes.qrc">
+        <iconset resource="../myRes.qrc">
          <normaloff>:/picture/resourses/refresh-icon.png</normaloff>:/picture/resourses/refresh-icon.png</iconset>
        </property>
       </widget>
@@ -577,7 +577,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections>
   <connection>

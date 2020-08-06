@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>672</width>
-    <height>598</height>
+    <width>702</width>
+    <height>546</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Gblocks</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_8">
-   <item row="0" column="0">
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
     <widget class="QGroupBox" name="groupBox_4">
      <property name="title">
       <string>Input</string>
@@ -97,6 +97,13 @@
          </spacer>
         </item>
         <item>
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Demo:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="ClickedLableGif" name="label_7">
           <property name="toolTip">
            <string>Brief example</string>
@@ -111,13 +118,33 @@
      </layout>
     </widget>
    </item>
-   <item row="1" column="0">
+   <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>Parameters</string>
      </property>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="4" column="2">
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_11">
+        <property name="text">
+         <string>Minimum Number Of Sequences For A Conserved Position:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="comboBox_10">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="4">
        <widget class="QSpinBox" name="spinBox_3">
         <property name="minimum">
          <number>2</number>
@@ -130,37 +157,17 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="0" colspan="2">
-       <widget class="QLabel" name="label_6">
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Minimum Length Of A Block:</string>
+         <string>Minimum Number Of Sequences For A Flank Position:</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
         </property>
        </widget>
       </item>
-      <item row="3" column="0" colspan="2">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Maximum Number Of Contiguous Nonconserved Positions:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="2">
-       <widget class="QSpinBox" name="spinBox_2">
-        <property name="maximum">
-         <number>999</number>
-        </property>
-        <property name="value">
-         <number>8</number>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
+      <item row="2" column="1">
        <widget class="QComboBox" name="comboBox_2">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -170,32 +177,47 @@
         </property>
        </widget>
       </item>
-      <item row="5" column="2">
-       <widget class="QComboBox" name="comboBox_5">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
+      <item row="2" column="2">
+       <widget class="QLabel" name="label_12">
+        <property name="text">
+         <string>Allowed Gap Positions:</string>
         </property>
-        <item>
-         <property name="text">
-          <string>With Half</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>All</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>None</string>
-         </property>
-        </item>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
        </widget>
       </item>
-      <item row="6" column="2">
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Maximum Number Of Contiguous Nonconserved Positions:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QSpinBox" name="spinBox_2">
+        <property name="maximum">
+         <number>999</number>
+        </property>
+        <property name="value">
+         <number>8</number>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="2" colspan="2">
+       <widget class="QLabel" name="label_22">
+        <property name="text">
+         <string>Use Similarity Matrices:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="4">
        <widget class="QComboBox" name="comboBox_13">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -215,47 +237,7 @@
         </item>
        </widget>
       </item>
-      <item row="5" column="0" colspan="2">
-       <widget class="QLabel" name="label_12">
-        <property name="text">
-         <string>Allowed Gap Positions:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0" colspan="2">
-       <widget class="QLabel" name="label_11">
-        <property name="text">
-         <string>Minimum Number Of Sequences For A Conserved Position:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="2">
-       <widget class="QComboBox" name="comboBox_10">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0" colspan="2">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Minimum Number Of Sequences For A Flank Position:</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0" colspan="3">
+      <item row="0" column="0" colspan="5">
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
          <widget class="QLabel" name="label_13">
@@ -293,10 +275,35 @@
         </item>
        </layout>
       </item>
-      <item row="6" column="0" colspan="2">
-       <widget class="QLabel" name="label_22">
+      <item row="2" column="4">
+       <widget class="QComboBox" name="comboBox_5">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <item>
+         <property name="text">
+          <string>With Half</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>All</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>None</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="label_6">
         <property name="text">
-         <string>Use Similarity Matrices:</string>
+         <string>Minimum Length Of A Block:</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -311,14 +318,14 @@
      <zorder>comboBox_2</zorder>
      <zorder>label_11</zorder>
      <zorder>label_2</zorder>
-     <zorder>label_6</zorder>
      <zorder>spinBox_2</zorder>
-     <zorder>spinBox_3</zorder>
      <zorder>label_22</zorder>
      <zorder>comboBox_13</zorder>
+     <zorder>spinBox_3</zorder>
+     <zorder>label_6</zorder>
     </widget>
    </item>
-   <item row="2" column="0">
+   <item>
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
       <string>Save Options</string>
@@ -566,7 +573,7 @@
      </layout>
     </widget>
    </item>
-   <item row="3" column="0">
+   <item>
     <widget class="QGroupBox" name="groupBox_3">
      <property name="title">
       <string>Run</string>
@@ -578,7 +585,7 @@
          <string>Start</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
         </property>
        </widget>
@@ -589,7 +596,7 @@
          <string>Stop</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
         </property>
        </widget>
@@ -597,7 +604,7 @@
      </layout>
     </widget>
    </item>
-   <item row="4" column="0">
+   <item>
     <widget class="QGroupBox" name="groupBox_6">
      <property name="title">
       <string>Progress</string>
@@ -616,7 +623,7 @@
          <string>Show log</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/Eye_Care_Services-512.png</normaloff>:/picture/resourses/Eye_Care_Services-512.png</iconset>
         </property>
        </widget>
@@ -668,7 +675,7 @@
   <tabstop>comboBox_9</tabstop>
  </tabstops>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections>
   <connection>

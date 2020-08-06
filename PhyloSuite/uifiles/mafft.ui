@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>501</width>
+    <width>622</width>
     <height>492</height>
    </rect>
   </property>
@@ -101,6 +101,13 @@
            </size>
           </property>
          </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Demo:</string>
+          </property>
+         </widget>
         </item>
         <item>
          <widget class="ClickedLableGif" name="label_7">
@@ -408,7 +415,7 @@
          <string>Additional Parameters</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/keynote.png</normaloff>:/picture/resourses/keynote.png</iconset>
         </property>
        </widget>
@@ -573,7 +580,7 @@
          <string>Start</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
         </property>
        </widget>
@@ -584,7 +591,7 @@
          <string>Stop</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
         </property>
        </widget>
@@ -645,7 +652,7 @@
          <string>Show log</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/Eye_Care_Services-512.png</normaloff>:/picture/resourses/Eye_Care_Services-512.png</iconset>
         </property>
        </widget>
@@ -691,7 +698,7 @@
   <tabstop>RNAs_radioButton_2</tabstop>
  </tabstops>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections>
   <connection>

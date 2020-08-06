@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\extract_setting.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\extract_setting.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -161,7 +161,7 @@ class Ui_ExtractSettings(object):
         self.spinBox = QtWidgets.QSpinBox(ExtractSettings)
         self.spinBox.setMaximum(999999999)
         self.spinBox.setSingleStep(10)
-        self.spinBox.setProperty("value", 200)
+        self.spinBox.setProperty("value", 1)
         self.spinBox.setDisplayIntegerBase(10)
         self.spinBox.setObjectName("spinBox")
         self.horizontalLayout_5.addWidget(self.spinBox)

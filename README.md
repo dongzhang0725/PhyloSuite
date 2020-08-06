@@ -15,7 +15,7 @@ The summary of flowchart and references of used programs.
 
 ## Homepage
 
-https://dongzhang0725.github.io
+https://dongzhang0725.github.io or http://phylosuite.jushengwu.com/ (China)
 
 ## Installation
 
@@ -24,6 +24,8 @@ https://dongzhang0725.github.io
 Installers for all platforms can be downloaded from https://github.com/dongzhang0725/PhyloSuite/releases.
 
 <a id="download" href="https://github.com/dongzhang0725/PhyloSuite/releases"><i class="fa fa-download"></i><span> Download Now</span> </a>
+
+<a id="download" href="http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#Chinese_download_link"><i class="fa fa-download"></i><span> Chinese download links</span> </a>
 
 #### 1.1. Windows
 Windows 7, 8 and 10 are supported, just double click the `PhyloSuite_xxx_win_setup.exe` to install, and run “PhyloSuite.exe” file after the installation. If the installation fails, download `PhyloSuite_xxx_Win.rar`, unzip it, and run PhyloSuite directly from this folder.

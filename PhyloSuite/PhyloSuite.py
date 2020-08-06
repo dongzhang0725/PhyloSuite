@@ -20,12 +20,14 @@ from src.factory import QSingleApplication, Factory
 from src.main import MyMainWindow
 
 def start():
+    if platform.system().lower() == "windows":
+        multiprocessing.freeze_support() # windows必须调用这个，不然会出错
     app = QSingleApplication(sys.argv)
     splash = QSplashScreen(
         QPixmap(":/picture/resourses/start.jpg"))
     with open(thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
         qss_file = f.read()
-    splash.setWindowFlags(Qt.Window)
+    if platform.system().lower() == "darwin": splash.setWindowFlags(Qt.Window)
     font_size = 13 if platform.system().lower() == "windows" else 15
     splash.setFont(QFont('Arial', font_size))
     splash.setStyleSheet(qss_file)
@@ -34,8 +36,6 @@ def start():
     splash.show()
     app.processEvents()
     splash.showMessage("Checking if the program is already running...", Qt.AlignBottom, Qt.black)
-    if platform.system().lower() == "windows":
-        multiprocessing.freeze_support() # windows必须调用这个，不然会出错
     # 异常调试
     import cgitb
     sys.excepthook = cgitb.Hook(1, None, 5, sys.stderr, 'text')

@@ -70,8 +70,10 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-14-3-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-14-3-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-14-3-1-Brief-example"
+        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
 
     @pyqtSlot()
     def on_pushButton_3_clicked(self):
@@ -238,7 +240,7 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.DrawRSCUfig_settings.value('size', QSize(500, 500)))
+        self.resize(self.factory.judgeWindowSize(self.DrawRSCUfig_settings, 746, 566))
         self.factory.centerWindow(self)
         # self.move(self.DrawRSCUfig_settings.value('pos', QPoint(875, 254)))
 

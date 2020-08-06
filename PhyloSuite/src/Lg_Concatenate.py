@@ -449,8 +449,10 @@ class Matrix(QDialog, Ui_Matrix, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-7-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-7-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-7-1-Brief-example"
+        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
@@ -742,7 +744,8 @@ class Matrix(QDialog, Ui_Matrix, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.concatenate_settings.value('size', QSize(500, 500)))
+        size = self.factory.judgeWindowSize(self.concatenate_settings, 646, 476)
+        self.resize(size)
         self.factory.centerWindow(self)
         # self.move(self.concatenate_settings.value('pos', QPoint(875, 254)))
 

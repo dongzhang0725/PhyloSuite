@@ -133,8 +133,10 @@ class SerhNCBI(QMainWindow, Ui_SerhNCBI, object):
         # self.check_all.toggled.connect(self.check_displayed)
         # self.statusbar.addWidget(self.check_all)
         ## brief demo
-        self.label_6.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-3-3-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#4-3-3-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-3-3-1-Brief-example"
+        self.label_6.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
 
     @pyqtSlot()
     def on_toolButton_clicked(self):

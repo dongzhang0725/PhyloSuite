@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\gbEditor.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\gbEditor.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -18,9 +18,12 @@ class Ui_GBeditor(object):
         sizePolicy.setHeightForWidth(GBeditor.sizePolicy().hasHeightForWidth())
         GBeditor.setSizePolicy(sizePolicy)
         GBeditor.setSizeGripEnabled(True)
-        self.gridLayout = QtWidgets.QGridLayout(GBeditor)
-        self.gridLayout.setObjectName("gridLayout")
-        self.tableWidget = QtWidgets.QTableWidget(GBeditor)
+        self.verticalLayout = QtWidgets.QVBoxLayout(GBeditor)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.splitter = QtWidgets.QSplitter(GBeditor)
+        self.splitter.setOrientation(QtCore.Qt.Vertical)
+        self.splitter.setObjectName("splitter")
+        self.tableWidget = QtWidgets.QTableWidget(self.splitter)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -32,15 +35,14 @@ class Ui_GBeditor(object):
         self.tableWidget.setColumnCount(0)
         self.tableWidget.setRowCount(0)
         self.tableWidget.horizontalHeader().setStretchLastSection(True)
-        self.gridLayout.addWidget(self.tableWidget, 0, 0, 1, 1)
-        self.textBrowser = QtWidgets.QTextBrowser(GBeditor)
+        self.textBrowser = QtWidgets.QTextBrowser(self.splitter)
         self.textBrowser.setAutoFillBackground(True)
         self.textBrowser.setTabChangesFocus(True)
         self.textBrowser.setUndoRedoEnabled(True)
         self.textBrowser.setReadOnly(False)
         self.textBrowser.setOpenExternalLinks(True)
         self.textBrowser.setObjectName("textBrowser")
-        self.gridLayout.addWidget(self.textBrowser, 1, 0, 1, 1)
+        self.verticalLayout.addWidget(self.splitter)
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -53,7 +55,7 @@ class Ui_GBeditor(object):
         self.spinBox.setMinimumSize(QtCore.QSize(0, 24))
         self.spinBox.setMinimum(1)
         self.spinBox.setMaximum(10000)
-        self.spinBox.setProperty("value", 200)
+        self.spinBox.setProperty("value", 1)
         self.spinBox.setObjectName("spinBox")
         self.horizontalLayout.addWidget(self.spinBox)
         self.horizontalLayout_2.addLayout(self.horizontalLayout)
@@ -63,7 +65,7 @@ class Ui_GBeditor(object):
         self.pushButton_2.setIcon(icon)
         self.pushButton_2.setObjectName("pushButton_2")
         self.horizontalLayout_2.addWidget(self.pushButton_2)
-        self.gridLayout.addLayout(self.horizontalLayout_2, 2, 0, 1, 1)
+        self.verticalLayout.addLayout(self.horizontalLayout_2)
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
         self.pushButton = QtWidgets.QPushButton(GBeditor)
@@ -78,7 +80,7 @@ class Ui_GBeditor(object):
         self.pushButton_7.setIcon(icon2)
         self.pushButton_7.setObjectName("pushButton_7")
         self.horizontalLayout_3.addWidget(self.pushButton_7)
-        self.gridLayout.addLayout(self.horizontalLayout_3, 3, 0, 1, 1)
+        self.verticalLayout.addLayout(self.horizontalLayout_3)
 
         self.retranslateUi(GBeditor)
         self.checkBox.toggled['bool'].connect(self.spinBox.setEnabled)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\display_setting.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\display_setting.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -12,8 +12,8 @@ class Ui_DisplaySettings(object):
     def setupUi(self, DisplaySettings):
         DisplaySettings.setObjectName("DisplaySettings")
         DisplaySettings.resize(786, 529)
-        self.gridLayout_2 = QtWidgets.QGridLayout(DisplaySettings)
-        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout(DisplaySettings)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.splitter = QtWidgets.QSplitter(DisplaySettings)
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
         self.splitter.setObjectName("splitter")
@@ -34,10 +34,23 @@ class Ui_DisplaySettings(object):
         self.gridLayout = QtWidgets.QGridLayout(self.widget)
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
         self.gridLayout.setObjectName("gridLayout")
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setObjectName("horizontalLayout")
         self.label_2 = QtWidgets.QLabel(self.widget)
         self.label_2.setStatusTip("")
         self.label_2.setObjectName("label_2")
-        self.gridLayout.addWidget(self.label_2, 0, 0, 1, 1)
+        self.horizontalLayout.addWidget(self.label_2)
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout.addItem(spacerItem)
+        self.label_3 = QtWidgets.QLabel(self.widget)
+        self.label_3.setObjectName("label_3")
+        self.horizontalLayout.addWidget(self.label_3)
+        self.label_6 = ClickedLableGif(self.widget)
+        self.label_6.setText("")
+        self.label_6.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_6.setObjectName("label_6")
+        self.horizontalLayout.addWidget(self.label_6)
+        self.gridLayout.addLayout(self.horizontalLayout, 0, 0, 1, 2)
         self.listWidget = QtWidgets.QListWidget(self.widget)
         self.listWidget.setAcceptDrops(True)
         self.listWidget.setTabKeyNavigation(True)
@@ -58,13 +71,8 @@ class Ui_DisplaySettings(object):
         self.pushButton_del.setIcon(icon)
         self.pushButton_del.setObjectName("pushButton_del")
         self.verticalLayout.addWidget(self.pushButton_del)
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout.addItem(spacerItem)
-        self.label_6 = ClickedLableGif(self.widget)
-        self.label_6.setText("")
-        self.label_6.setAlignment(QtCore.Qt.AlignCenter)
-        self.label_6.setObjectName("label_6")
-        self.verticalLayout.addWidget(self.label_6)
+        spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayout.addItem(spacerItem1)
         self.pushButton = QtWidgets.QPushButton(self.widget)
         icon1 = QtGui.QIcon()
         icon1.addPixmap(QtGui.QPixmap(":/picture/resourses/btn_ok.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -78,7 +86,7 @@ class Ui_DisplaySettings(object):
         self.pushButton_2.setObjectName("pushButton_2")
         self.verticalLayout.addWidget(self.pushButton_2)
         self.gridLayout.addLayout(self.verticalLayout, 1, 1, 1, 1)
-        self.gridLayout_2.addWidget(self.splitter, 0, 0, 1, 1)
+        self.verticalLayout_2.addWidget(self.splitter)
 
         self.retranslateUi(DisplaySettings)
         QtCore.QMetaObject.connectSlotsByName(DisplaySettings)
@@ -89,10 +97,11 @@ class Ui_DisplaySettings(object):
         self.label.setText(_translate("DisplaySettings", "All available information to display:"))
         self.treeView.setToolTip(_translate("DisplaySettings", "Click to add"))
         self.label_2.setText(_translate("DisplaySettings", "Informations selected to display:"))
+        self.label_3.setText(_translate("DisplaySettings", "Demo:"))
+        self.label_6.setToolTip(_translate("DisplaySettings", "Brief example"))
         self.listWidget.setToolTip(_translate("DisplaySettings", "try to drag to reorder"))
         self.pushButton_del.setToolTip(_translate("DisplaySettings", "Delete selected item(s)"))
         self.pushButton_del.setText(_translate("DisplaySettings", "Delete"))
-        self.label_6.setToolTip(_translate("DisplaySettings", "Brief example"))
         self.pushButton.setText(_translate("DisplaySettings", "Ok"))
         self.pushButton_2.setText(_translate("DisplaySettings", "Cancel"))
 

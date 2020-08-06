@@ -103,8 +103,10 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-6-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-6-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-6-1-Brief-example"
+        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
@@ -327,7 +329,8 @@ class Gblocks(QDialog, Ui_Gblocks, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.gblocks_settings.value('size', QSize(658, 500)))
+        size = self.factory.judgeWindowSize(self.gblocks_settings, 809, 582)
+        self.resize(size)
         self.factory.centerWindow(self)
         # self.move(self.gblocks_settings.value('pos', QPoint(875, 254)))
 
@@ -580,7 +583,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
-            with open(self.exportPath + os.sep + "PhyloSuite_Gblocks.log", "a") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_Gblocks.log", "a", errors='ignore') as f:
                 f.write(text + "\n")
 
     def gui4Log(self):

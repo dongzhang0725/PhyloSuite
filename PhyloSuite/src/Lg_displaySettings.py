@@ -52,8 +52,10 @@ class DisplaySettings(QDialog, Ui_DisplaySettings, object):
         self.guiRestore()
         self.listWidget.installEventFilter(self)
         ## brief demo
-        self.label_6.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-4-2-Information-display-and-modification")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#4-4-2-Information-display-and-modification" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-4-2-Information-display-and-modification"
+        self.label_6.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -182,6 +184,7 @@ class DisplaySettings(QDialog, Ui_DisplaySettings, object):
 
     def popUpSettings(self):
         self.setting = Setting(self)
+        # if hasattr(self.parent, "updateTableWorker"):
         self.setting.taxmyChangeSig.connect(lambda x: [self.parent.updateTable(x),
                                                       self.parent.updateTableWorker.finished.connect(self.updateTreee)])
         self.setting.display_table(self.setting.listWidget.item(0))

@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Partition_editor</class>
+ <widget class="QDialog" name="Partition_editor">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>758</width>
+    <height>525</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Partition editor</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_3">
+   <item>
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <widget class="QWidget" name="layoutWidget">
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout">
+         <item>
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Specify the data blocks:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>18</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_4">
+           <item>
+            <widget class="QPushButton" name="pushButton_codon">
+             <property name="text">
+              <string>Codon Mode</string>
+             </property>
+             <property name="icon">
+              <iconset resource="../myRes.qrc">
+               <normaloff>:/picture/resourses/converter.png</normaloff>:/picture/resourses/converter.png</iconset>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_nocodon">
+             <property name="text">
+              <string>Cancel Codon Mode</string>
+             </property>
+             <property name="icon">
+              <iconset resource="../myRes.qrc">
+               <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>18</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QPushButton" name="pushButton_2">
+             <property name="text">
+              <string>Add Row</string>
+             </property>
+             <property name="icon">
+              <iconset resource="../myRes.qrc">
+               <normaloff>:/picture/resourses/table_row_add_after.png</normaloff>:/picture/resourses/table_row_add_after.png</iconset>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton">
+             <property name="text">
+              <string>Delete Row</string>
+             </property>
+             <property name="icon">
+              <iconset resource="../myRes.qrc">
+               <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTableView" name="tableView_partition">
+         <property name="sortingEnabled">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="layoutWidget">
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Automatically recognize partition from text:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_recog">
+           <property name="text">
+            <string>Recognize</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../myRes.qrc">
+             <normaloff>:/picture/resourses/refresh-icon.png</normaloff>:/picture/resourses/refresh-icon.png</iconset>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTextEdit" name="textEdit">
+         <property name="toolTip">
+          <string>For example:
+atp6 = 1-693;
+atp8 = 694-882;
+cox1 = 883-2475;
+cox2 = 2476-3225;
+cox3 = 3226-4089;</string>
+         </property>
+         <property name="placeholderText">
+          <string/>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <item>
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Demo:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="ClickedLableGif" name="label_4">
+       <property name="toolTip">
+        <string>Brief example</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ClickedLableGif</class>
+   <extends>QLabel</extends>
+   <header>src.CustomWidget.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../myRes.qrc"/>
+ </resources>
+ <connections/>
+</ui>

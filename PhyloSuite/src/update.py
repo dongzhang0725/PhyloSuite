@@ -47,9 +47,14 @@ class HttpWindowDownload(QDialog):
             except:
                 pass
         if not self.outFile.open(QIODevice.WriteOnly):
+            QSettings.setDefaultFormat(QSettings.IniFormat)
+            settings = QSettings()
+            country = settings.value("country", "UK")
+            url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins" if \
+                country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins"
             QMessageBox.information(self, "HTTP",
                                           "Unable to save the file %s: %s."
-                                          "See <a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins\">here</a> for how to update manually." % (fileName, self.outFile.errorString()))
+                                          "See <a href=\"%s\">here</a> for how to update manually." % (fileName, self.outFile.errorString(), url))
             self.outFile = None
             return
 
@@ -75,9 +80,14 @@ class HttpWindowDownload(QDialog):
         redirectionTarget = self.reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
         if self.reply.error():
             self.outFile.remove()
+            QSettings.setDefaultFormat(QSettings.IniFormat)
+            settings = QSettings()
+            country = settings.value("country", "UK")
+            url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins" if \
+                country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins"
             QMessageBox.information(self, "HTTP",
                                           "Download failed: %s."
-                                          "See <a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins\">here</a> for how to update manually." % self.reply.errorString())
+                                          "See <a href=\"%s\">here</a> for how to update manually." % (self.reply.errorString(), url))
         elif redirectionTarget is not None:
             newUrl = self.url.resolved(redirectionTarget)
             ret = QMessageBox.question(self, "HTTP",
@@ -128,10 +138,14 @@ class HttpWindowDownload(QDialog):
 
     def sslErrors(self, reply, errors):
         errorString = ", ".join([str(error.errorString()) for error in errors])
-
+        QSettings.setDefaultFormat(QSettings.IniFormat)
+        settings = QSettings()
+        country = settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins"
         ret = QMessageBox.warning(self, "HTTP",
                                 "One or more SSL errors has occurred: %s. "
-                                "See <a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#7-1-Update-failed-how-to-revert-to-previous-settings-and-plugins\">here</a> for how to update manually." % errorString,
+                                "See <a href=\"%s\">here</a> for how to update manually." % (errorString, url),
                                 QMessageBox.Ignore | QMessageBox.Abort)
         if ret == QMessageBox.Ignore:
             self.reply.ignoreSslErrors()
@@ -175,12 +189,21 @@ class UpdateAPP(QDialog):
         os.execl(python, python, *sys.argv)
 
     def downloadNewAPP(self):
-        if platform.system().lower() == "windows":
-            url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/update.zip"
-        elif platform.system().lower() == "darwin":
-            url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_Mac/master/update.zip"
-        elif platform.system().lower() == "linux":
-            url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_linux/master/update.zip"
+        country = self.factory.path_settings.value("country", "UK")
+        if country == "China":
+            if platform.system().lower() == "windows":
+                url = "http://phylosuite.jushengwu.com/updates/update_win.zip"
+            elif platform.system().lower() == "darwin":
+                url = "http://phylosuite.jushengwu.com/updates/update_mac.zip"
+            elif platform.system().lower() == "linux":
+                url = "http://phylosuite.jushengwu.com/updates/update_linux.zip"
+        else:
+            if platform.system().lower() == "windows":
+                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/update.zip"
+            elif platform.system().lower() == "darwin":
+                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_Mac/master/update.zip"
+            elif platform.system().lower() == "linux":
+                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_linux/master/update.zip"
         self.downloadPath = self.rootPath + os.sep + "update.zip"
         ###qhttp下载
         dict_args = {}

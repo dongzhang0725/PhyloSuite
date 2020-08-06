@@ -18,11 +18,11 @@ URL = 'https://github.com/dongzhang0725/PhyloSuite'
 EMAIL = 'dongzhang0725@gmail.com'
 AUTHOR = 'Dong Zhang'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '1.2.1'
+VERSION = '1.2.2'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'biopython', 'python-dateutil', 'suds-py3', 'PyQt5==5.10.1', 'reportlab', 'psutil', 'pywin32; platform_system=="Windows"'
+    'biopython', 'python-dateutil', 'suds-py3', 'PyQt5>=5.10.1', 'reportlab', 'psutil', 'pywin32; platform_system=="Windows"'
 ]
 
 # What packages are optional?

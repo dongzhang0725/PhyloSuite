@@ -143,8 +143,10 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.pushButton_2.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_3.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-1-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-1-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-1-1-Brief-example"
+        self.label_3.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
 
     @pyqtSlot()
     def on_pushButton_2_clicked(self):
@@ -224,6 +226,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.dict_args["extract_entire_seq"] = self.radioButton.isChecked()
         self.dict_args["entire_seq_name"] = self.lineEdit.text() if self.lineEdit.text() else "sequence"
         self.dict_args["cal_codon_bias"] = False # self.checkBox.isChecked()
+        self.dict_args["start_gene_with"] = "cox1" if not self.lineEdit_2.text() else self.lineEdit_2.text()
         ok = self.factory.remove_dir(self.dict_args["exportPath"], parent=self)
         if not ok: return  # 提醒是否删除旧结果，如果用户取消，就不执行
         self.worker = WorkThread(self.run_command, parent=self)
@@ -448,10 +451,8 @@ class ExtractGB(QDialog, Ui_Extractor, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.extractGB_settings.value('size', QSize(571, 680)))
+        self.resize(self.factory.judgeWindowSize(self.extractGB_settings, 756, 661))
         self.factory.centerWindow(self)
-        if self.height() < 640:
-            self.resize(QSize(571, 650))
         # self.move(self.extractGB_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -729,7 +730,10 @@ class ExtractGB(QDialog, Ui_Extractor, object):
     def switchSeqType(self, text):
         ###保存version顺序
         if text == ">>>More<<<":
-            QDesktopServices.openUrl(QUrl("https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/"))
+            country = self.factory.path_settings.value("country", "UK")
+            url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/" if \
+                country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/"
+            QDesktopServices.openUrl(QUrl(url))
             self.comboBox_6.setCurrentIndex(0)
             return
         if text != self.allVersions[0]:
@@ -768,8 +772,9 @@ class ExtractGB(QDialog, Ui_Extractor, object):
             ini_dict_array[i] = [""] * 6
         familyColor = [
             "#81C7D6", "#FF0033", "#6A00D1", "#49BF4E", "#AA538B", "#FF99CC"]
-        ini_dict_array[
-            "Family"] = familyColor if "Family" in ini_dict_array else ini_dict_array["Family"]
+        if "Family" in ini_dict_array: ini_dict_array["Family"] = familyColor
+        # ini_dict_array[
+        #     "Family"] = familyColor if "Family" in ini_dict_array else ini_dict_array["Family"]
         self.tableWidget_2.setHorizontalHeaderLabels(
             header)
         dict_array = self.extractGB_settings.value(

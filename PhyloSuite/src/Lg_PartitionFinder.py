@@ -8,9 +8,10 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
+from src.Lg_PartitionEditer import PartitionEditor
 from src.factory import Factory, WorkThread
 from uifiles.Ui_partitionfinder import Ui_PartitionFinder
-from src.CustomWidget import MyModelTableModel
+from src.CustomWidget import MyModelTableModel, MyPartEditorTableModel
 import inspect
 import os
 import sys
@@ -103,18 +104,25 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
                         elif "MORPHOLOGY" == list_i[6].upper():
                             self.morph_model_array.append(list_i)
         # 恢复用户的设置
+        self.partitioneditor = PartitionEditor(mode="PF2", parent=self)
+        self.partitioneditor.guiCloseSig.connect(self.refreshPartitionText)
         self.guiRestore()
-        self.toolButton_cvt.clicked.connect(self.switch_partition)
+        self.textEdit.buttonEdit.clicked.connect(self.popupPartitionEditor)
+        self.textEdit_2.buttonEdit.clicked.connect(self.popupPartitionEditor)
+        self.textEdit.dblclicked.connect(self.popupPartitionEditor)
+        self.textEdit_2.dblclicked.connect(self.popupPartitionEditor)
         self.exception_signal.connect(self.popupException)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         self.progressSig.connect(self.runProgress)
         self.logGuiSig.connect(self.addText2Log)
         self.lineEdit.installEventFilter(self)
         self.lineEdit_2.installEventFilter(self)
+        self.textEdit.installEventFilter(self)
+        self.textEdit_2.installEventFilter(self)
         self.comboBox_4.highlighted.connect(self.getOldIndex_c4)
         self.comboBox_5.highlighted.connect(self.getOldIndex_c5)
-        self.toolButton.clicked.connect(self.setWordWrap_nuc)
-        self.toolButton_2.clicked.connect(self.setWordWrap_aa)
+        # self.toolButton.clicked.connect(self.setWordWrap_nuc)
+        # self.toolButton_2.clicked.connect(self.setWordWrap_aa)
         self.log_gui = self.gui4Log()
         self.lineEdit_2.setLineEditNoChange(True)
         self.lineEdit.deleteFile.clicked.connect(
@@ -135,8 +143,10 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
         self.pushButton_5.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_12.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-10-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-10-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-10-1-Brief-example"
+        self.label_12.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
@@ -436,8 +446,7 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
 
         self.factory.centerWindow(self)
         # Restore geometry
-        self.resize(
-            self.partitionfinder_settings.value('size', QSize(500, 500)))
+        self.resize(self.factory.judgeWindowSize(self.partitionfinder_settings, 769, 578))
         # self.move(self.partitionfinder_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
@@ -520,18 +529,25 @@ separate = (Gene1_codon1) (Gene1_codon2) (Gene1_codon3) (intron);"""
                         os.sep + "partition.txt"
                     if os.path.exists(partition):
                         with open(partition, encoding="utf-8", errors='ignore') as file1:
-                            line1 = file1.readline()
-                            rgx = re.compile(r"(.+) *= *(\d+) *\- *(\d+)(\\3)?;")
-                            while not rgx.search(line1):
-                                line1 = file1.readline()
-                            block_content = ""
-                            while rgx.search(line1):
-                                name = rgx.search(line1).group(1)
-                                name_new = self.factory.refineName(name.strip(), remain_words="-")
-                                line1_new = re.sub(r"(.+) *= *(\d+) *\- *(\d+)(\\3)?;", r"%s=\2-\3\4"%name_new, line1)
-                                block_content += line1_new
-                                line1 = file1.readline()
-                        obj.setText(block_content)
+                            content = file1.read()
+                        search_ = re.search(
+                            r"(?s)\*\*\*partitionfinder style\*\*\*(.+?)[\*|$]", content)
+                        pf_partition = search_.group(1).strip() if search_ else ""
+                        array = self.partitioneditor.readPartition(pf_partition)
+                        text = self.partitioneditor.partition2text(array)
+                        obj.setText(text)
+                        #     line1 = file1.readline()
+                        #     rgx = re.compile(r"(.+) *= *(\d+) *\- *(\d+)(\\3)?;")
+                        #     while not rgx.search(line1):
+                        #         line1 = file1.readline()
+                        #     block_content = ""
+                        #     while rgx.search(line1):
+                        #         name = rgx.search(line1).group(1)
+                        #         name_new = self.factory.refineName(name.strip(), remain_words="-")
+                        #         line1_new = re.sub(r"(.+) *= *(\d+) *\- *(\d+)(\\3)?;", r"%s=\2-\3\4;"%name_new, line1)
+                        #         block_content += line1_new
+                        #         line1 = file1.readline()
+                        # obj.setText(block_content)
 
     def runProgress(self, num):
         oldValue = self.progressBar.value()
@@ -632,6 +648,13 @@ separate = (Gene1_codon1) (Gene1_codon2) (Gene1_codon3) (intron);"""
                             self,
                             "PartitionFinder2",
                             "<p style='line-height:25px; height:25px'>File ends with '.nwk' or '.newick' needed!</p>")
+        if isinstance(obj, QTextEdit):
+            if event.type() == QEvent.MouseButtonDblClick:
+                print(111)
+            if name in ["textEdit", "textEdit_2"]:
+                if event.type() == QEvent.MouseButtonDblClick:
+                    print(111)
+                    self.popupPartitionEditor()
         if (event.type() == QEvent.Show) and (obj == self.pushButton_5.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+",
                          self.dir_action.text()) or self.dir_action.text() == "Output Dir: ":
@@ -956,69 +979,69 @@ separate = (Gene1_codon1) (Gene1_codon2) (Gene1_codon3) (intron);""")
                 else:
                     action.setChecked(False)
 
-    def partitionConvertor(self, content):
-        rgx_partition = re.compile(r"(.+?) *\= *(\d+) *\- *(\d+)(\\3)?")
-        list_partitions = rgx_partition.findall(content)
-        # print(list_partitions) #[('atp6_mafft_codon1', '1', '597', '\\3'),
-        # ('atp6_mafft_codon2', '2', '597', '\\3'), ('atp6_mafft_codon3', '3',
-        # '597', '\\3'), ('cox1_mafft_codon1', '598', '2241', '\\3'),
-        # ('cox1_mafft_codon2', '599', '2241', '\\3')]
-        list_new_partitions = []
-        list_index = []
-        for i in list_partitions:
-            name, start, stop = i[:3]
-            name = self.factory.refineName(name.strip(), remain_words="-")
-            start = start.strip()
-            stop = stop.strip()
-            # 替换掉codon
-            name = re.sub(r"_codon\d", "", name)
-            # 重新找start
-            start = str(((int(start) - 1) // 3) * 3 + 1)
-            if [start, stop] not in list_index:
-                list_new_partitions.append([name, start, stop])
-                list_index.append([start, stop])
-        # print(list_new_partitions) #[['atp6_mafft', '1', '597'], ['cox1_mafft', '598', '2241']]
-        # 生成新的文本
-        list_str_partition = []
-        for j in list_new_partitions:
-            if re.search(r"\\3", content):
-                # 已经是codon mode了
-                list_str_partition.append(j[0] + "=" + j[1] + "-" + j[2])
-            else:
-                list_str_partition.append(
-                    j[0] + "_codon1=" + j[1] + "-" + j[2] + '\\3')
-                list_str_partition.append(
-                    j[0] + "_codon2=" + str(int(j[1]) + 1) + "-" + j[2] + '\\3')
-                list_str_partition.append(
-                    j[0] + "_codon3=" + str(int(j[1]) + 2) + "-" + j[2] + '\\3')
-        return ";\n".join(list_str_partition) + ";"
+    # def partitionConvertor(self, content):
+    #     rgx_partition = re.compile(r"(.+?) *\= *(\d+) *\- *(\d+)(\\3)?")
+    #     list_partitions = rgx_partition.findall(content)
+    #     # print(list_partitions) #[('atp6_mafft_codon1', '1', '597', '\\3'),
+    #     # ('atp6_mafft_codon2', '2', '597', '\\3'), ('atp6_mafft_codon3', '3',
+    #     # '597', '\\3'), ('cox1_mafft_codon1', '598', '2241', '\\3'),
+    #     # ('cox1_mafft_codon2', '599', '2241', '\\3')]
+    #     list_new_partitions = []
+    #     list_index = []
+    #     for i in list_partitions:
+    #         name, start, stop = i[:3]
+    #         name = self.factory.refineName(name.strip(), remain_words="-")
+    #         start = start.strip()
+    #         stop = stop.strip()
+    #         # 替换掉codon
+    #         name = re.sub(r"_codon\d", "", name)
+    #         # 重新找start
+    #         start = str(((int(start) - 1) // 3) * 3 + 1)
+    #         if [start, stop] not in list_index:
+    #             list_new_partitions.append([name, start, stop])
+    #             list_index.append([start, stop])
+    #     # print(list_new_partitions) #[['atp6_mafft', '1', '597'], ['cox1_mafft', '598', '2241']]
+    #     # 生成新的文本
+    #     list_str_partition = []
+    #     for j in list_new_partitions:
+    #         if re.search(r"\\3", content):
+    #             # 已经是codon mode了
+    #             list_str_partition.append(j[0] + "=" + j[1] + "-" + j[2])
+    #         else:
+    #             list_str_partition.append(
+    #                 j[0] + "_codon1=" + j[1] + "-" + j[2] + '\\3')
+    #             list_str_partition.append(
+    #                 j[0] + "_codon2=" + str(int(j[1]) + 1) + "-" + j[2] + '\\3')
+    #             list_str_partition.append(
+    #                 j[0] + "_codon3=" + str(int(j[1]) + 2) + "-" + j[2] + '\\3')
+    #     return ";\n".join(list_str_partition) + ";"
 
-    def switch_partition(self, bool_):
-        cursor = self.textEdit.textCursor()
-        content = cursor.selectedText()
-        if "\u2029" in content:
-            # cursor获得的内容把换行符变成了这个
-            content = content.replace("\u2029", "\n")
-        if not content:
-            QMessageBox.information(
-                self,
-                "Concatenate sequence",
-                "<p style='line-height:25px; height:25px'>Please select contents first!</p>")
-            return
-        new_content = self.partitionConvertor(content)
-        all_content = self.textEdit.toPlainText()
-        new_all_content = all_content.replace(content, new_content)
-        self.textEdit.setText(new_all_content)
-        # print(new_content, new_all_content)
-        # 正则需要2层转义，new_content里面已经是\\3了，所以需要替换为\\\\3，类似于r'\\3'
-        start, end = re.search(
-            new_content.replace("\\", "\\\\"), new_all_content).span()
-        cursor.setPosition(start)
-        cursor.movePosition(
-            QTextCursor.Right,
-            QTextCursor.KeepAnchor,
-            end - start)
-        self.textEdit.setTextCursor(cursor)
+    # def switch_partition(self, bool_):
+    #     cursor = self.textEdit.textCursor()
+    #     content = cursor.selectedText()
+    #     if "\u2029" in content:
+    #         # cursor获得的内容把换行符变成了这个
+    #         content = content.replace("\u2029", "\n")
+    #     if not content:
+    #         QMessageBox.information(
+    #             self,
+    #             "Concatenate sequence",
+    #             "<p style='line-height:25px; height:25px'>Please select contents first!</p>")
+    #         return
+    #     new_content = self.partitionConvertor(content)
+    #     all_content = self.textEdit.toPlainText()
+    #     new_all_content = all_content.replace(content, new_content)
+    #     self.textEdit.setText(new_all_content)
+    #     # print(new_content, new_all_content)
+    #     # 正则需要2层转义，new_content里面已经是\\3了，所以需要替换为\\\\3，类似于r'\\3'
+    #     start, end = re.search(
+    #         new_content.replace("\\", "\\\\"), new_all_content).span()
+    #     cursor.setPosition(start)
+    #     cursor.movePosition(
+    #         QTextCursor.Right,
+    #         QTextCursor.KeepAnchor,
+    #         end - start)
+    #     self.textEdit.setTextCursor(cursor)
 
     def actionName(self, menu):
         actions = menu.actions()
@@ -1206,9 +1229,12 @@ models = {self.models};\n# MODEL SELECCTION #\nmodel_selection = {self.model_sel
                     error_text = "Error happened! Click <span style='font-weight:600; color:#ff0000;'>Show log</span> to see detail!"
                 if re.search(r"^ImportError", out_line):
                     is_error = True
+                    country = self.factory.path_settings.value("country", "UK")
+                    url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-3-1-Troubleshooting" if \
+                        country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-3-1-Troubleshooting"
                     error_text = "Error! Dependencies not found! Click <span style='font-weight:600; color:#ff0000;'>" \
                                  "Show log</span> to see details! <br>For the solution, please see " \
-                                 "<a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-3-1-Troubleshooting\">here</a>."
+                                 "<a href=\"%s\">here</a>."%url
             else:
                 break
         if is_error:
@@ -1262,7 +1288,7 @@ models = {self.models};\n# MODEL SELECCTION #\nmodel_selection = {self.model_sel
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
-            with open(self.exportPath + os.sep + "PhyloSuite_PartitionFinder.log", "a") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_PartitionFinder.log", "a", errors='ignore') as f:
                 f.write(text + "\n")
 
     def setWordWrap(self):
@@ -1274,23 +1300,23 @@ models = {self.models};\n# MODEL SELECCTION #\nmodel_selection = {self.model_sel
             button.setChecked(False)
             self.textEdit_log.setLineWrapMode(QTextEdit.NoWrap)
 
-    def setWordWrap_nuc(self):
-        button = self.sender()
-        if button.isChecked():
-            button.setChecked(True)
-            self.textEdit.setLineWrapMode(QTextEdit.WidgetWidth)
-        else:
-            button.setChecked(False)
-            self.textEdit.setLineWrapMode(QTextEdit.NoWrap)
-
-    def setWordWrap_aa(self):
-        button = self.sender()
-        if button.isChecked():
-            button.setChecked(True)
-            self.textEdit_2.setLineWrapMode(QTextEdit.WidgetWidth)
-        else:
-            button.setChecked(False)
-            self.textEdit_2.setLineWrapMode(QTextEdit.NoWrap)
+    # def setWordWrap_nuc(self):
+    #     button = self.sender()
+    #     if button.isChecked():
+    #         button.setChecked(True)
+    #         self.textEdit.setLineWrapMode(QTextEdit.WidgetWidth)
+    #     else:
+    #         button.setChecked(False)
+    #         self.textEdit.setLineWrapMode(QTextEdit.NoWrap)
+    #
+    # def setWordWrap_aa(self):
+    #     button = self.sender()
+    #     if button.isChecked():
+    #         button.setChecked(True)
+    #         self.textEdit_2.setLineWrapMode(QTextEdit.WidgetWidth)
+    #     else:
+    #         button.setChecked(False)
+    #         self.textEdit_2.setLineWrapMode(QTextEdit.NoWrap)
 
     def isRunning(self):
         '''判断程序是否运行,依赖进程是否存在来判断'''
@@ -1313,10 +1339,13 @@ models = {self.models};\n# MODEL SELECCTION #\nmodel_selection = {self.model_sel
             if os.path.exists(partition):
                 with open(partition, encoding="utf-8", errors='ignore') as file1:
                     content = file1.read()
-                PF_partition = re.search(
-                    r"(?s)\*\*\*partitionfinder style\*\*\*(.+?)[\*|$]", content).group(1)
-                self.textEdit.setText(PF_partition.strip())
-                self.textEdit_2.setText(PF_partition.strip())
+                search_ = re.search(
+                    r"(?s)\*\*\*partitionfinder style\*\*\*(.+?)[\*|$]", content)
+                PF_partition = search_.group(1) if search_ else ""
+                array = self.partitioneditor.readPartition(PF_partition)
+                text = self.partitioneditor.partition2text(array)
+                self.textEdit.setText(text)
+                self.textEdit_2.setText(text)
 
     def popupAutoDec(self, init=False):
         self.init = init
@@ -1397,6 +1426,40 @@ models = {self.models};\n# MODEL SELECCTION #\nmodel_selection = {self.model_sel
             return True
         else:
             return False
+
+    def popupPartitionEditor(self):
+        data_type = self.tabWidget.tabText(self.tabWidget.currentIndex())
+        if data_type == "Nucleotide":
+            textedit = self.textEdit
+            self.partitioneditor.pushButton_codon.setEnabled(True)
+            self.partitioneditor.pushButton_nocodon.setEnabled(True)
+            self.partitioneditor.data_type = "NUC"
+        else:
+            textedit = self.textEdit_2
+            self.partitioneditor.pushButton_codon.setEnabled(False)
+            self.partitioneditor.pushButton_nocodon.setEnabled(False)
+            self.partitioneditor.data_type = "AA"
+        partition_content = textedit.toPlainText().strip()
+        array = self.partitioneditor.readPartition(partition_content)
+        ini_array = [["", "=", "", "-", ""],
+                     ["", "=", "", "-", ""],
+                     ["", "=", "", "-", ""],
+                     ["", "=", "", "-", ""]
+                     ]
+        array = ini_array if not array else array
+        # header, array = self.MrBayes_settings.value(
+        #     "partition defination", [header, ini_array])
+        model = MyPartEditorTableModel(array, self.partitioneditor.header, parent=self.partitioneditor)
+        model.dataChanged.connect(self.partitioneditor.sortGenes)
+        self.partitioneditor.tableView_partition.setModel(model)
+        self.partitioneditor.ctrlResizedColumn()  # 先执行一次改变列的宽度
+        self.partitioneditor.exec_()
+
+    def refreshPartitionText(self, text):
+        data_type = self.tabWidget.tabText(self.tabWidget.currentIndex())
+        textedit = self.textEdit if data_type == "Nucleotide" else self.textEdit_2
+        textedit.setText(text)
+        textedit.setToolTip(text)
 
     # def judgePartContents(self, content):
     #     rgx_partition = re.compile(r"(.+?) *\= *(\d+) *\- *(\d+)(\\3)?")

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\compareTable.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\compareTable.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_compareTable(object):
     def setupUi(self, compareTable):
         compareTable.setObjectName("compareTable")
-        compareTable.resize(444, 416)
+        compareTable.resize(558, 416)
         compareTable.setSizeGripEnabled(True)
         self.gridLayout_3 = QtWidgets.QGridLayout(compareTable)
         self.gridLayout_3.setObjectName("gridLayout_3")
@@ -73,8 +73,11 @@ class Ui_compareTable(object):
         self.label_14.setOpenExternalLinks(True)
         self.label_14.setObjectName("label_14")
         self.horizontalLayout.addWidget(self.label_14)
-        spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        spacerItem2 = QtWidgets.QSpacerItem(135, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem2)
+        self.label_3 = QtWidgets.QLabel(self.groupBox_4)
+        self.label_3.setObjectName("label_3")
+        self.horizontalLayout.addWidget(self.label_3)
         self.label_2 = ClickedLableGif(self.groupBox_4)
         self.label_2.setText("")
         self.label_2.setObjectName("label_2")
@@ -136,6 +139,7 @@ class Ui_compareTable(object):
         self.listWidget.setToolTip(_translate("compareTable", "try to drag to reorder"))
         self.toolButton_T.setShortcut(_translate("compareTable", "Del"))
         self.label_14.setText(_translate("compareTable", "<html><head/><body><p>Try to drag <span style=\" font-weight:600; color:#ff0105;\">two or more</span> tables (<span style=\" font-weight:600; color:#ff0026;\">.csv</span>) and drop here</p></body></html>"))
+        self.label_3.setText(_translate("compareTable", "Demo:"))
         self.label_2.setToolTip(_translate("compareTable", "Brief example"))
         self.groupBox.setTitle(_translate("compareTable", "Parameters"))
         self.label.setText(_translate("compareTable", "Number of header rows (skip comparison):"))

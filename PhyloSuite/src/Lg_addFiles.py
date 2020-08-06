@@ -48,8 +48,10 @@ class Lg_addFiles(QDialog, Ui_addFile, object):
         self.guiRestore()
         self.exception_signal.connect(self.popupException)
         self.interrupt = False
-        self.label_3.clicked.connect(lambda : QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-3-1-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#4-3-1-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#4-3-1-1-Brief-example"
+        self.label_3.clicked.connect(lambda : QDesktopServices.openUrl(QUrl(url)))
 
     def fetSeqFromNCBI(self, id_array):
         batch_size = 20
@@ -220,7 +222,7 @@ In case of excessive usage of the E-utilities, NCBI will attempt to contact a us
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.addFiles_settings.value('size', QSize(500, 500)))
+        self.resize(self.factory.judgeWindowSize(self.addFiles_settings, 620, 500))
         self.factory.centerWindow(self)
         # self.move(self.addFiles_settings.value('pos', QPoint(875, 254)))
         for name, obj in inspect.getmembers(self):

@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>574</width>
-    <height>636</height>
+    <width>930</width>
+    <height>555</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MrBayes</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_3">
-   <item>
+  <layout class="QGridLayout" name="gridLayout_6">
+   <item row="0" column="0">
     <widget class="QScrollArea" name="scrollArea">
      <property name="frameShape">
       <enum>QFrame::NoFrame</enum>
@@ -27,93 +27,101 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>556</width>
-        <height>618</height>
+        <width>912</width>
+        <height>537</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>0</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
        <item>
         <widget class="QGroupBox" name="groupBox_4">
          <property name="title">
           <string>Input</string>
          </property>
-         <layout class="QGridLayout" name="gridLayout_2">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_5">
-            <property name="text">
-             <string>Alignment File:</string>
-            </property>
-           </widget>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <layout class="QGridLayout" name="gridLayout_2">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_5">
+              <property name="text">
+               <string>Alignment File:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="InputQLineEdit" name="lineEdit">
+              <property name="cursor">
+               <cursorShape>ArrowCursor</cursorShape>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+              <property name="placeholderText">
+               <string>The file should be NEXUS format</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QPushButton" name="pushButton_3">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>30</width>
+                <height>26</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>30</width>
+                <height>26</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true"/>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_31">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Outgroup(s):</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="CheckableComboBox" name="comboBox_5">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>13</width>
+                <height>26</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
-          <item row="0" column="1">
-           <widget class="InputQLineEdit" name="lineEdit">
-            <property name="cursor">
-             <cursorShape>ArrowCursor</cursorShape>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-            <property name="readOnly">
-             <bool>true</bool>
-            </property>
-            <property name="placeholderText">
-             <string>The file should be NEXUS format</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="2">
-           <widget class="QPushButton" name="pushButton_3">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>30</width>
-              <height>26</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>30</width>
-              <height>26</height>
-             </size>
-            </property>
-            <property name="styleSheet">
-             <string notr="true"/>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_31">
-            <property name="font">
-             <font>
-              <pointsize>10</pointsize>
-             </font>
-            </property>
-            <property name="text">
-             <string>Outgroup(s):</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0" colspan="3">
+          <item>
            <layout class="QHBoxLayout" name="horizontalLayout">
             <item>
              <widget class="QLabel" name="label_14">
@@ -121,6 +129,47 @@
                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click &lt;a href=&quot;http://mrbayes.sourceforge.net/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt; to learn more about &lt;span style=&quot; font-weight:600; color:#ff0000;&quot;&gt;MrBayes&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="openExternalLinks">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="Line" name="line">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_10">
+              <property name="text">
+               <string>Demo:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="ClickedLableGif" name="label_9">
+              <property name="toolTip">
+               <string>Brief example</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="Line" name="line_2">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_3">
+              <property name="text">
+               <string>Save Log</string>
+              </property>
+              <property name="checked">
                <bool>true</bool>
               </property>
              </widget>
@@ -138,43 +187,7 @@
               </property>
              </spacer>
             </item>
-            <item>
-             <widget class="QCheckBox" name="checkBox_3">
-              <property name="text">
-               <string>Save Log</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="ClickedLableGif" name="label_9">
-              <property name="toolTip">
-               <string>Brief example</string>
-              </property>
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
            </layout>
-          </item>
-          <item row="1" column="1">
-           <widget class="CheckableComboBox" name="comboBox_5">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>13</width>
-              <height>26</height>
-             </size>
-            </property>
-           </widget>
           </item>
          </layout>
         </widget>
@@ -231,7 +244,7 @@
              <string>Partition Models</string>
             </property>
             <property name="icon">
-             <iconset resource="myRes.qrc">
+             <iconset resource="../myRes.qrc">
               <normaloff>:/picture/resourses/pie-chart.png</normaloff>:/picture/resourses/pie-chart.png</iconset>
             </property>
             <property name="checkable">
@@ -239,105 +252,7 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="0">
-           <widget class="QCheckBox" name="checkBox_4">
-            <property name="text">
-             <string>Threads:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QComboBox" name="comboBox_10">
-            <property name="enabled">
-             <bool>false</bool>
-            </property>
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>13</width>
-              <height>26</height>
-             </size>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="2">
-           <layout class="QHBoxLayout" name="horizontalLayout_2">
-            <item>
-             <widget class="QLabel" name="label_28">
-              <property name="font">
-               <font>
-                <pointsize>10</pointsize>
-               </font>
-              </property>
-              <property name="text">
-               <string>Gamma categories:</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QSpinBox" name="spinBox">
-              <property name="minimum">
-               <number>2</number>
-              </property>
-              <property name="maximum">
-               <number>64</number>
-              </property>
-              <property name="value">
-               <number>4</number>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_26">
-            <property name="font">
-             <font>
-              <pointsize>10</pointsize>
-             </font>
-            </property>
-            <property name="text">
-             <string>State freq:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1" colspan="2">
-           <widget class="QComboBox" name="comboBox_4">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>13</width>
-              <height>26</height>
-             </size>
-            </property>
-            <item>
-             <property name="text">
-              <string>dirichlet(1.0,1.0,1.0,1.0)</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>fixed(equal)</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>fixed(empirical)</string>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item row="3" column="0">
+          <item row="1" column="3">
            <widget class="QLabel" name="label_27">
             <property name="font">
              <font>
@@ -352,7 +267,14 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="1" colspan="2">
+          <item row="1" column="0">
+           <widget class="QCheckBox" name="checkBox_4">
+            <property name="text">
+             <string>Threads:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="5">
            <widget class="QComboBox" name="comboBox_6">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -398,6 +320,97 @@
             </item>
            </widget>
           </item>
+          <item row="1" column="2">
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <item>
+             <widget class="QLabel" name="label_28">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Gamma categories:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="spinBox">
+              <property name="minimum">
+               <number>2</number>
+              </property>
+              <property name="maximum">
+               <number>64</number>
+              </property>
+              <property name="value">
+               <number>4</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="0" column="3" colspan="2">
+           <widget class="QLabel" name="label_26">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>State freq:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="comboBox_10">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>13</width>
+              <height>26</height>
+             </size>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="5">
+           <widget class="QComboBox" name="comboBox_4">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>13</width>
+              <height>26</height>
+             </size>
+            </property>
+            <item>
+             <property name="text">
+              <string>dirichlet(1.0,1.0,1.0,1.0)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>fixed(equal)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>fixed(empirical)</string>
+             </property>
+            </item>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -406,267 +419,271 @@
          <property name="title">
           <string>MCMC Settings</string>
          </property>
-         <layout class="QGridLayout" name="gridLayout_4">
-          <item row="0" column="0" colspan="2">
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>Generations:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="2">
-           <widget class="QSpinBox" name="spinBox_2">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="wrapping">
-             <bool>true</bool>
-            </property>
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>999999999</number>
-            </property>
-            <property name="singleStep">
-             <number>1</number>
-            </property>
-            <property name="value">
-             <number>2000000</number>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3">
-           <widget class="QLabel" name="label_2">
-            <property name="text">
-             <string>Sampling Freq:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="5">
-           <widget class="QSpinBox" name="spinBox_6">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>99999999</number>
-            </property>
-            <property name="value">
-             <number>100</number>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0" colspan="2">
-           <widget class="QLabel" name="label_3">
-            <property name="text">
-             <string>Number of Runs:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="2">
-           <widget class="QSpinBox" name="spinBox_7">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="wrapping">
-             <bool>true</bool>
-            </property>
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>9999</number>
-            </property>
-            <property name="singleStep">
-             <number>1</number>
-            </property>
-            <property name="value">
-             <number>2</number>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3" colspan="2">
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>Number of Chains:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="5">
-           <widget class="QSpinBox" name="spinBox_8">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="wrapping">
-             <bool>true</bool>
-            </property>
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>9999</number>
-            </property>
-            <property name="singleStep">
-             <number>1</number>
-            </property>
-            <property name="value">
-             <number>4</number>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0" colspan="2">
-           <widget class="QCheckBox" name="checkBox">
-            <property name="text">
-             <string>Burnin Fraction:</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup</string>
-            </attribute>
-           </widget>
-          </item>
-          <item row="2" column="2">
-           <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="maximum">
-             <double>1.000000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>0.010000000000000</double>
-            </property>
-            <property name="value">
-             <double>0.250000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="3">
-           <widget class="QCheckBox" name="checkBox_2">
-            <property name="text">
-             <string>Burnin:</string>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup</string>
-            </attribute>
-           </widget>
-          </item>
-          <item row="2" column="5">
-           <widget class="QSpinBox" name="spinBox_10">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="wrapping">
-             <bool>true</bool>
-            </property>
-            <property name="minimum">
-             <number>1</number>
-            </property>
-            <property name="maximum">
-             <number>999999999</number>
-            </property>
-            <property name="singleStep">
-             <number>1</number>
-            </property>
-            <property name="value">
-             <number>250</number>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_6">
-            <property name="toolTip">
-             <string>Type of consensus tree</string>
-            </property>
-            <property name="text">
-             <string>Contype:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="3">
-           <widget class="QLabel" name="label_7">
-            <property name="toolTip">
-             <string>Format of consensus tree</string>
-            </property>
-            <property name="text">
-             <string>Conformat:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="2">
-           <widget class="QComboBox" name="comboBox_8">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>13</width>
-              <height>26</height>
-             </size>
-            </property>
-            <item>
-             <property name="text">
-              <string>Halfcompat</string>
-             </property>
+         <layout class="QGridLayout" name="gridLayout_5">
+          <item row="0" column="0">
+           <layout class="QGridLayout" name="gridLayout_4">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label">
+              <property name="text">
+               <string>Generations:</string>
+              </property>
+             </widget>
             </item>
-            <item>
-             <property name="text">
-              <string>Allcompat</string>
-             </property>
+            <item row="0" column="1">
+             <widget class="QSpinBox" name="spinBox_2">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="wrapping">
+               <bool>true</bool>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>999999999</number>
+              </property>
+              <property name="singleStep">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <number>2000000</number>
+              </property>
+             </widget>
             </item>
-           </widget>
-          </item>
-          <item row="3" column="5">
-           <widget class="QComboBox" name="comboBox_9">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>13</width>
-              <height>26</height>
-             </size>
-            </property>
-            <item>
-             <property name="text">
-              <string>Simple</string>
-             </property>
+            <item row="0" column="2">
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>Sampling Freq:</string>
+              </property>
+             </widget>
             </item>
-            <item>
-             <property name="text">
-              <string>Figtree</string>
-             </property>
+            <item row="0" column="3">
+             <widget class="QSpinBox" name="spinBox_6">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>99999999</number>
+              </property>
+              <property name="value">
+               <number>100</number>
+              </property>
+             </widget>
             </item>
-           </widget>
+            <item row="0" column="7" colspan="2">
+             <widget class="QLabel" name="label_4">
+              <property name="text">
+               <string>Number of Chains:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="9">
+             <widget class="QSpinBox" name="spinBox_8">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="wrapping">
+               <bool>true</bool>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>256</number>
+              </property>
+              <property name="singleStep">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <number>4</number>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_6">
+              <property name="toolTip">
+               <string>Type of consensus tree</string>
+              </property>
+              <property name="text">
+               <string>Contype:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QComboBox" name="comboBox_8">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>13</width>
+                <height>26</height>
+               </size>
+              </property>
+              <item>
+               <property name="text">
+                <string>Halfcompat</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Allcompat</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="1" column="2">
+             <widget class="QLabel" name="label_7">
+              <property name="toolTip">
+               <string>Format of consensus tree</string>
+              </property>
+              <property name="text">
+               <string>Conformat:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="3">
+             <widget class="QComboBox" name="comboBox_9">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>13</width>
+                <height>26</height>
+               </size>
+              </property>
+              <item>
+               <property name="text">
+                <string>Simple</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Figtree</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="1" column="4" colspan="2">
+             <widget class="QCheckBox" name="checkBox">
+              <property name="text">
+               <string>Burnin Fraction:</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+              <attribute name="buttonGroup">
+               <string notr="true">buttonGroup</string>
+              </attribute>
+             </widget>
+            </item>
+            <item row="1" column="6">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="maximum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.010000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.250000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="7">
+             <widget class="QCheckBox" name="checkBox_2">
+              <property name="text">
+               <string>Burnin:</string>
+              </property>
+              <attribute name="buttonGroup">
+               <string notr="true">buttonGroup</string>
+              </attribute>
+             </widget>
+            </item>
+            <item row="1" column="8" colspan="2">
+             <widget class="QSpinBox" name="spinBox_10">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="wrapping">
+               <bool>true</bool>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>999999999</number>
+              </property>
+              <property name="singleStep">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <number>250</number>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="6">
+             <widget class="QSpinBox" name="spinBox_7">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="wrapping">
+               <bool>true</bool>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>120</number>
+              </property>
+              <property name="singleStep">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <number>2</number>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="4" colspan="2">
+             <widget class="QLabel" name="label_3">
+              <property name="text">
+               <string>Number of Runs:</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </widget>
@@ -695,7 +712,7 @@
              <string>Start</string>
             </property>
             <property name="icon">
-             <iconset resource="myRes.qrc">
+             <iconset resource="../myRes.qrc">
               <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
             </property>
             <property name="autoExclusive">
@@ -721,7 +738,7 @@
              <string>Continue Previous Analysis</string>
             </property>
             <property name="icon">
-             <iconset resource="myRes.qrc">
+             <iconset resource="../myRes.qrc">
               <normaloff>:/picture/resourses/Play-pause_button_play_stop_blue_pause.png</normaloff>:/picture/resourses/Play-pause_button_play_stop_blue_pause.png</iconset>
             </property>
             <property name="autoExclusive">
@@ -735,7 +752,7 @@
              <string>Show MrBayes Data Block</string>
             </property>
             <property name="icon">
-             <iconset resource="myRes.qrc">
+             <iconset resource="../myRes.qrc">
               <normaloff>:/picture/resourses/Eye_Care_Services-512.png</normaloff>:/picture/resourses/Eye_Care_Services-512.png</iconset>
             </property>
            </widget>
@@ -752,7 +769,7 @@
              <string>Stop</string>
             </property>
             <property name="icon">
-             <iconset resource="myRes.qrc">
+             <iconset resource="../myRes.qrc">
               <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
             </property>
            </widget>
@@ -786,7 +803,7 @@
              <string>Show log</string>
             </property>
             <property name="icon">
-             <iconset resource="myRes.qrc">
+             <iconset resource="../myRes.qrc">
               <normaloff>:/picture/resourses/Eye_Care_Services-512.png</normaloff>:/picture/resourses/Eye_Care_Services-512.png</iconset>
             </property>
            </widget>
@@ -830,7 +847,7 @@
   <tabstop>pushButton</tabstop>
  </tabstops>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections>
   <connection>

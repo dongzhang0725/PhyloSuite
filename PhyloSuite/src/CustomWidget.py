@@ -741,11 +741,110 @@ class MyPartDisplayTableModel(QAbstractTableModel):
 
     def flags(self, index):
         if index.row() <= len(self.arraydata) and index.column() <= len(self.arraydata[0]):
-            if self.arraydata[index.row()][index.column()] in ["=", "-", " "]:
-                return Qt.ItemIsEnabled | Qt.ItemIsSelectable
-            else:
-                return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+            if index.row() <= (len(self.arraydata) - 1):
+                if self.arraydata[index.row()][index.column()] in ["=", "-", " "]:
+                    return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                else:
+                    return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
         return super(MyPartDisplayTableModel, self).flags(index)
+
+
+class MyPartEditorTableModel(QAbstractTableModel):
+    def __init__(self, datain, headerdata, parent=None):
+        """
+        Args:
+            datain: a list of lists\n
+            headerdata: a list of strings
+        """
+        QAbstractTableModel.__init__(self, parent)
+        self.parent = parent
+        self.arraydata = datain
+        self.header = headerdata
+
+    def rowCount(self, parent):
+        return len(self.arraydata)
+
+    def columnCount(self, parent):
+        if self.arraydata: return len(self.arraydata[0])
+        else: return 0
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        value = self.arraydata[index.row()][index.column()]
+        if role == Qt.EditRole:
+            return value
+        if role == Qt.DisplayRole:
+            return value
+        elif role == Qt.BackgroundRole and (value in ["=", "-", " "]):
+            return QColor("#F0F0F0")
+        elif role == Qt.SizeHintRole and (value in ["=", "-", " "]):
+            return QSize(20, 20)
+        elif role == Qt.BackgroundRole and (index.row() % 2 == 1):
+            return QColor(255, 255, 255)
+        elif role == Qt.BackgroundRole and (index.row() % 2 == 0):
+            return QColor(237, 243, 254)
+        elif role == Qt.ToolTipRole:
+            return value
+        elif role == Qt.TextAlignmentRole:
+            if index.column() == 0: return Qt.AlignVCenter | Qt.AlignRight
+            else: return Qt.AlignCenter
+        elif role == Qt.DecorationRole:
+            if self.parent.data_type == "AA": return None
+            if index.column() == 0:
+                try:
+                    start = int(self.arraydata[index.row()][2])
+                    stop = int(self.arraydata[index.row()][4].replace("\\3", ""))
+                    if "\\3" in self.arraydata[index.row()][4]:
+                        if (stop - start + 1)%3 == 0: return QIcon(":/picture/resourses/1.png")
+                        elif (stop - start + 1)%3 == 2: return QIcon(":/picture/resourses/2.png")
+                        elif (stop - start + 1)%3 == 1: return QIcon(":/picture/resourses/3.png")
+                    elif (stop - start + 1)%3 == 0: return QIcon(":/picture/resourses/3.png")
+                except: pass
+        elif not (role == Qt.DisplayRole or role == Qt.EditRole):
+            return None
+
+    def headerData(self, number, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.header[number]
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return str(number + 1)
+        return None
+
+    def setData(self, index, value, role):
+        if not index.isValid():
+            return False
+        if role == Qt.EditRole:
+            if index.column() == 0:
+                value = self.parent.factory.refineName(value.strip(), remain_words="-")
+            if index.column() == 2:
+                if not value.isnumeric(): return False
+            if index.column() == 4:
+                if not re.search(r"^[0-9\\]*$", value): return False
+            self.arraydata[index.row()][index.column()] = value
+            if index.column() == 2: self.dataChanged.emit(index, index)
+            self.parent.ctrlResizedColumn()
+        return True
+
+    def flags(self, index):
+        if self.arraydata:
+            if index.row() <= len(self.arraydata) and index.column() <= len(self.arraydata[0]):
+                if index.row() <= (len(self.arraydata) - 1):
+                    if self.arraydata[index.row()][index.column()] in ["=", "-", " "]:
+                        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                    else:
+                        return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+        return super(MyPartEditorTableModel, self).flags(index)
+
+    def sort(self, col, order):
+        """sort table by given column number col"""
+        if col == 2:
+            self.layoutAboutToBeChanged.emit()
+            self.arraydata = sorted(self.arraydata, key=lambda list_: int(list_[2]))#operator.itemgetter(col))
+            if order == Qt.DescendingOrder:
+                self.arraydata.reverse()
+            self.layoutChanged.emit()
+
 
 class MyOtherFileTableModel(QAbstractTableModel):
 
@@ -1646,6 +1745,7 @@ class ComboBoxWidget(QWidget):
         self.horizontalLayout.addWidget(self.file_label)
         self.horizontalLayout.addStretch()
 
+
 class QcomboLineEdit(QLineEdit):
     clicked = pyqtSignal()
     autoDetectSig = pyqtSignal()
@@ -1746,6 +1846,7 @@ class ListQCombobox(QComboBox):
     def __init__(self, *args):
         super(ListQCombobox, self).__init__(*args)
         self.listw = QListWidget()
+        # self.listw.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setModel(self.listw.model())
         self.setView(self.listw)
         self.activated.connect(self.setTopText)
@@ -2326,7 +2427,7 @@ class UpdatePopupGui(QDialog):
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         # self.thisPath = os.path.dirname(os.path.realpath(__file__))
-        self.resize(480, 300)
+        self.resize(600, 400)
         self.setWindowTitle("Updates found")
         self.setWindowFlags(self.windowFlags() | Qt.WindowMinMaxButtonsHint)
         self.gridLayout = QGridLayout(self)
@@ -2359,7 +2460,7 @@ li:first-child {
 <body>''' + description + '''</body></html>'''
         self.textBrowser.setHtml(html)
         self.gridLayout.addWidget(self.textBrowser, 1, 0, 1, 2)
-        self.pushButton = QPushButton("Ok", self)
+        self.pushButton = QPushButton("Update now", self)
         icon = QIcon()
         icon.addPixmap(QPixmap(":/picture/resourses/btn_ok.png"), QIcon.Normal, QIcon.Off)
         self.pushButton.setIcon(icon)
@@ -3300,6 +3401,45 @@ class JobFinishMessageBox(QDialog, object):
                 item.setBackground(QColor(237, 243, 254))
             model.appendRow(item)
         self.combox.setCurrentIndex(0)
+
+
+class DblClickTexedit(QTextEdit):
+    dblclicked = pyqtSignal()
+
+    def __init__(self, *args):
+        super(DblClickTexedit, self).__init__(*args)
+        self.buttonEdit = QToolButton(self)
+        self.buttonEdit.setAutoRaise(True)
+        self.buttonEdit.setToolTip("View")
+        self.buttonEdit.setCursor(Qt.PointingHandCursor)
+        self.buttonEdit.setFocusPolicy(Qt.NoFocus)
+        self.buttonEdit.setIcon(QIcon(":/picture/resourses/edit2.png"))
+        self.buttonEdit.setStyleSheet("QToolButton {border: none;}")
+        self.buttonWrap = QToolButton(self)
+        self.buttonWrap.setCheckable(True)
+        self.buttonWrap.setToolTip("Delete")
+        self.buttonWrap.setCursor(Qt.PointingHandCursor)
+        self.buttonWrap.setFocusPolicy(Qt.NoFocus)
+        self.buttonWrap.setIcon(QIcon(":/picture/resourses/interface-controls-text-wrap-512.png"))
+        self.buttonWrap.clicked.connect(self.wrapText)
+        layout = QHBoxLayout(self)
+        layout.addStretch()
+        layout.addWidget(self.buttonEdit, 0, Qt.AlignLeft | Qt.AlignTop)
+        layout.addWidget(self.buttonWrap, 0, Qt.AlignLeft | Qt.AlignTop)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 20, 0)
+
+    def wrapText(self, bool_):
+        if self.buttonWrap.isChecked():
+            self.buttonWrap.setChecked(True)
+            self.setLineWrapMode(QTextEdit.WidgetWidth)
+        else:
+            self.buttonWrap.setChecked(False)
+            self.setLineWrapMode(QTextEdit.NoWrap)
+
+    def mouseDoubleClickEvent(self, e):
+        self.dblclicked.emit()
+        return QTextEdit().mouseDoubleClickEvent(e)
 
 
 def showERROR():

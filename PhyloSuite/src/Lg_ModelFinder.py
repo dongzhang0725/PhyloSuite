@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import glob
 import multiprocessing
 import re
 import shutil
@@ -11,6 +11,9 @@ import signal
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+
+from src.CustomWidget import MyPartEditorTableModel
+from src.Lg_PartitionEditer import PartitionEditor
 from src.factory import Factory, WorkThread
 from uifiles.Ui_ModelFinder import Ui_ModelFinder
 import inspect
@@ -77,6 +80,11 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.qss_file = f.read()
         self.setStyleSheet(self.qss_file)
         # 恢复用户的设置
+        self.textEdit.dblclicked.connect(self.popupPartitionEditor)
+        self.partitioneditor = PartitionEditor(mode="MF", parent=self)
+        self.partitioneditor.guiCloseSig.connect(lambda text: [self.textEdit.setText(text),
+                                                               self.textEdit.setToolTip(text)])
+        self.textEdit.buttonEdit.clicked.connect(self.popupPartitionEditor)
         self.guiRestore()
         self.exception_signal.connect(self.popupException)
         self.iq_tree_exception.connect(self.popup_IQTREE_exception)
@@ -88,22 +96,22 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         self.lineEdit.installEventFilter(self)
         self.lineEdit.autoDetectSig.connect(self.popupAutoDec)
         self.lineEdit_2.installEventFilter(self)
-        self.lineEdit_3.installEventFilter(self)
+        # self.lineEdit_3.installEventFilter(self)
         self.comboBox_3.activated[str].connect(self.controlCodonTable)
         self.comboBox_5.activated[str].connect(self.ctrl_ratehet)
         self.ctrl_ratehet(self.comboBox_5.currentText())
         self.lineEdit_2.setLineEditNoChange(True)
-        self.lineEdit_3.setLineEditNoChange(True)
+        # self.lineEdit_3.setLineEditNoChange(True)
         self.lineEdit.deleteFile.clicked.connect(
             self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
         self.lineEdit_2.deleteFile.clicked.connect(
             self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
-        self.lineEdit_3.deleteFile.clicked.connect(
-            self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
+        # self.lineEdit_3.deleteFile.clicked.connect(
+        #     self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
         # 初始化codon table的选择
         self.controlCodonTable(self.comboBox_3.currentText())
-        self.checkBox.stateChanged.connect(self.switchPart)
-        self.switchPart(self.checkBox.isChecked())
+        # self.checkBox.stateChanged.connect(self.switchPart)
+        # self.switchPart(self.checkBox.isChecked())
         # 给开始按钮添加菜单
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
@@ -120,18 +128,24 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-9-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-9-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-9-1-Brief-example"
+        self.label_2.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
     @pyqtSlot()
-    def on_pushButton_clicked(self):
+    def on_pushButton_clicked(self, cmd_directly=False):
         """
         execute program
         """
         try:
-            self.command = self.getCMD()
+            self.command = self.getCMD() if not cmd_directly else cmd_directly[0]
+            if cmd_directly:
+                self.exportPath = cmd_directly[1] if cmd_directly[1] else self.exportPath
+                os.chdir(self.exportPath)  # 因为用了-pre，所以要先切换目录到该文件夹
+            self.cmd_directly = cmd_directly
             if self.command:
                 self.MF_popen = self.factory.init_popen(self.command)
                 self.factory.emitCommands(self.logGuiSig, self.command)
@@ -167,17 +181,17 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.lineEdit_2.setText(base)
             self.lineEdit_2.setToolTip(fileName[0])
 
-    @pyqtSlot()
-    def on_pushButton_22_clicked(self):
-        """
-        partition file
-        """
-        fileName = QFileDialog.getOpenFileName(
-            self, "Input partition file", filter="All(*);;")
-        if fileName[0]:
-            base = os.path.basename(fileName[0])
-            self.lineEdit_3.setText(base)
-            self.lineEdit_3.setToolTip(fileName[0])
+    # @pyqtSlot()
+    # def on_pushButton_22_clicked(self):
+    #     """
+    #     partition file
+    #     """
+    #     fileName = QFileDialog.getOpenFileName(
+    #         self, "Input partition file", filter="All(*);;")
+    #     if fileName[0]:
+    #         base = os.path.basename(fileName[0])
+    #         self.lineEdit_3.setText(base)
+    #         self.lineEdit_3.setToolTip(fileName[0])
 
     @pyqtSlot()
     def on_pushButton_9_clicked(self):
@@ -227,6 +241,66 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                         self.qss_file,
                         self])
 
+    @pyqtSlot()
+    def on_pushButton_continue_clicked(self):
+        """
+        continue
+        """
+        if self.isRunning():
+            QMessageBox.information(
+                self,
+                "ModelFinder",
+                "<p style='line-height:25px; height:25px'>ModelFinder is running!</p>")
+            return
+        resultsPath = None
+        ##choose work folder
+        if os.path.exists(self.workPath + os.sep + "ModelFinder_results"):
+            list_result_dirs = sorted([i for i in os.listdir(self.workPath + os.sep + "ModelFinder_results")
+                                       if os.path.isdir(self.workPath + os.sep + "ModelFinder_results" + os.sep + i)],
+                                       key=lambda x: os.path.getmtime(
+                                          self.workPath + os.sep + "ModelFinder_results" + os.sep + x), reverse=True)
+            if list_result_dirs:
+                item, ok = QInputDialog.getItem(self, "Choose previous results",
+                                                "Previous results:", list_result_dirs, 0, False)
+                if ok and item:
+                    resultsPath = self.workPath + os.sep + "ModelFinder_results" + os.sep + item
+        else:
+            QMessageBox.information(
+                self,
+                "ModelFinder",
+                "<p style='line-height:25px; height:25px'>No previous ModelFinder analysis found in %s!</p>" % os.path.normpath(
+                    self.workPath))
+            return
+        if not resultsPath: return
+        has_cmd = False
+        if os.path.exists(resultsPath + os.sep + "PhyloSuite_ModelFinder.log"):
+            with open(resultsPath + os.sep + "PhyloSuite_ModelFinder.log", encoding="utf-8", errors='ignore') as f:
+                rgx = re.compile(r"(?s)\=+?Commands\=+?\n(.+?)\n\={3,}")
+                rgx_search = rgx.search(f.read())
+                if rgx_search:
+                    cmd = rgx_search.group(1)
+                    cmd = cmd.replace("\n", " ")
+                    has_cmd = True
+        else:
+            ## 用IQTREE自带的log文件来获取
+            list_log_files = glob.glob(resultsPath + os.sep + "*.log")
+            for i in list_log_files:
+                with open(i) as f1:
+                    content = f1.read()
+                    rgx_search = re.search(r"^Command: (.+?)\n", content)
+                    if rgx_search:
+                        cmd = rgx_search.group(1)
+                        has_cmd = True
+        if has_cmd:
+            self.interrupt = False
+            self.on_pushButton_clicked(cmd_directly=[cmd, resultsPath])
+        else:
+            QMessageBox.information(
+                self,
+                "ModelFinder",
+                "<p style='line-height:25px; height:25px'>No ModelFinder command found in %s!</p>" % os.path.normpath(
+                    resultsPath))
+
     def run_command(self):
         try:
             time_start = datetime.datetime.now()
@@ -238,7 +312,12 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     self.exportPath,
                     self.qss_file,
                     self])
-            self.run_MF()
+            if hasattr(self, "cmd_directly") and self.cmd_directly:
+                self.description = ""
+                self.reference = "Kalyaanamoorthy, S., Minh, B.Q., Wong, T.K.F., von Haeseler, A., Jermiin, L.S., 2017. ModelFinder: fast model selection for accurate phylogenetic estimates. Nat. Methods 14, 587-589."
+                self.continue_MF()
+            else:
+                self.run_MF()
             time_end = datetime.datetime.now()
             self.time_used = str(time_end - time_start)
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
@@ -326,11 +405,15 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             if isinstance(obj, QRadioButton):
                 state = obj.isChecked()
                 self.modelfinder_settings.setValue(name, state)
+            if isinstance(obj, QGroupBox):
+                state = obj.isChecked()
+                self.modelfinder_settings.setValue(name, state)
 
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.modelfinder_settings.value('size', QSize(500, 500)))
+        size = self.factory.judgeWindowSize(self.modelfinder_settings, 840, 505)
+        self.resize(size)
         self.factory.centerWindow(self)
         # self.move(self.modelfinder_settings.value('pos', QPoint(875, 254)))
 
@@ -375,7 +458,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     if os.path.exists(self.autoMFPath):
                         obj.setText(os.path.basename(self.autoMFPath))
                         obj.setToolTip(self.autoMFPath)
-                if self.partFile and name == "lineEdit_3":
+            if isinstance(obj, QTextEdit):
+                if self.partFile and name == "textEdit":
                     self.inputPartition(self.partFile)
             if isinstance(obj, QCheckBox):
                 value = self.modelfinder_settings.value(
@@ -387,13 +471,22 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     name, "true")  # get stored value from registry
                 obj.setChecked(
                     self.factory.str2bool(value))  # restore checkbox
+            if isinstance(obj, QGroupBox):
+                value = self.modelfinder_settings.value(
+                    name, "false")  # get stored value from registry
+                obj.setChecked(
+                    self.factory.str2bool(value))  # restore checkbox
 
     def runProgress(self, num):
-        oldValue = self.progressBar.value()
-        done_int = int(num)
-        if done_int > oldValue:
-            self.progressBar.setProperty("value", done_int)
-            QCoreApplication.processEvents()
+        if num == 99999:
+            self.progressBar.setMaximum(0)
+            self.progressBar.setMinimum(0)
+        else:
+            oldValue = self.progressBar.value()
+            done_int = int(num)
+            if done_int > oldValue:
+                self.progressBar.setProperty("value", done_int)
+                QCoreApplication.processEvents()
 
     def popupException(self, exception):
         print(exception)
@@ -424,12 +517,23 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             reply = QMessageBox.question(
                 self,
                 "ModelFinder",
-                "<p style='line-height:25px; height:25px'>%s. Do you want to rerun the analysis and overwrite all output files?</p>" % text.replace(
+                "<p style='line-height:25px; height:25px'>%s. Do you want to redo the analysis and overwrite all output files?</p>" % text.replace(
                     "redo", ""),
                 QMessageBox.Yes, QMessageBox.No)
             if reply == QMessageBox.Yes:
                 self.interrupt = False
-                self.run_with_CMD(self.command + " -redo")
+                self.on_pushButton_clicked(cmd_directly=[self.command + " -redo", self.exportPath])
+                # self.run_with_CMD(self.command + " -redo")
+        elif text.endswith("-safe"):
+            reply = QMessageBox.question(
+                self,
+                "IQ-TREE",
+                "<p style='line-height:25px; height:25px'>An error happened! Do you want to run again with the "
+                "safe likelihood kernel via '-safe' option</p>",
+                QMessageBox.Yes, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                self.interrupt = False
+                self.run_with_CMD(self.command + " -safe")
         else:
             QMessageBox.information(
                 self,
@@ -507,10 +611,10 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     base = os.path.basename(files[0])
                     self.lineEdit_2.setText(base)
                     self.lineEdit_2.setToolTip(files[0])
-                elif name == "lineEdit_3":
-                    base = os.path.basename(files[0])
-                    self.lineEdit_3.setText(base)
-                    self.lineEdit_3.setToolTip(files[0])
+                # elif name == "lineEdit_3":
+                #     base = os.path.basename(files[0])
+                #     self.lineEdit_3.setText(base)
+                #     self.lineEdit_3.setToolTip(files[0])
         if (event.type() == QEvent.Show) and (obj == self.pushButton.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+", self.dir_action.text()) or self.dir_action.text() == "Output Dir: ":
                 self.factory.sync_dir(self.dir_action)  ##同步文件夹名字
@@ -570,7 +674,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
-            with open(self.exportPath + os.sep + "PhyloSuite_ModelFinder.log", "a") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_ModelFinder.log", "a", errors='ignore') as f:
                 f.write(text + "\n")
 
     def save_log_to_file(self):
@@ -672,6 +776,42 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     text = re.search(
                         r"(?m)(^Checkpoint.+?a previous run successfully finished)", out_line).group(1)
                     self.iq_tree_exception.emit(text + "redo")
+                # safe
+                if re.search(r"via '?-safe'? option", out_line):
+                    self.interrupt = True
+                    text = "error"
+                    self.iq_tree_exception.emit(text + "-safe")
+            else:
+                break
+        if is_error:
+            self.interrupt = True
+            self.iq_tree_exception.emit(
+                "Error happened! Click <span style='font-weight:600; color:#ff0000;'>Show log</span> to see detail!")
+        self.MF_popen = None
+
+    def continue_MF(self):
+        is_error = False  ##判断是否出了error
+        self.progressSig.emit(99999)
+        while True:
+            QApplication.processEvents()
+            if self.isRunning():
+                try:
+                    out_line = self.MF_popen.stdout.readline().decode("utf-8", errors="ignore")
+                except UnicodeDecodeError:
+                    out_line = self.MF_popen.stdout.readline().decode("gbk", errors="ignore")
+                if out_line == "" and self.MF_popen.poll() is not None:
+                    break
+                text = out_line.strip() if out_line != "\n" else "\n"
+                # print(text)
+                self.logGuiSig.emit(text)
+                if re.search(r"^ERROR", out_line):
+                    is_error = True
+                # redo
+                if re.search(r"(?m)(^Checkpoint.+?a previous run successfully finished)", out_line):
+                    self.interrupt = True
+                    text = re.search(
+                        r"(?m)(^Checkpoint.+?a previous run successfully finished)", out_line).group(1)
+                    self.iq_tree_exception.emit(text + "redo")
             else:
                 break
         if is_error:
@@ -702,7 +842,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
     def workflow_input(self, MSA=None, partition=None):
         self.lineEdit.setText("")
         self.lineEdit_2.setText("")
-        self.lineEdit_3.setText("")
+        self.textEdit.setText("")
         if MSA:
             MSA = MSA[0] if type(MSA) == list else MSA
             self.lineEdit.setText(os.path.basename(MSA))
@@ -714,13 +854,16 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         if os.path.exists(partition):
             with open(partition, encoding="utf-8", errors='ignore') as f:
                 partition_txt = f.read()
-            iq_partition = re.search(
-                r"(?s)\*\*\*IQ-TREE style\*\*\*(.+?)[\*|$]", partition_txt).group(1).strip()
-            path = os.path.dirname(partition) + os.sep + "MF_partition.txt"
-            with open(path, "w", encoding="utf-8") as f1:
-                f1.write(iq_partition)
-            self.lineEdit_3.setText(os.path.basename(path))
-            self.lineEdit_3.setToolTip(path)
+            search_ = re.search(
+                r"(?s)\*\*\*IQ-TREE style\*\*\*(.+?)[\*|$]", partition_txt)
+            iq_partition = search_.group(1).strip() if search_ else ""
+            array = self.partitioneditor.readPartition(iq_partition, mode="MF")
+            text = self.partitioneditor.partition2text(array, mode="MF")
+            # path = os.path.dirname(partition) + os.sep + "MF_partition.txt"
+            # with open(path, "w", encoding="utf-8") as f1:
+            #     f1.write(text)
+            self.textEdit.setText(text)
+            self.textEdit.setToolTip(text)
 
     def popupAutoDec(self, init=False):
         self.init = init
@@ -749,9 +892,9 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
           * criterion
           * model for: '''
         settings = '''<p class="title">***ModelFinder***</p>'''
-        ifPartition = "Yes" if self.checkBox.isChecked() else "No"
+        ifPartition = "Yes" if self.groupBox_2.isChecked() else "No"
         settings += '<p>Partition mode: <a href="self.ModelFinder_exe' \
-                    ' factory.highlightWidgets(x.checkBox)">%s</a></p>' % ifPartition
+                    ' factory.highlightWidgets(x.groupBox_2)">%s</a></p>' % ifPartition
         if ifPartition == "Yes":
             partStyle = "Edge-linked" if self.radioButton.isChecked() else "Edge-unlinked"
             settings += '<p>Partition style: <a href="self.ModelFinder_exe' \
@@ -892,15 +1035,15 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         else:
             return []
 
-    def switchPart(self, state):
-        if state:
-            if not self.workflow:
-                self.lineEdit_3.setEnabled(True)
-                self.pushButton_22.setEnabled(True)
-        else:
-            if not self.workflow:
-                self.lineEdit_3.setEnabled(False)
-                self.pushButton_22.setEnabled(False)
+    # def switchPart(self, state):
+    #     if state:
+    #         if not self.workflow:
+    #             self.lineEdit_3.setEnabled(True)
+    #             self.pushButton_22.setEnabled(True)
+    #     else:
+    #         if not self.workflow:
+    #             self.lineEdit_3.setEnabled(False)
+    #             self.pushButton_22.setEnabled(False)
 
     def getCMD(self):
         alignment = self.isFileIn()
@@ -921,14 +1064,13 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             # use_model_for = " -m MF" if self.comboBox_5.currentText() == "IQ-TREE" else " -m TESTONLY -mset %s"%self.comboBox_5.currentText().lower()
             if self.comboBox_5.currentText() == "IQ-TREE":
                 if self.checkBox_2.isChecked():
-                    print(self.lineEdit_3.toolTip())
-                    if self.checkBox.isChecked() and self.lineEdit_3.toolTip() and self.lineEdit_3.isEnabled():  # partition
+                    if self.groupBox_2.isChecked() and self.textEdit.toPlainText() and self.checkBox_3.isChecked():  # partition
                         #确保勾选了partition以及输入了文件
                         use_model_for = " -m TESTNEWMERGEONLY"
                     else:
                         use_model_for = " -m TESTNEWONLY"
                 else:
-                    if self.checkBox.isChecked() and self.lineEdit_3.toolTip() and self.lineEdit_3.isEnabled():  # partition
+                    if self.groupBox_2.isChecked() and self.textEdit.toPlainText() and self.checkBox_3.isChecked():  # partition
                         use_model_for = " -m TESTMERGEONLY"
                     else:
                         use_model_for = " -m TESTONLY"
@@ -938,7 +1080,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                 use_model_for = " -mset Blosum62,cpREV,JTT,mtREV,WAG,LG,Dayhoff -mrate E,G"
             else:
                 use_model_for = " -m TESTONLY -mset %s" % self.comboBox_5.currentText().lower() \
-                    if ((not self.checkBox.isChecked()) or (not self.lineEdit_3.toolTip())) else " -m TESTMERGEONLY -mset %s" % self.comboBox_5.currentText().lower()
+                    if ((not self.groupBox_2.isChecked()) or (not self.textEdit.toPlainText()) or
+                        (not self.checkBox_3.isChecked())) else " -m TESTMERGEONLY -mset %s" % self.comboBox_5.currentText().lower()
             criterion_org = re.search(
                 r"\((\w+)\)", self.comboBox_4.currentText()).group(1)
             criterion = " -%s" % criterion_org if criterion_org != "BIC" else ""
@@ -953,9 +1096,12 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             treeFile = " -te %s" % shutil.copy(self.lineEdit_2.toolTip(),
                                                self.exportPath) if self.lineEdit_2.toolTip() else ""
             partitionCMD = "-spp" if self.radioButton.isChecked() else "-sp"
-            partFile = " %s \"%s\"" % (
-                partitionCMD, os.path.basename(shutil.copy(self.lineEdit_3.toolTip(), self.exportPath))) if (
-                self.checkBox.isChecked() and self.lineEdit_3.toolTip()) else ""
+            if (self.groupBox_2.isChecked() and self.textEdit.toPlainText()):
+                path = self.exportPath + os.sep + "MF_partition.txt"
+                with open(path, "w", encoding="utf-8") as f1:
+                    f1.write(self.textEdit.toPlainText())
+                partFile = " %s \"%s\"" % (partitionCMD, path)
+            else: partFile = ""
             threads = " -nt %s" % self.comboBox_6.currentText()
             command = self.modelfinder_exe + " -s \"%s\"" % inputFile + \
                 use_model_for + criterion + seqType + \
@@ -1017,6 +1163,21 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.factory.emitCommands(self.logGuiSig, self.command)
             self.worker = WorkThread(self.run_command, parent=self)
             self.worker.start()
+
+    def popupPartitionEditor(self):
+        partition_content = self.textEdit.toPlainText().strip()
+        array = self.partitioneditor.readPartition(partition_content, mode="MF")
+        ini_array = [["", "=", "", "-", ""],
+                     ["", "=", "", "-", ""],
+                     ["", "=", "", "-", ""],
+                     ["", "=", "", "-", ""]
+                     ]
+        array = ini_array if not array else array
+        model = MyPartEditorTableModel(array, self.partitioneditor.header, parent=self.partitioneditor)
+        model.dataChanged.connect(self.partitioneditor.sortGenes)
+        self.partitioneditor.tableView_partition.setModel(model)
+        self.partitioneditor.ctrlResizedColumn()  # 先执行一次改变列的宽度
+        self.partitioneditor.exec_()
 
 
 if __name__ == "__main__":

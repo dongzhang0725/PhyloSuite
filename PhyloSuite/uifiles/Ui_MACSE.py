@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\MACSE.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\MACSE.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MACSE(object):
     def setupUi(self, MACSE):
         MACSE.setObjectName("MACSE")
-        MACSE.resize(652, 545)
+        MACSE.resize(821, 545)
         MACSE.setStyleSheet("")
         MACSE.setSizeGripEnabled(True)
         self.verticalLayout = QtWidgets.QVBoxLayout(MACSE)
@@ -111,6 +111,9 @@ class Ui_MACSE(object):
         self.horizontalLayout_3.addWidget(self.label_5)
         spacerItem = QtWidgets.QSpacerItem(63, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout_3.addItem(spacerItem)
+        self.label_3 = QtWidgets.QLabel(self.groupBox_4)
+        self.label_3.setObjectName("label_3")
+        self.horizontalLayout_3.addWidget(self.label_3)
         self.label_7 = ClickedLableGif(self.groupBox_4)
         self.label_7.setText("")
         self.label_7.setObjectName("label_7")
@@ -120,7 +123,7 @@ class Ui_MACSE(object):
         self.groupBox_2 = QtWidgets.QGroupBox(MACSE)
         self.groupBox_2.setObjectName("groupBox_2")
         self.gridLayout_2 = QtWidgets.QGridLayout(self.groupBox_2)
-        self.gridLayout_2.setContentsMargins(0, 3, 0, 1)
+        self.gridLayout_2.setContentsMargins(0, 6, 0, 1)
         self.gridLayout_2.setHorizontalSpacing(0)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.scrollArea = QtWidgets.QScrollArea(self.groupBox_2)
@@ -129,7 +132,7 @@ class Ui_MACSE(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 632, 189))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 801, 186))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.gridLayout_3 = QtWidgets.QGridLayout(self.scrollAreaWidgetContents)
         self.gridLayout_3.setObjectName("gridLayout_3")
@@ -522,6 +525,7 @@ class Ui_MACSE(object):
         self.checkBox_2.setText(_translate("MACSE", "Refine:"))
         self.comboBox_7.setToolTip(_translate("MACSE", "Improves previously computed alignments via “refineAlignment” subprogram."))
         self.label_5.setText(_translate("MACSE", "<html><head/><body><p>If you choose &quot;<span style=\" color:#ff0000;\">Refine</span>&quot; (refineAlignment), &quot;<span style=\" color:#ff0000;\">Seq.</span>&quot; is optional. Click <a href=\"https://bioweb.supagro.inra.fr/macse/index.php?menu=intro\"><span style=\" text-decoration: underline; color:#0000ff;\">here</span></a> to learn more about MACSE.</p></body></html>"))
+        self.label_3.setText(_translate("MACSE", "Demo:"))
         self.label_7.setToolTip(_translate("MACSE", "Brief example"))
         self.groupBox_2.setTitle(_translate("MACSE", "Parameter"))
         self.label_22.setText(_translate("MACSE", "Code Table:"))

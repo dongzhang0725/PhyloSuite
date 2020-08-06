@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\mafft.ui'
+# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\mafft.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_mafft(object):
     def setupUi(self, mafft):
         mafft.setObjectName("mafft")
-        mafft.resize(501, 492)
+        mafft.resize(622, 492)
         mafft.setStyleSheet("")
         mafft.setSizeGripEnabled(True)
         self.gridLayout_5 = QtWidgets.QGridLayout(mafft)
@@ -53,6 +53,9 @@ class Ui_mafft(object):
         self.horizontalLayout_3.addWidget(self.label_5)
         spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout_3.addItem(spacerItem)
+        self.label_8 = QtWidgets.QLabel(self.groupBox_4)
+        self.label_8.setObjectName("label_8")
+        self.horizontalLayout_3.addWidget(self.label_8)
         self.label_7 = ClickedLableGif(self.groupBox_4)
         self.label_7.setText("")
         self.label_7.setObjectName("label_7")
@@ -313,6 +316,7 @@ class Ui_mafft(object):
         self.groupBox_4.setTitle(_translate("mafft", "Input"))
         self.label_4.setText(_translate("mafft", "Input:"))
         self.label_5.setText(_translate("mafft", "<html><head/><body><p>Try to drag your <span style=\" font-weight:600; color:#ff0000;\">fasta</span> file and drop here if you want to use custom files</p></body></html>"))
+        self.label_8.setText(_translate("mafft", "Demo:"))
         self.label_7.setToolTip(_translate("mafft", "Brief example"))
         self.groupBox_2.setTitle(_translate("mafft", "Parameter"))
         self.label.setText(_translate("mafft", "Alignment Mode:"))

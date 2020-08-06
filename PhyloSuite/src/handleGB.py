@@ -742,7 +742,7 @@ class Order2itol(object):
         for i in list_dict_order:
             list_order = self.dict_order[i]
             for num, j in enumerate(list_order):
-                if "cox1" in j:
+                if self.dict_args["start_gene_with"] in j:
                     self.dict_order[i] = list_order[num:] + list_order[:num]
 
     def number_NCR(self):
@@ -2069,7 +2069,7 @@ class GBextract(object):
         self.absence = '="ID",Organism,Feature,Strand,Start,Stop\n'
         #只提取指定基因模式，把未提取的基因列出来
         self.unextract_name = "This is the list of names not included in the 'Names unification' table\n=\"ID\",Organism,Feature,Name,Strand,Start,Stop\n"
-        self.species_info = '="ID",Organism,{},Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew\n'.format(
+        self.species_info = '="ID",Organism,Tree_Name,{},Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew\n'.format(
             ",".join(self.included_lineages))
         self.taxonomy_infos = 'Tree name,ID,Organism,{}\n'.format(
             ",".join(self.included_lineages))
@@ -2104,7 +2104,9 @@ class GBextract(object):
                 elif num == 2:
                     self.dict_itol_info["itol_%s_%s" % (
                         lineage,
-                        item)] = "DATASET_COLORSTRIP\nSEPARATOR SPACE\nDATASET_LABEL color_strip\nCOLOR #ff0000\nCOLOR_BRANCHES 1\nSTRIP_WIDTH 25\nDATA\n"
+                        item)] = "DATASET_COLORSTRIP\nSEPARATOR SPACE\nDATASET_LABEL color_strip\nCOLOR #ff0000\n" \
+                                 "COLOR_BRANCHES 1\nSTRIP_WIDTH 25\nLEGEND_TITLE,None\nLEGEND_SHAPES\nLEGEND_COLORS\n" \
+                                 "LEGEND_LABELS\nDATA\n"
                 elif num == 3:
                     self.dict_itol_info["itol_%s_%s" % (
                         lineage, item)] = "TREE_COLORS\nSEPARATOR COMMA\nDATA\n"
@@ -2266,6 +2268,24 @@ class GBextract(object):
                                     class_][lineage] = colour1
                 self.dict_itol_info["itol_%s_Text" % class_] += "%s,%s,-1,%s,bold,2,0\n" % (
                     self.usedName, lineage, colour1)
+                self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(LEGEND_SHAPES.*)\n", "\\1 RE\n",
+                                                                             self.dict_itol_info["itol_%s_ColourStrip" % class_])
+                self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(LEGEND_COLORS.*)\n", "\\1 %s\n"%colour1,
+                                                                             self.dict_itol_info[
+                                                                                 "itol_%s_ColourStrip" % class_])
+                self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(LEGEND_LABELS.*)\n", "\\1 %s\n"%lineage,
+                                                                             self.dict_itol_info[
+                                                                                 "itol_%s_ColourStrip" % class_])
+                if "LEGEND_TITLE,None" in self.dict_itol_info["itol_%s_ColourStrip" % class_]:
+                    self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(LEGEND_TITLE.*)\n",
+                                                                                 "LEGEND_TITLE %s\n" % class_,
+                                                                                 self.dict_itol_info[
+                                                                                     "itol_%s_ColourStrip" % class_])
+                if "DATASET_LABEL color_strip\n" in self.dict_itol_info["itol_%s_ColourStrip" % class_]:
+                    self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(DATASET_LABEL.*)\n",
+                                                                                 "DATASET_LABEL color_strip_%s\n" % class_,
+                                                                                 self.dict_itol_info[
+                                                                                     "itol_%s_ColourStrip" % class_])
                 # range的颜色
                 colour2 = self.colourPicker(class_, Range=True)
                 self.dict_itol_info["itol_%s_colourUsed2" %
@@ -2352,7 +2372,7 @@ class GBextract(object):
             self.list_lineages + [self.organism + "_" + self.ID])] = list_spe_stat
         ###species_info###
         # ID",Organism,%s,Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew
-        list_species_info = [self.ID, self.organism] + self.list_lineages + \
+        list_species_info = [self.ID, self.organism,self.usedName] + self.list_lineages + \
                             [str(len(self.str_seq)), seqStat.A_percent, seqStat.T_percent,
                              seqStat.C_percent, seqStat.G_percent, seqStat.AT_percent,
                              seqStat.GC_percent, seqStat.AT_skew, seqStat.GC_skew]
@@ -2611,7 +2631,8 @@ class GBextract(object):
     def saveGeneralFile(self):
         # overview表
         overview = "Extraction overview:\n\nVisit here to see how to customize the extraction: " \
-                   "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/\n\n"
+                   "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/ or " \
+                   "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/ (China)\n\n"
         ## species in total
         overview += "%d species in total\n\n" % self.totleID
         list_ = []
@@ -2843,8 +2864,8 @@ class GBextract_MT(GBextract, object):
         self.dict_all_AA_COUNT["title"] = "AA,"
         self.dict_AA_stack = OrderedDict()
         self.dict_AA_stack["title"] = "species,aa,ratio"
-        self.species_info = '="ID",Organism,{},Full length (bp),A (%) (+),T (%) (+),C (%) (+),G (%) (+),A+T (%) (+),' \
-                            'G+C (%) (+),AT skew (+),GC skew (+),AT skew (-),GC skew (-)\n'.format(
+        self.species_info = '="ID",Organism,Tree_Name,{},Full length (bp),A (%) (+),T (%) (+),C (%) (+),G (%) (+),A+T (%) (+),' \
+                            'G+C (%) (+),AT skew (+),GC skew (+),AT skew (-),GC skew (-),GC skew (plus strand coding)\n'.format(
                             ",".join(self.included_lineages))
         # 新增折线图的绘制
         self.line_spe_stat = "Regions,Strand,Size (bp),T(U),C,A,G,AT(%),GC(%),GT(%),AT skewness,GC skewness,Species," + ",".join(
@@ -3067,11 +3088,12 @@ class GBextract_MT(GBextract, object):
         # ID",Organism,%s,Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew
         rvscmp_seq = self.rvscmp_seq.upper()
         seqStat_rvscmp = SeqGrab(rvscmp_seq)
-        list_species_info = [self.ID, self.organism] + self.list_lineages + \
+        seqCoding = SeqGrab(self.plus_coding_seq)
+        list_species_info = [self.ID, self.organism, self.usedName] + self.list_lineages + \
                             [str(len(self.str_seq)), seqStat.A_percent, seqStat.T_percent,
                              seqStat.C_percent, seqStat.G_percent, seqStat.AT_percent,
                              seqStat.GC_percent, seqStat.AT_skew, seqStat.GC_skew,
-                             seqStat_rvscmp.AT_skew, seqStat_rvscmp.GC_skew]
+                             seqStat_rvscmp.AT_skew, seqStat_rvscmp.GC_skew, seqCoding.GC_skew]
                              # seqStat_rvscmp.A_percent, seqStat_rvscmp.T_percent,
                              # seqStat_rvscmp.C_percent, seqStat_rvscmp.G_percent, seqStat_rvscmp.AT_percent,
                              # seqStat_rvscmp.GC_percent, seqStat_rvscmp.AT_skew, seqStat_rvscmp.GC_skew]
@@ -3206,6 +3228,7 @@ class GBextract_MT(GBextract, object):
             self.gap += 1
         elif space < 0:
             self.overlap += 1
+        overlap_start_index = abs(space) if space < 0 else 0  # 为了去掉重叠区
         space = "" if space == 0 or self.orgTable[-7:] == 'Strand\n' else str(
             space)
         chain = "H" if self.strand == "+" else "L"
@@ -3220,6 +3243,10 @@ class GBextract_MT(GBextract, object):
                                    chain,
                                    seq]) + "\n"
         self.lastEndIndex = self.end
+        # 编码序列，负链基因反向互补
+        if chain == "H": self.plus_coding_seq += seq[overlap_start_index:]
+        else: self.plus_coding_seq += str(Seq(seq, generic_dna).reverse_complement())[overlap_start_index:]
+        # 如果space负的，就是重叠区，如果是正链的基因，就从序列头部减掉overlapping，如果是负链的基因，就从序列的尾部减去
 
     def judge(self, name, values, seq):
         if name == 'tRNA-Leu' or name == 'tRNA-Ser' or name == "L" or name == "S":
@@ -3473,6 +3500,7 @@ class GBextract_MT(GBextract, object):
                 self.rvscmp_seq = str(Seq(self.str_seq, generic_dna).reverse_complement())
                 self.dict_type_genes = OrderedDict()
                 self.init_args_each()
+                self.plus_coding_seq = ""  # 正链编码的序列
                 ok = self.check_records(features)
                 if not ok: continue
                 has_feature = False
@@ -3492,8 +3520,8 @@ class GBextract_MT(GBextract, object):
                         self.parseSource()
                         has_source = True
                     elif self.feature_type == 'CDS':
-                        self.code_table = int(self.qualifiers["transl_table"][0]) if "transl_table" in self.qualifiers \
-                            else self.selected_code_table
+                        self.code_table = int(self.qualifiers["transl_table"][0]) if ("transl_table" in self.qualifiers) \
+                            and self.qualifiers["transl_table"][0].isnumeric() else self.selected_code_table
                         self.fetchTerCodon() #得到终止密码子
                         self.CDS_()
                         self.getNCR()

@@ -153,8 +153,10 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         ## brief demo
-        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(
-            "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-5-1-Brief-example")))
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-5-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-5-1-Brief-example"
+        self.label_7.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         ##自动弹出识别文件窗口
         self.auto_popSig.connect(self.popupAutoDecSub)
 
@@ -271,15 +273,18 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
                 has_error = True
                 log = self.textEdit_log.toPlainText()
                 if "Can't locate" in log:
+                    country = self.factory.path_settings.value("country", "UK")
+                    url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-4-HmmCleaner-configuration" if \
+                        country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-4-HmmCleaner-configuration"
                     self.HmmCleaner_exception.emit(
                         "HmmCleaner executes failed, it seems the "
                         "<a href=\"https://cpandeps.grinnz.com/?dist=Bio-MUST-Apps-HmmCleaner&phase=build&perl_version=v5.30.0&style=table\">"
                         "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">dependencies"
                         "</span></a>(e.g. Bio-FastParsers) of HmmCleaner are not installed, "
                         "click <span style=\"color:red\">Show log</span> to see details! <br> You can install HmmCleaner following this " \
-                   "<a href=\"https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/#2-4-HmmCleaner-configuration\">" \
+                   "<a href=\"%s\">" \
                    "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">instruction</a>." \
-                   "</span>")
+                   "</span>"%url)
                 else:
                     list_commands = re.findall(r"Command: (.+)\n", log)
                     last_cmd = list_commands[-1] if list_commands else ""
@@ -549,7 +554,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
     def addText2Log(self, text):
         if re.search(r"\w+", text):
             self.textEdit_log.append(text)
-            with open(self.exportPath + os.sep + "PhyloSuite_HmmCleaner.log", "a") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_HmmCleaner.log", "a", errors='ignore') as f:
                 f.write(text + "\n")
 
     def save_log_to_file(self):
