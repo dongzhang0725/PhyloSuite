@@ -3,7 +3,7 @@
 ## PhyloSuite v1.2.2 (2020-08-06, Thursday)
 + Fixed some bugs in MACSE, PartitionFinder, MrBayes and IQ-TREE plugins
 + Added a function to continue previous analyses for IQ-TREE and ModelFinder
-+ Added a new homepage for Chinese users
++ Added a new homepage for Chinese users (http://phylosuite.jushengwu.com/)
 + Added a user-friendly partition editor for PartitionFinder and ModelFinder
 + Added an option to specify start gene for gene order figure in “Extract” function
 + Added an option to restore the settings to default
