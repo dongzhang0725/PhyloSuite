@@ -1,21 +1,22 @@
 # Release Note
 
 ## PhyloSuite v1.2.3pre1 (2022-11-20, Sunday)
-+ Add protein database to download function via IDs
-+ fixed “memory error” bug for MrBayes and speed up summary function
-+ fixed bug that cannot set-up PhyloSuite in linux
-+ fixed bug for automatically check update function
-+ add –leavegappyregion option to MAFFT
-+ add function for split codon sites in concatenation function
-+ optimize the function for get taxonomy from NCBI
-+ add function to export/import settings
-+ add function to resolve duplicated genes in extraction function
-+ add function to calculate NCR ratio in extraction funtion
-+ add some new features of iqtree2
-+ optimize the “continue previous run” function in MrBayes
-+ add a function to keep sequence name in trimAl
-+ add plugins to draw figures
-+ add 11 tree-based analyes in “TreeSuite” funtion
++ Added a protein database to the download function via IDs
++ fixed the “memory error” bug for MrBayes and sped up the summary function
++ fixed a bug that prevented setting-up PhyloSuite in Linux
++ fixed a bug for automatically checking the update function
++ added the –leavegappyregion option to MAFFT
++ added a function for split codon sites to the concatenation function
++ optimized the get taxonomy from NCBI function
++ added a function to export/import settings
++ added a function to resolve duplicated genes in the extraction function
++ added a function to calculate the NCR ratio in the extraction funtion
++ added some new features of IQ-TREE2 to IQ-TREE plugin
++ optimized the “continue previous run” function in MrBayes
++ added a function to keep the sequence name in trimAl
++ added plugins to draw figures
++ added 11 tree-based analyes packaged into the new “TreeSuite” funtion
+  <strong>If you are chinese user and cannot download the packages below, please visite http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#3-Download-links-for-users-in-China</strong>
 
 
 ## PhyloSuite v1.2.2 (2020-08-06, Thursday)
