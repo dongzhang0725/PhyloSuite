@@ -58,7 +58,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         self.focusSig = focusSig if focusSig else pyqtSignal(
             str)  # 为了方便workflow
         self.workflow = workflow
-        self.modelfinder_exe = '"' + IQ_exe + '"'
+        self.modelfinder_exe = IQ_exe
         self.autoMFPath = autoMFPath[0] if type(autoMFPath) == list else autoMFPath
         self.partFile = partFile
         self.interrupt = False
@@ -86,6 +86,12 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                                                                self.textEdit.setToolTip(text)])
         self.textEdit.buttonEdit.clicked.connect(self.popupPartitionEditor)
         self.guiRestore()
+        # 判断IQTREE的版本，以决定要不要加新功能
+        self.version = ""
+        version_worker = WorkThread(
+            lambda : self.factory.get_version("ModelFinder", self),
+            parent=self)
+        version_worker.start()
         self.exception_signal.connect(self.popupException)
         self.iq_tree_exception.connect(self.popup_IQTREE_exception)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
@@ -108,6 +114,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
         # self.lineEdit_3.deleteFile.clicked.connect(
         #     self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
+        # rcluster
+        self.checkBox.toggled.connect(self.judgeMergeOn)
         # 初始化codon table的选择
         self.controlCodonTable(self.comboBox_3.currentText())
         # self.checkBox.stateChanged.connect(self.switchPart)
@@ -148,7 +156,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.cmd_directly = cmd_directly
             if self.command:
                 self.MF_popen = self.factory.init_popen(self.command)
-                self.factory.emitCommands(self.logGuiSig, self.command)
+                self.factory.emitCommands(self.logGuiSig, f"cd {os.path.normpath(self.exportPath)}\n{self.command}")
                 self.worker = WorkThread(self.run_command, parent=self)
                 self.worker.start()
         except:
@@ -323,9 +331,25 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
             softWare = self.comboBox_5.currentText()
+            # 如果有partition结果，就保存一下
+            # (?sm)charpartition.+\r\n(^ +.+?\: .+)^end;
+            best_scheme = glob.glob(f"{self.exportPath}{os.sep}*best_scheme.nex")
+            if best_scheme:
+                list_partition_table = [["Subset partitions", "Best model"]]
+                best_scheme_file = best_scheme[0]
+                with open(best_scheme_file, encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                list_ = re.findall(r"(?m)^ +(.+?)\: (.+)[,;]", content)
+                for num,i in enumerate(list_):
+                    model, name = i
+                    list_partition_table.append([f"P{num+1}: ({name.strip(' ')})",
+                                                 model])
+                self.factory.write_csv_file(f"{self.exportPath}{os.sep}best_scheme_and_models.csv",
+                                            list_partition_table,
+                                            silence=True)
             if softWare in ["BEAST1 (NUC)", "BEAST2 (NUC)", "BEAST (AA)"]:
                 str1 = self.description + " " + self.parseResults() +\
-                    "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n" \
+                    "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n" \
                     "If you use ModelFinder, please cite:\n" + self.reference + \
                     "\n\nhttps://justinbagley.rbind.io/2016/10/11/setting-dna-substitution-models-beast/\nDetails for setting substitution models in %s\n" % softWare
                 array = [[i] for i in str1.split(
@@ -333,9 +357,9 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                 self.factory.write_csv_file(
                     self.exportPath + os.sep + "summary.csv", array, self, silence=True)
             else:
-                with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
+                with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                     f.write(self.description + " " + self.parseResults() +
-                            "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                            "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                             "If you use ModelFinder, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -468,7 +492,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     self.factory.str2bool(value))  # restore checkbox
             if isinstance(obj, QRadioButton):
                 value = self.modelfinder_settings.value(
-                    name, "true")  # get stored value from registry
+                    name, obj.isChecked())  # get stored value from registry
                 obj.setChecked(
                     self.factory.str2bool(value))  # restore checkbox
             if isinstance(obj, QGroupBox):
@@ -1078,10 +1102,14 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                 use_model_for = " -mset JC69,TrN,TrNef,K80,K2P,F81,HKY,SYM,TIM,TVM,TVMef,GTR -mrate E,G"
             elif self.comboBox_5.currentText() in ["BEAST (AA)"]:
                 use_model_for = " -mset Blosum62,cpREV,JTT,mtREV,WAG,LG,Dayhoff -mrate E,G"
+            elif self.comboBox_5.currentText() in ["FastTree (AA)"]:
+                use_model_for = " -mset JTT,WAG,LG -mrate G"
             else:
                 use_model_for = " -m TESTONLY -mset %s" % self.comboBox_5.currentText().lower() \
                     if ((not self.groupBox_2.isChecked()) or (not self.textEdit.toPlainText()) or
                         (not self.checkBox_3.isChecked())) else " -m TESTMERGEONLY -mset %s" % self.comboBox_5.currentText().lower()
+            use_model_for = f"{use_model_for} -rcluster {self.spinBox.value()}" if \
+                (self.checkBox.isChecked() and self.groupBox_2.isChecked()) else use_model_for
             criterion_org = re.search(
                 r"\((\w+)\)", self.comboBox_4.currentText()).group(1)
             criterion = " -%s" % criterion_org if criterion_org != "BIC" else ""
@@ -1103,7 +1131,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                 partFile = " %s \"%s\"" % (partitionCMD, path)
             else: partFile = ""
             threads = " -nt %s" % self.comboBox_6.currentText()
-            command = self.modelfinder_exe + " -s \"%s\"" % inputFile + \
+            command = f"\"{self.modelfinder_exe}\" -s \"%s\"" % inputFile + \
                 use_model_for + criterion + seqType + \
                 treeFile + partFile + threads + pre
             # print(self.command)
@@ -1111,8 +1139,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             # 描述
             type = "Edge-linked" if self.radioButton.isChecked() else "Edge-unlinked"
             model = "best-fit model" if not partFile else "best-fit partition model (%s)" % type
-            self.description = '''ModelFinder (Kalyaanamoorthy et al., 2017) was used to select the %s using %s criterion.''' % (
-                model, criterion_org)
+            self.description = '''ModelFinder v%s (Kalyaanamoorthy et al., 2017) was used to select the %s using %s criterion.''' % (
+                self.version, model, criterion_org)
             self.reference = "Kalyaanamoorthy, S., Minh, B.Q., Wong, T.K.F., von Haeseler, A., Jermiin, L.S., 2017. ModelFinder: fast model selection for accurate phylogenetic estimates. Nat. Methods 14, 587-589."
             return command
         else:
@@ -1178,6 +1206,10 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         self.partitioneditor.tableView_partition.setModel(model)
         self.partitioneditor.ctrlResizedColumn()  # 先执行一次改变列的宽度
         self.partitioneditor.exec_()
+
+    def judgeMergeOn(self, bool_):
+        pass
+        # if bool_ and not self.
 
 
 if __name__ == "__main__":

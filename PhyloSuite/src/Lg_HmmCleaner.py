@@ -174,8 +174,11 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.dict_args["inputFiles"]) > thread else len(self.dict_args["inputFiles"])
             thread = 1 if not self.dict_args["inputFiles"] else thread  # compare的情况
-            self.pool = multiprocessing.Pool(processes=thread,
-                                             initializer=pool_init, initargs=(self.queue,))
+            self.pool = multiprocessing.get_context("spawn").Pool(processes=thread,
+                                             initializer=pool_init, initargs=(self.queue,)) #\
+                # if platform.system().lower() == "windows" else \
+                #                                 multiprocessing.Pool(processes=thread,
+                #                                                      initializer=pool_init, initargs=(self.queue,))
             # Check for progress periodically
             self.timer = QTimer()
             self.timer.timeout.connect(self.updateProcess)
@@ -296,9 +299,9 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (
                 str(time_start), str(time_end),
                 self.time_used)
-            with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
+            with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(
-                    self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                    self.description + "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                                        "If you use HmmCleaner, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if (not self.interrupt) and (not has_error):
                 self.pool = None
@@ -629,8 +632,10 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.dict_args["inputFiles"]) > thread else len(self.dict_args["inputFiles"])
             thread = 1 if not self.dict_args["inputFiles"] else thread # compare的情况
-            self.pool = multiprocessing.Pool(processes=thread,
-                                             initializer=pool_init, initargs=(self.queue,))
+            self.pool = multiprocessing.get_context("spawn").Pool(processes=thread,
+                                             initializer=pool_init, initargs=(self.queue,)) #\
+                # if platform.system().lower() == "windows" else multiprocessing.Pool(processes=thread,
+                #                                                         initializer=pool_init, initargs=(self.queue,))
             # # Check for progress periodically
             self.timer = QTimer()
             self.timer.timeout.connect(self.updateProcess)

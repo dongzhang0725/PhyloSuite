@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+import platform
 
 import re
 from PyQt5.QtCore import *
@@ -152,8 +153,8 @@ class ConvertFMT(QDialog, Ui_ConverFMT, object):
             time_end = datetime.datetime.now()
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
-            with open(self.dict_args["export_path"] + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
+            with open(self.dict_args["export_path"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
+                f.write("If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
         except BaseException:
             self.exceptionInfo = ''.join(
                 traceback.format_exception(

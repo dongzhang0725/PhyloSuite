@@ -13,7 +13,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 from uifiles.Ui_trimAl import Ui_trimAl
-from src.factory import Factory, WorkThread
+from src.factory import Factory, WorkThread, Parsefmt
 import inspect
 import os
 import sys
@@ -135,6 +135,13 @@ class TrimAl(QDialog, Ui_trimAl, object):
         self.setStyleSheet(self.qss_file)
         # 恢复用户的设置
         self.guiRestore()
+        # 判断程序的版本
+        self.version = ""
+        version_worker = WorkThread(
+            lambda : self.factory.get_version("trimAl", self),
+            parent=self)
+        version_worker.start()
+        #
         self.exception_signal.connect(self.popupException)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         self.progressSig.connect(self.runProgress)
@@ -205,8 +212,10 @@ class TrimAl(QDialog, Ui_trimAl, object):
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.dict_args["inputFiles"]) > thread else len(self.dict_args["inputFiles"])
             thread = 1 if not self.dict_args["inputFiles"] else thread  # compare的情况
-            self.pool = multiprocessing.Pool(processes=thread,
-                                             initializer=pool_init, initargs=(self.queue,))
+            self.pool = multiprocessing.get_context("spawn").Pool(processes=thread,
+                                             initializer=pool_init, initargs=(self.queue,)) # \
+                # if platform.system().lower() == "windows" else multiprocessing.Pool(processes=thread,
+                #                                         initializer=pool_init, initargs=(self.queue,))
             # Check for progress periodically
             self.timer = QTimer()
             self.timer.timeout.connect(self.updateProcess)
@@ -310,12 +319,49 @@ class TrimAl(QDialog, Ui_trimAl, object):
                     self.dict_args["exportPath"],
                     self.qss_file,
                     self])
-            ##进度条用
-            # self.dict_file_progress = {os.path.basename(file): 0 for file in self.dict_args["seq_files"]}
+            if self.dict_args["keep name"]:
+                ## 复制文件过来，并重命名序列名字，生成mapping文件
+                list_input_files = []
+                dict_name_mapping = {}
+                total_file_num = len(self.dict_args["inputFiles"])
+                for num, file in enumerate(self.dict_args["inputFiles"]):
+                    dict_fas = self.factory.read_fasta_to_dic(file)
+                    # 替换名字
+                    list_fas_content = []
+                    for num, key in enumerate(dict_fas.keys()):
+                        if key not in dict_name_mapping.values():
+                            if dict_name_mapping:
+                                max_num = max(dict_name_mapping.keys(),
+                                            key=lambda x: int(x.replace("seq", "")))
+                                max_num = int(max_num.replace("seq", ""))
+                            else:
+                                max_num = 0
+                            name = f"seq{max_num+1}"
+                            dict_name_mapping[name] = key
+                        else:
+                            for new_name, old_name in dict_name_mapping.items():
+                                if old_name == key:
+                                    name = new_name
+                                    break
+                            # name = dict_name_mapping[key]
+                        list_fas_content.append(f">{name}\n{dict_fas[key]}\n")
+                    # 存文件
+                    file_in_outpath = f"{self.dict_args['exportPath']}{os.sep}{os.path.basename(file)}"
+                    list_input_files.append(file_in_outpath)
+                    with open(file_in_outpath, "w") as f:
+                        f.write("".join(list_fas_content))
+                    self.progressSig.emit(0 + (5 * (num + 1)/total_file_num))
+                    self.workflow_progress.emit(0 + (5 * (num + 1)/total_file_num))
+                with open(f"{self.dict_args['exportPath']}{os.sep}html_name_mapping.tsv", "w") as f2:
+                    f2.write("\n".join(["Old name\tNew name"] +
+                                       [f"{old_name}\t{new_name}" for new_name, old_name in dict_name_mapping.items()]))
+            else:
+                list_input_files = self.dict_args["inputFiles"]
+                dict_name_mapping = {}
             if self.radioButton.isChecked():
                 async_results = [self.pool.apply_async(run, args=(self.dict_args, self.command, file)) for
-                                 file in self.dict_args["inputFiles"]]
-                self.totalFileNum = len(self.dict_args["inputFiles"])
+                                 file in list_input_files]
+                self.totalFileNum = len(list_input_files)
             else:
                 async_results = [self.pool.apply_async(run, args=(self.dict_args, self.command,
                                                                   self.dict_args["compareFile"]))]
@@ -337,15 +383,22 @@ class TrimAl(QDialog, Ui_trimAl, object):
                     "trimAl execute failed, click <span style=\"color:red\">Show log</span> to see details!"
                     "<br>You can also copy this command to terminal to debug: %s" % last_cmd)
             if not has_error:
-                self.renameSequence() #修剪后序列的名字被，需要改回来
+                self.renameSequence(dict_name_mapping) #修剪后序列的名字被，需要改回来
+            if self.dict_args["keep name"]:
+                ## 删掉复制过来的文件
+                for file in list_input_files:
+                    try:
+                        os.remove(file)
+                    except:
+                        pass
             time_end = datetime.datetime.now()
             self.time_used = str(time_end - time_start)
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (
                 str(time_start), str(time_end),
                 self.time_used)
-            with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
+            with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(
-                    self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                    self.description + "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                                        "If you use trimAl, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if (not self.interrupt) and (not has_error):
                 self.pool = None
@@ -762,6 +815,8 @@ class TrimAl(QDialog, Ui_trimAl, object):
                            "mega": ".meg", "clustal":".clw", "nbrf": ".nbrf"}
             self.dict_args["suffix"] = dict_suffix[self.comboBox.currentText()]
             self.dict_args["trimAl"] = self.TApath
+            # 是否保持序列的名字
+            self.dict_args["keep name"] = self.checkBox_10.isChecked()
             ##输入文件
             if self.radioButton.isChecked():
                 self.dict_args["compareFile"] = ""
@@ -780,7 +835,8 @@ class TrimAl(QDialog, Ui_trimAl, object):
                              " alignment trimming in large-scale phylogenetic analyses. Bioinformatics. 25: 1972-1973. " \
                              "doi: 10.1093/bioinformatics/btp348."
             cmd_used = "{autoMethod}{cons}{gt}{st}{ct}{w}{gw}{sw}{cw}".format(**self.dict_args).strip()
-            self.description = "Gap sites were removed with trimAl (Capella‐Gutiérrez et al., 2009) using \"%s\" command."%cmd_used
+            self.description = f"Gap sites were removed with trimAl v{self.version} (Capella‐Gutiérrez et al., 2009) " \
+                               f"using \"{cmd_used}\" command."
             self.textEdit_log.clear()  # 清空
             return command
         else:
@@ -809,8 +865,10 @@ class TrimAl(QDialog, Ui_trimAl, object):
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.dict_args["inputFiles"]) > thread else len(self.dict_args["inputFiles"])
             thread = 1 if not self.dict_args["inputFiles"] else thread # compare的情况
-            self.pool = multiprocessing.Pool(processes=thread,
-                                             initializer=pool_init, initargs=(self.queue,))
+            self.pool = multiprocessing.get_context("spawn").Pool(processes=thread,
+                                             initializer=pool_init, initargs=(self.queue,)) # \
+                # if platform.system().lower() == "windows" else multiprocessing.Pool(processes=thread,
+                #                                                                    initializer=pool_init, initargs=(self.queue,))
             # # Check for progress periodically
             self.timer = QTimer()
             self.timer.timeout.connect(self.updateProcess)
@@ -844,8 +902,8 @@ class TrimAl(QDialog, Ui_trimAl, object):
         elif info[0] == "prog":
             self.finishedFileNum += 1
             if not self.interrupt:
-                self.workflow_progress.emit(self.finishedFileNum * 95/self.totalFileNum)
-                self.progressSig.emit(self.finishedFileNum * 95/self.totalFileNum)
+                self.workflow_progress.emit(5 + self.finishedFileNum * 90/self.totalFileNum)
+                self.progressSig.emit(5 + self.finishedFileNum * 90/self.totalFileNum)
         elif info[0] == "popen":
             self.list_pids.append(info[1])
         elif info[0] == "error":
@@ -933,16 +991,38 @@ class TrimAl(QDialog, Ui_trimAl, object):
                 "(e.g. concatenation), please select fasta format if you are going to use "
                 "this result for other functions.</p>"%text)
 
-    def renameSequence(self):
+    def renameSequence(self, dict_name_mapping):
         trimedFiles = glob.glob(self.exportPath + os.sep + "*_trimAl.fas")
         if trimedFiles:
             for num, file in enumerate(trimedFiles):
                 with open(file, encoding="utf-8", errors="ignore") as f:
                     content = f.read()
                 with open(file, "w", encoding="utf-8") as f1:
-                    f1.write(re.sub(r"(>.+?) \d+ bp", "\\1", content))
-                self.progressSig.emit(95 + (5 * (num + 1)/len(trimedFiles)))
-                self.workflow_progress.emit(95 + (5 * (num + 1)/len(trimedFiles)))
+                    if dict_name_mapping:
+                        f1.write(re.sub(r">(.+?) \d+ bp", lambda x: f">{dict_name_mapping[x.group(1)]}",
+                                    content))
+                    else:
+                        f1.write(re.sub(r"(>.+?) \d+ bp", "\\1", content))
+                self.progressSig.emit(95 + (3 * (num + 1)/len(trimedFiles)))
+                self.workflow_progress.emit(95 + (3 * (num + 1)/len(trimedFiles)))
+        if dict_name_mapping:
+            max_len_name = len(max(dict_name_mapping.values(), key=len))
+            html_files = glob.glob(self.exportPath + os.sep + "*.html")
+            for html_file in html_files:
+                with open(html_file, encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                with open(html_file, "w", encoding="utf-8") as f1:
+                    content = re.sub(r"(?m) +(\d+.+\n)^ +=",
+                            lambda x: f"{' '*(max_len_name+17)}{x.group(1)}{' '*(max_len_name+9)}=", content)
+                    f1.write(re.sub(r"(?m)(^ {4}%s)(.+?)(%s)"%(re.escape("<span class=sel>"), re.escape("</span>")),
+                                lambda x: f"{x.group(1)}{dict_name_mapping[x.group(2)].ljust(max_len_name)}{x.group(3)}",
+                                    content))
+                self.progressSig.emit(98 + (2 * (num + 1)/len(html_files)))
+                self.workflow_progress.emit(98 + (2 * (num + 1)/len(html_files)))
+        else:
+            self.progressSig.emit(100)
+            self.workflow_progress.emit(100)
+
 
     def fetchWorkflowSetting(self):
         '''* Alignment Mode

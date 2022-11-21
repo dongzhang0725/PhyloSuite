@@ -68,7 +68,7 @@
          <string>Choose Files</string>
         </property>
         <property name="icon">
-         <iconset resource="myRes.qrc">
+         <iconset resource="../myRes.qrc">
           <normaloff>:/picture/resourses/Open_folder_add_512px_1186192_easyicon.net.png</normaloff>:/picture/resourses/Open_folder_add_512px_1186192_easyicon.net.png</iconset>
         </property>
         <property name="iconSize">
@@ -133,9 +133,6 @@ EF643519
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
-        <property name="spacing">
-         <number>0</number>
-        </property>
         <item>
          <widget class="QLabel" name="label">
           <property name="text">
@@ -156,12 +153,39 @@ EF643519
            <string/>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/Question-mark.png</normaloff>:/picture/resourses/Question-mark.png</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
           </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>Database:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="comboBox_2">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <item>
+           <property name="text">
+            <string>nucleotide</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>protein</string>
+           </property>
+          </item>
          </widget>
         </item>
        </layout>
@@ -174,7 +198,7 @@ EF643519
            <string>Start</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
           </property>
          </widget>
@@ -185,7 +209,7 @@ EF643519
            <string>Search in NCBI</string>
           </property>
           <property name="icon">
-           <iconset resource="myRes.qrc">
+           <iconset resource="../myRes.qrc">
             <normaloff>:/picture/resourses/NCBI-logo-2.png</normaloff>:/picture/resourses/NCBI-logo-2.png</iconset>
           </property>
          </widget>
@@ -205,7 +229,7 @@ EF643519
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections>
   <connection>

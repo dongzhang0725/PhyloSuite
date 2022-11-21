@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import copy
+import inspect
+from io import StringIO
+from Bio import SeqIO
+from src.CustomWidget import ListItemsOption, MyTableModel
 from src.Lg_extractSettings import ExtractSettings
 from uifiles.Ui_gbEditor import Ui_GBeditor
 from PyQt5.QtCore import *
@@ -10,7 +14,7 @@ import os
 import re
 import traceback
 import sys
-from src.handleGB import Normalize_MT
+from src.handleGB import Normalize_MT, GbManager, ArrayManager
 from src.factory import Factory, WorkThread, Find
 from uifiles.Ui_tRNA_reANNT import Ui_tRNA_ANNT
 
@@ -199,10 +203,12 @@ class GbEditor(QDialog, Ui_GBeditor, object):
     findSig = pyqtSignal()
     predict_signal = pyqtSignal(str)
     exception_signal = pyqtSignal(str)
+    finishValidate = pyqtSignal(list)
 
     def __init__(self, nmlgb):
         self.dict_args = nmlgb.dict_args
-        super(GbEditor, self).__init__(self.dict_args["parent"])
+        self.parent = self.dict_args["parent"]
+        super(GbEditor, self).__init__(self.parent)
         # self.thisPath = os.path.dirname(os.path.realpath(__file__))
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
@@ -220,9 +226,13 @@ class GbEditor(QDialog, Ui_GBeditor, object):
         self.allcontent = nmlgb.allContent
         self.errors = nmlgb.errors
         self.warings = nmlgb.warnings
+        self.no_annotation_IDs = nmlgb.no_annotation_IDs
+        self.no_annotation_GBs = nmlgb.no_annotation_GBs
         self.unRecognisetRNA = nmlgb.unRecognisetRNA
         self.dict_replace = nmlgb.dict_replace
         self.workPath = self.dict_args["outpath"]
+        self.plainTextEdit_gb.setStyleSheet("QPlainTextEdit#plainTextEdit_gb "
+                                            "{background-color: #f5f5a3; }")
         self.showOn()
         # 信号和槽
         self.progressSig.connect(self.normProgress)
@@ -237,10 +247,12 @@ class GbEditor(QDialog, Ui_GBeditor, object):
         self.guiRestore()
         self.checkBox.toggled.connect(self.askRemoveMisc)
         self.removeMISC = False
+        ## 结束validate
+        self.finishValidate.connect(self.validateFinishedSlot)
 
     def showOn(self):
         self.tableWidget.verticalHeader().setVisible(False)
-        self.textBrowser.setHtml(self.allcontent)
+        self.plainTextEdit_gb.setPlainText(self.allcontent) #set(self.allcontent)
         self.tableWidget.setColumnCount(3)
         self.tableWidget.setHorizontalHeaderLabels(
             ['Type', 'Indices', 'Description'])
@@ -336,14 +348,14 @@ class GbEditor(QDialog, Ui_GBeditor, object):
         self.tableWidget.item(rowIndex, 2).setBackground(color)
         # 跳转到指定位置
         f = Find(
-            parent=self.textBrowser,
+            parent=self.plainTextEdit_gb,
             target=content_data[index][0],
             sig=self.findSig)
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
-        # text = self.textBrowser.toPlainText()
-        f = Find(parent=self.textBrowser)
+        # text = self.plainTextEdit_gb.toPlainText()
+        f = Find(parent=self.plainTextEdit_gb)
         f.show()
 
     @pyqtSlot()
@@ -351,15 +363,11 @@ class GbEditor(QDialog, Ui_GBeditor, object):
         '''
         validate, predict即预测过后执行这个
         '''
-        currentContent = self.textBrowser.toPlainText()
+        currentContent = self.plainTextEdit_gb.toPlainText()
         totalID = currentContent.count("//")
         # 进度条
         self.progressDialog = self.factory.myProgressDialog(
             "Please Wait", "validating...", parent=self)
-        ##替换掉misc_feature的内容
-        if self.removeMISC:
-            rgx_miscfeature = re.compile(r"(?sm)     misc_feature.+?(?=     \w|^\w)")
-            currentContent = rgx_miscfeature.sub("", currentContent)
         self.progressDialog.show()
         self.dict_args["MarkNCR"] = self.checkBox.isChecked()
         self.dict_args["ncrLenth"] = self.spinBox.value()
@@ -367,21 +375,16 @@ class GbEditor(QDialog, Ui_GBeditor, object):
         self.dict_args["gbContents"] = currentContent
         self.dict_args["outpath"] = self.workPath
         self.dict_args["totalID"] = totalID
-        nmlgb = Normalize_MT(**self.dict_args)
-        self.progressDialog.close()
-        self.allcontent = nmlgb.allContent
-        self.errors = nmlgb.errors
-        self.warings = nmlgb.warnings
-        self.showOn()
-        QMessageBox.information(
-            self, "GenBank file editor", "<p style='line-height:25px; height:25px'>Validation complete!!</p>")
+        self.normWorker = WorkThread(lambda: self.validateSlot(currentContent, self.dict_args), parent=self)
+        self.normWorker.start()
+        self.normWorker.finished.connect(self.progressDialog.close)
 
     # @pyqtSlot()
     # def on_pushButton_6_clicked(self):
     #     '''
     #     save
     #     '''
-    #     currentContent = self.textBrowser.toPlainText()
+    #     currentContent = self.plainTextEdit_gb.toPlainText()
     #     gbManager = GbManager(self.workPath, parent=self)
     #     gbManager.addRefinedContent(currentContent)
     #     gbManager.close()
@@ -389,18 +392,50 @@ class GbEditor(QDialog, Ui_GBeditor, object):
     #                             "GenBank file editor", "<p style='line-height:25px; height:25px'>File saved succesfully!</p>")
 
     @pyqtSlot()
+    def on_pushButton_rmv_clicked(self):
+        '''
+        remove IDs with no annotation
+        '''
+        if self.no_annotation_IDs:
+            no_annotation_IDs = copy.deepcopy(self.no_annotation_IDs) # 如果不
+            currentContent = self.plainTextEdit_gb.toPlainText()
+            for content in self.no_annotation_GBs:
+                currentContent = currentContent.replace(content, "")
+            totalID = currentContent.count("//")
+            # 进度条
+            self.progressDialog = self.factory.myProgressDialog(
+                "Please Wait", "validating...", parent=self)
+            self.progressDialog.show()
+            self.dict_args["MarkNCR"] = self.checkBox.isChecked()
+            self.dict_args["ncrLenth"] = self.spinBox.value()
+            self.dict_args["progressSig"] = self.progressSig
+            self.dict_args["gbContents"] = currentContent
+            self.dict_args["outpath"] = self.workPath
+            self.dict_args["totalID"] = totalID
+            self.normWorker = WorkThread(lambda: self.validateSlot(currentContent, self.dict_args, quiet=True), parent=self)
+            self.normWorker.start()
+            self.normWorker.finished.connect(lambda : [self.progressDialog.close(),
+                                                       self.removeIDs(no_annotation_IDs)])
+        else:
+            QMessageBox.information(self,
+                                    "GenBank file editor",
+                                    "<p style='line-height:25px; height:25px'>All IDs have annotations</p>")
+            # self.no_annotation_IDs = []
+            # self.no_annotation_GBs = []
+
+    @pyqtSlot()
     def on_pushButton_7_clicked(self):
         '''
         PREDICT TRNA
         '''
         if self.unRecognisetRNA:
-            currentContent = self.textBrowser.toPlainText()
+            currentContent = self.plainTextEdit_gb.toPlainText()
             self.Lg_ReANNT = Lg_ReANNT(
                 self.unRecognisetRNA, currentContent, self.predict_signal, parent=self)
             # 添加最大化按钮
             self.Lg_ReANNT.setWindowFlags(self.Lg_ReANNT.windowFlags() | Qt.WindowMinMaxButtonsHint)
             self.Lg_ReANNT.show()
-#             self.textBrowser.setText(self.unRecognisetRNA)
+#             self.plainTextEdit_gb.setText(self.unRecognisetRNA)
         else:
             QMessageBox.information(self,
                                     "GenBank file editor", "<p style='line-height:25px; height:25px'>No tRNA(s) needing predict</p>")
@@ -438,12 +473,30 @@ class GbEditor(QDialog, Ui_GBeditor, object):
         # Save geometry
         self.gbEditor_settings.setValue('size', self.size())
         # self.gbEditor_settings.setValue('pos', self.pos())
+        for name, obj in inspect.getmembers(self):
+            if isinstance(obj, QCheckBox):
+                state = obj.isChecked()
+                self.gbEditor_settings.setValue(name, state)
+            if isinstance(obj, QSpinBox):
+                value = obj.value()
+                self.gbEditor_settings.setValue(name, value)
 
     def guiRestore(self):
         # Restore geometry
         self.resize(self.factory.judgeWindowSize(self.gbEditor_settings, 807, 612))
         self.factory.centerWindow(self)
         # self.move(self.gbEditor_settings.value('pos', QPoint(875, 254)))
+        for name, obj in inspect.getmembers(self):
+            if isinstance(obj, QCheckBox):
+                value = self.gbEditor_settings.value(
+                    name, "false")  # get stored value from registry
+                obj.setChecked(
+                    self.factory.str2bool(value))  # restore checkbox
+            if isinstance(obj, QSpinBox):
+                value = self.gbEditor_settings.value(
+                    name)  # get stored value from registry
+                if value:
+                    obj.setValue(int(value))
 
     def closeEvent(self, event):
         self.guiSave()
@@ -458,14 +511,9 @@ class GbEditor(QDialog, Ui_GBeditor, object):
         self.dict_args["gbContents"] = gbContent
         self.dict_args["outpath"] = self.workPath
         self.dict_args["totalID"] = totalID
-        nmlgb = Normalize_MT(**self.dict_args)
-        self.progressDialog.close()
-        self.allcontent = nmlgb.allContent
-        self.errors = nmlgb.errors
-        self.warings = nmlgb.warnings
-        self.showOn()
-        QMessageBox.information(
-            self, "GenBank file editor", "<p style='line-height:25px; height:25px'>Validation complete!!</p>")
+        self.normWorker = WorkThread(lambda: self.validateSlot(gbContent, self.dict_args), parent=self)
+        self.normWorker.start()
+        self.normWorker.finished.connect(self.progressDialog.close)
 
     def openExtractSet(self):
         """
@@ -489,12 +537,76 @@ class GbEditor(QDialog, Ui_GBeditor, object):
 
     def askRemoveMisc(self, bool_):
         if bool_:
-            reply = QMessageBox.question(
-                self,
-                "Confirmation",
-                "<p style='line-height:25px; height:25px'>Would you like to remove the \"misc_feature\" annotation before using \"Validate\" button?</p>",
-                QMessageBox.Yes,
-                QMessageBox.Cancel)
-            if reply == QMessageBox.Yes:
-                self.removeMISC = True
+            icon = ":/picture/resourses/msg_info.png"
+            message1 = "Would you like to remove the following annotation features before using \"Validate\" button? " \
+                       "these features will all be reannotated as \"misc_feature\" and named \"NCR\""
+            message2 = "Type in other features you wish to remove (one line per feature)"
+            text = "misc_feature\nD-loop\nintergenic_regions\nrep_origin\nrepeat_region\nstem_loop"
+            itemAsk = ListItemsOption(
+                message1, message2, text, icon, parent=self)
+            itemAsk.resize(550, 282)
+            if itemAsk.exec_() == QDialog.Accepted:
+                self.removeMISC = itemAsk.textEdit.toPlainText()
+
+    def validateSlot(self, gbContent, dict_args, quiet=False):
+        ##替换掉 misc_feature 等的内容
+        progressSig = dict_args["progressSig"]
+        progressSig.emit(5)
+        if self.removeMISC:
+            gb = SeqIO.parse(StringIO(gbContent), "genbank")
+            list_features = self.removeMISC.split("\n")
+            while "" in list_features:
+                list_features.remove("")
+            new_gb = ""
+            for gb_record in gb:
+                screened_features = [feature for feature in gb_record.features if feature.type not in list_features]
+                gb_record.features = screened_features
+                new_gb += gb_record.format("genbank")
+            dict_args["gbContents"] = new_gb
+        progressSig.emit(10)
+        nmlgb = Normalize_MT(**dict_args)
+        self.finishValidate.emit([nmlgb.allContent,
+                                  nmlgb.errors,
+                                  nmlgb.warnings,
+                                  nmlgb.no_annotation_IDs,
+                                  nmlgb.no_annotation_GBs,
+                                  quiet])
+
+    def validateFinishedSlot(self, list_):
+        self.allcontent = list_[0]
+        self.errors = list_[1]
+        self.warings = list_[2]
+        self.no_annotation_IDs = list_[3]
+        self.no_annotation_GBs = list_[4]
+        quiet = list_[5]
+        self.showOn()
+        if not quiet:
+            QMessageBox.information(
+                self, "GenBank file editor", "<p style='line-height:25px; height:25px'>Validation complete!!</p>")
+
+    def removeIDs(self, IDs):
+        treeIndex = self.parent.treeView.currentIndex()
+        filePath = self.parent.tree_model.filePath(treeIndex)
+        gbManager = GbManager(filePath, parent=self.parent)
+        array = gbManager.fetch_array()
+        reverse_array = [array[0]] + sorted(array[1:], reverse=True)  # 反转一下
+        self.parent.displayTableModel = MyTableModel(
+            reverse_array, parent=self.parent)
+        self.parent.tableView.setModel(self.parent.displayTableModel)
+        arrayMAN = ArrayManager(reverse_array)
+        found_rows = arrayMAN.get_index_by_IDs(IDs)
+        # # 选中全部行
+        # 先清除已有选中的行
+        self.parent.tableView.clearSelection()
+        indexes = [self.parent.displayTableModel.index(row, 0) for row in found_rows]
+        mode = QItemSelectionModel.Select | QItemSelectionModel.Rows
+        selectModel = self.parent.tableView.selectionModel()
+        selectModel.selectionChanged.connect(lambda:
+                                             self.parent.statusBar().showMessage(str(len(set([i.row() for i in
+                                                                                self.parent.tableView.selectedIndexes()]))) + " sequence(s) selected"))
+        [selectModel.select(index, mode) for index in indexes]
+        self.parent.displayTableModel.modifiedSig.connect(
+            self.parent.depositeData)
+        ## 开始删除
+        self.parent.rmTableRow(parent=self)
 

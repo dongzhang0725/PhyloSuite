@@ -105,6 +105,10 @@ class RSCUstack(object):
         # 先计算总共多少个codon
         # for list_line in self.list_mega:
         aaNumber = 0
+        # 排一下序，把相同的氨基酸放在一起
+        self.list_mega = sorted(self.list_mega, key=lambda x:
+                                                  re.search(r"\((.)\)", x[0]).group(1)
+                                                    if re.search(r"\((.)\)", x[0]) else "1")
         for list_line in self.list_mega:
             abbre = re.search(r"\((.)\)", list_line[0]).group(1)
             codon = re.sub(r"\((.)\)", "", list_line[0])
@@ -117,10 +121,14 @@ class RSCUstack(object):
             if codon[-1] == "U" or codon[-1] == "G":
                 self.GT_end += number
             # 判断是否与上一个AA相同
+            # if last_abbre != "":
+            #     print(self.dict_AA[abbre], self.dict_AA[last_abbre])
+            #     print(self.stack[-50:])
             if abbre == last_abbre:
                 count += 1
                 aaNumber += number
-                self.stack = self.stack.strip("\n") + ",\n"
+                if last_abbre != "" and last_abbre != "*":
+                    self.stack = self.stack.strip("\n") + ",\n"
             else:
                 count = 1
                 if last_abbre != "" and last_abbre != "*":

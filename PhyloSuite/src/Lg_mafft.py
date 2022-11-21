@@ -44,16 +44,18 @@ class CodonAlign(object):  # 读取fasta文件
             num += 1
             self.file_base = os.path.basename(self.each_file)
             self.read_fas(self.each_file)  # 生成dict_fas,循环一次就丢
-            self.dict_args["progressSig"].emit(
-                10 * (num / sums) * (1 / 5))  # read_fas占五分之一
-            self.dict_args["workflow_progress"].emit(
-                10 * (num / sums) * (1 / 5))  # read_fas占五分之一
+            if self.dict_args["progressSig"]:
+                self.dict_args["progressSig"].emit(
+                    10 * (num / sums) * (1 / 5))  # read_fas占五分之一
+                self.dict_args["workflow_progress"].emit(
+                    10 * (num / sums) * (1 / 5))  # read_fas占五分之一
             self.dict_file[self.file_base] = {}
             self.translate()  # 翻译氨基酸，生成映射，存翻译后的AA文件
-            self.dict_args["progressSig"].emit(
-                10 * (num / sums))  # read_fas占五分之一
-            self.dict_args["workflow_progress"].emit(
-                10 * (num / sums))  # read_fas占五分之一
+            if self.dict_args["progressSig"]:
+                self.dict_args["progressSig"].emit(
+                    10 * (num / sums))  # read_fas占五分之一
+                self.dict_args["workflow_progress"].emit(
+                    10 * (num / sums))  # read_fas占五分之一
 
     def read_fas(self, file):
         self.dict_fas = {}  # 实例化以后，用另一个变量替换这个,当读取多个文件的时候，这个字典会被刷新，解决这个问题
@@ -63,25 +65,37 @@ class CodonAlign(object):  # 读取fasta文件
                 while not line.startswith('>'):
                     line = File.readline()
                 name = line
-                seq = ''
+                seq = []
                 line = File.readline()
                 while not line.startswith('>') and line != '':
-                    seq += line.strip().replace(' ', '')
+                    seq.append(line.strip().replace(' ', ''))
                     line = File.readline()
                 name = ">" + \
                     self.factory.refineName(
                         name.strip().replace(">", "")) + "\n"
-                self.dict_fas[name] = seq
+                self.dict_fas[name] = "".join(seq)
 
     def mapping(self, spe, nuc, pro):
         self.dict_file[self.file_base][spe] = []  # 字典里面套字典
-        num = 1
-        for each_aa in pro:
+        # num = 1
+        for num, each_aa in enumerate(pro):
+            num += 1
             self.dict_file[self.file_base][spe].append(
                 (each_aa, nuc[(num - 1) * 3:num * 3]))
-            num += 1
+            # num += 1
 
     def trim_ter(self, spe, seq):
+        '''
+        比对前，预先去除终止密码子
+        Parameters
+        ----------
+        spe
+        seq
+
+        Returns
+        -------
+
+        '''
         self.table = CodonTable.ambiguous_dna_by_id[self.rdfas_codetable]
         # 这里写一个在序列内部发现了gap，askquestion是否删除gap继续比对
         seq = seq.replace("-", "")  # 如果用户传入已经比对过的序列，则需要将其还原，否则biopython会报错
@@ -100,21 +114,22 @@ class CodonAlign(object):  # 读取fasta文件
                 self.trim_seq = seq[:-2]
 
     def translate(self):
-        aa_fas = ""
+        aa_fas = []
         for i in self.dict_fas:
             self.trim_ter(i, self.dict_fas[i])  # 生成self.trim_seq
             # myargs.table需要转换为table对象
             protein = _translate_str(self.trim_seq, self.table)
+            # protein.rstrip("*") ?
             if "*" in protein:
                 for num, aa in enumerate(protein):
                     if aa == "*":
                         initIndex = ((num + 1) * 3 - 3)
                         self.DictInterstop.setdefault(os.path.normpath(self.each_file),
                                                       []).append([i.strip().replace(">", ""), initIndex])
-            aa_fas += i + protein + os.linesep
+            aa_fas.append(i + protein + os.linesep)
             self.mapping(i, self.trim_seq, protein)
         with open(self.vessel_aaseq + os.sep + self.file_base, "w", encoding="utf-8") as f:
-            f.write(aa_fas)
+            f.write("".join(aa_fas))
 
     def locate(self):
         for i in self.aa_align:
@@ -124,23 +139,23 @@ class CodonAlign(object):  # 读取fasta文件
                     # 终止密码子会在比对的时候被mafft删除,因此需要跳过
                     mapping = self.list_mapping.pop(0)  # 取出('M', 'atg')
                 assert i == mapping[0], mapping
-                self.codon_seq += mapping[1]
+                self.codon_seq.append(mapping[1])
             if i == "-":
-                self.codon_seq += "---"
-        self.codon_seq += "\n"
+                self.codon_seq.append("---")
+        self.codon_seq.append("\n")
 
     def tocodon(self):
-        list_keys = sorted(list(self.dict_fas.keys()))
-        self.codon_seq = ""
-        for i in list_keys:  # >Benedenia_hoshinai
-            self.codon_seq += i
+        # list_keys = sorted(list(self.dict_fas.keys()))
+        self.codon_seq = []
+        for i in self.dict_fas:  # >Benedenia_hoshinai
+            self.codon_seq.append(i)
             self.aa_align = self.dict_fas[i]  # MI-NNILFYSYN-NQITNLVDS-
             # 得到映射的列表[('M', 'atg'), ('L', 'cta'), ('I', 'ata')]
             self.list_mapping = self.dict_file[self.each_aa_align][i]
             self.locate()
         split_ext = os.path.splitext(self.each_aa_align)  # 为了加后缀
         with open(self.exportPath + os.sep + "_mafft".join(split_ext), "w", encoding="utf-8") as f:
-            f.write(self.codon_seq)
+            f.write("".join(self.codon_seq))
 
     def back_trans(self):
         files = os.listdir(self.vessel_aalign)
@@ -150,13 +165,15 @@ class CodonAlign(object):  # 读取fasta文件
             num += 1
             # 生成dict_fas,循环一次就丢
             self.read_fas(self.vessel_aalign + os.sep + self.each_aa_align)
-            self.dict_args["progressSig"].emit(
-                90 + 10 * (num / sums) * (1 / 5))  # read_fas占五分之一
-            self.dict_args["workflow_progress"].emit(
-                90 + 10 * (num / sums) * (1 / 5))  # read_fas占五分之一
+            if self.dict_args["progressSig"]:
+                self.dict_args["progressSig"].emit(
+                    90 + 10 * (num / sums) * (1 / 5))  # read_fas占五分之一
+                self.dict_args["workflow_progress"].emit(
+                    90 + 10 * (num / sums) * (1 / 5))  # read_fas占五分之一
             self.tocodon()  # 执行剩下的4/5
-            self.dict_args["progressSig"].emit(90 + 10 * (num / sums))
-            self.dict_args["workflow_progress"].emit(90 + 10 * (num / sums))
+            if self.dict_args["progressSig"]:
+                self.dict_args["progressSig"].emit(90 + 10 * (num / sums))
+                self.dict_args["workflow_progress"].emit(90 + 10 * (num / sums))
         return [self.exportPath + os.sep + i for i in files]
 
 
@@ -198,7 +215,7 @@ class Mafft(QDialog, Ui_mafft, object):
         self.workflow = workflow
         self.mafft_interrupt = False
         self.workflowFinished = False
-        self.mafft_exe = '"' + mafft_exe + '"'
+        self.mafft_exe = mafft_exe
         self.focusSig = focusSig if focusSig else pyqtSignal(
             str)  # 为了方便workflow
         self.setupUi(self)
@@ -220,6 +237,13 @@ class Mafft(QDialog, Ui_mafft, object):
         self.setStyleSheet(self.qss_file)
         # 恢复用户的设置
         self.guiRestore()
+        # 判断程序的版本
+        self.version = ""
+        version_worker = WorkThread(
+            lambda : self.factory.get_version("MAFFT", self),
+            parent=self)
+        version_worker.start()
+        #
         self.sortAutoInputs(autoInputs)
         self.PCG_radioButton_2.toggled.connect(self.input)
         self.AA_radioButton_2.toggled.connect(self.input)
@@ -340,14 +364,12 @@ class Mafft(QDialog, Ui_mafft, object):
                     "<p style='line-height:25px; height:25px'>Codon mode requires FASTA to be set as the export format (set automatically)</p>")
                 self.comboBox_2.setCurrentIndex(3)
                 self.dict_args["exportfmt"] = ' --inputorder '
-            vessel = self.workPath + "/mftvessel"
+            vessel = f"{self.dict_args['exportPath']}/mftvessel"
             if os.path.exists(vessel):
                 # 如果有这个文件夹，就删掉
                 self.clearFolderSig.emit(vessel)
-            vessel_aaseq = self.workPath + \
-                "/mftvessel/AA_sequence"
-            vessel_aalign = self.workPath + \
-                "/mftvessel/AA_alignments"
+            vessel_aaseq = f"{vessel}/AA_sequence"
+            vessel_aalign = f"{vessel}/AA_alignments"
             self.dict_args["vessel"] = vessel
             self.dict_args["vessel_aaseq"] = vessel_aaseq
             self.dict_args["vessel_aalign"] = vessel_aalign
@@ -360,7 +382,8 @@ class Mafft(QDialog, Ui_mafft, object):
                 mode = "codon"
             elif self.N2P_radioButton.isChecked():
                 mode = "N2P"
-            self.description = '''%s with MAFFT (Katoh and Standley, 2013) using '%s' strategy and %s alignment mode.''' % (sequence,
+            self.description = '''%s with MAFFT v%s (Katoh and Standley, 2013) using '%s' strategy and %s alignment mode.''' % (sequence,
+                                                                                                                                self.version,
                                                                                                                             self.comboBox_3.currentText().split(
                                                                                                                                 ". ")[1],
                                                                                                                             mode)
@@ -396,9 +419,9 @@ class Mafft(QDialog, Ui_mafft, object):
             self.time_used = str(time_end - time_start)
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
-            with open(self.dict_args["exportPath"] + os.sep + "summary.txt", "w", encoding="utf-8") as f:
+            with open(self.dict_args["exportPath"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                        "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                         "If you use MAFFT, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             # 判断比对是否成功
             mafft_results = [self.dict_args["exportPath"] + os.sep + result for result in
@@ -493,9 +516,11 @@ class Mafft(QDialog, Ui_mafft, object):
                     str(file_num) + "/" + str(file_sum) + " file:")
                 align_file = os.path.join(
                     self.dict_args["vessel_aaseq"], each_fas)
-                commands = self.dict_args["mafft_exe"] + arg + strategy + ch_out + '"' + align_file + \
-                    '"' + ' > ' + '"' + \
-                    self.dict_args["vessel_aalign"] + os.sep + each_fas + '"'
+                commands = f'"{self.dict_args["mafft_exe"]}"{arg}{strategy}{ch_out}' \
+                           f'"{align_file}" > "{self.dict_args["vessel_aalign"] + os.sep + each_fas}"'
+                # commands = self.dict_args["mafft_exe"] + arg + strategy + ch_out + '"' + align_file + \
+                #     '"' + ' > ' + '"' + \
+                #     self.dict_args["vessel_aalign"] + os.sep + each_fas + '"'
                 if platform.system().lower() == "windows":
                     self.mafft_popen = subprocess.Popen(
                         commands, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupINFO)
@@ -546,9 +571,11 @@ class Mafft(QDialog, Ui_mafft, object):
                 align_file = os.path.join(
                     self.dict_args["vessel_aaseq"], each_fas)
                 split_ext = os.path.splitext(each_fas)
-                commands = self.dict_args["mafft_exe"] + arg + strategy + ch_out + '"' + align_file + \
-                    '"' + ' > ' + '"' + self.dict_args["exportPath"] + os.sep + \
-                    '_mafft'.join(split_ext) + '"'
+                commands = f'"{self.dict_args["mafft_exe"]}"{arg}{strategy}{ch_out}' \
+                           f'"{align_file}" > "{self.dict_args["exportPath"]}{os.sep}{"_mafft".join(split_ext)}"'
+                # commands = self.dict_args["mafft_exe"] + arg + strategy + ch_out + '"' + align_file + \
+                #     '"' + ' > ' + '"' + self.dict_args["exportPath"] + os.sep + \
+                #     '_mafft'.join(split_ext) + '"'
                 # if platform.system().lower() == "windows":
                 #     self.mafft_popen = subprocess.Popen(
                 #         commands, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupINFO)
@@ -584,9 +611,11 @@ class Mafft(QDialog, Ui_mafft, object):
                     str(file_num) + "/" + str(file_sum) + " file:")
                 each_fas = os.path.basename(align_file)
                 split_ext = os.path.splitext(each_fas)
-                commands = self.dict_args["mafft_exe"] + arg + strategy + ch_out + '"' + align_file + \
-                    '"' + ' > ' + '"' + self.dict_args["exportPath"] + os.sep + \
-                    '_mafft'.join(split_ext) + '"'
+                commands = f'"{self.dict_args["mafft_exe"]}"{arg}{strategy}{ch_out}' \
+                           f'"{align_file}" > "{self.dict_args["exportPath"]}{os.sep}{"_mafft".join(split_ext)}"'
+                # commands = self.dict_args["mafft_exe"] + arg + strategy + ch_out + '"' + align_file + \
+                #     '"' + ' > ' + '"' + self.dict_args["exportPath"] + os.sep + \
+                #     '_mafft'.join(split_ext) + '"'
                 # if platform.system().lower() == "windows":
                 #     self.mafft_popen = subprocess.Popen(
                 #         commands, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupINFO)
@@ -812,7 +841,7 @@ class Mafft(QDialog, Ui_mafft, object):
                     self.factory.str2bool(value))  # restore checkbox
             if isinstance(obj, QPushButton):
                 if name == "pushButton_par":
-                    list_options = ["--adjustdirection", "--adjustdirectionaccurately", "--thread 1", "--op 1.53",
+                    list_options = ["--leavegappyregion", "--adjustdirection", "--adjustdirectionaccurately", "--thread 1", "--op 1.53",
                                     "--ep 0.123", "--kappa 2", "--lop -2.00", "--lep 0.1", "--lexp -0.1",
                                     "--LOP -6.00", "--LEXP 0.00", "--bl 62", "--jtt 1", "--tm 1", "--fmodel"]
                     ini_state = [False] * (len(list_options))
@@ -1066,7 +1095,9 @@ class Mafft(QDialog, Ui_mafft, object):
                 action.setText("--bl %s" % item)
             else:
                 action.setChecked(False)
-        elif action.isChecked() and (option not in ["--fmodel", "--adjustdirection", "--adjustdirectionaccurately"]):
+        elif action.isChecked() and (option not in ["--leavegappyregion", "--fmodel",
+                                                    "--adjustdirection",
+                                                    "--adjustdirectionaccurately"]):
             opt, value = option.split(" ")
             strategy = self.comboBox_3.currentText()[0]
             if opt in ["--lop", "--lep", "--lexp"] and strategy not in ["5", "6"]:
@@ -1195,10 +1226,25 @@ class Mafft(QDialog, Ui_mafft, object):
 
     @pyqtSlot(OrderedDict, result=bool)
     def popupInterStopCodon(self, dictInterStop):
+        ## 存为文件
+        def save2file(dictInterStop):
+            list_ = [["File", "Species", "Site"]]
+            # dictInterStop.pop("code table")
+            for file, list_codons in dictInterStop.items():
+                if file == "code table":
+                    continue
+                for species, codon_site in list_codons:
+                    list_.append([os.path.basename(file), species, f"{codon_site+1}-{codon_site+4}"])
+            with open(f"{self.exportPath}{os.sep}internal_stop_codons.tsv", "w") as f:
+                f.write("\n".join(["\t".join(i) for i in list_]))
+        saveFileWorker = WorkThread(lambda : save2file(dictInterStop), parent=self)
+        saveFileWorker.start()
+        # saveFileWorker.finished.connect(lambda : [])
         reply = QMessageBox.question(
             self,
             "Confirmation",
-            "<p style='line-height:25px; height:25px'>Internal stop codons found, view them?</p>",
+            "<p style='line-height:25px; height:25px'>Internal stop codons found, view them? "
+            "(also see \"internal_stop_codons.tsv\" file)</p>",
             QMessageBox.Yes,
             QMessageBox.Ignore)
         if reply == QMessageBox.Yes:
@@ -1333,7 +1379,7 @@ class Mafft(QDialog, Ui_mafft, object):
             list_errors.append("input files")
         if list_errors and ("color:red" in (mafft_error+file_errors)):
             text = " and ".join(list_errors)
-            error_message = "<br>PhyloSuite guesses it was caused by non-standard characters in the path of %s. The archcriminal characters in the path are shown in red:<br> \"<br>%s\""%(text, mafft_error+file_errors)
+            error_message = "<br>PhyloSuite guesses it was caused by non-standard characters in the path of %s. The archcriminal characters in the path are shown in red (MAFFT不接受路径中有中文或特殊符号):<br> \"<br>%s\""%(text, mafft_error+file_errors)
         else:
             error_message = ""
         QMessageBox.critical(

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\PF_exe_path.ui'
+# Form implementation generated from reading ui file 'D:\works\ZD\phylosuite\uifiles\PF_exe_path.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -165,9 +165,9 @@ class Ui_PF2ExePath(object):
         self.pushButton_10.setText(_translate("PF2ExePath", "Cancel"))
         self.label_14.setText(_translate("PF2ExePath", "<html><head/><body><p>If you don\'t have PartitionFinder2, please <span style=\" font-weight:600; color:#ff0000;\">download.</span> Please select one of the two ways to install PartitionFinder2 below:</p></body></html>"))
         self.label_10.setText(_translate("PF2ExePath", "Downloading source:"))
-        self.comboBox.setItemText(0, _translate("PF2ExePath", "Github"))
-        self.comboBox.setItemText(1, _translate("PF2ExePath", "Gitlab"))
-        self.comboBox.setItemText(2, _translate("PF2ExePath", "Chinese resource"))
+        self.comboBox.setItemText(0, _translate("PF2ExePath", "Chinese resource"))
+        self.comboBox.setItemText(1, _translate("PF2ExePath", "Github"))
+        self.comboBox.setItemText(2, _translate("PF2ExePath", "Gitlab"))
         self.groupBox_2.setTitle(_translate("PF2ExePath", "Install compiled PartitionFinder2 (recommended)"))
         self.pushButton_6.setText(_translate("PF2ExePath", "Download"))
         self.label_7.setText(_translate("PF2ExePath", "<html><head/><body><p>If you fail to download this, click here to download it manually.</p></body></html>"))

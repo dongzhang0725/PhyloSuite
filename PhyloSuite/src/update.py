@@ -189,21 +189,7 @@ class UpdateAPP(QDialog):
         os.execl(python, python, *sys.argv)
 
     def downloadNewAPP(self):
-        country = self.factory.path_settings.value("country", "UK")
-        if country == "China":
-            if platform.system().lower() == "windows":
-                url = "http://phylosuite.jushengwu.com/updates/update_win.zip"
-            elif platform.system().lower() == "darwin":
-                url = "http://phylosuite.jushengwu.com/updates/update_mac.zip"
-            elif platform.system().lower() == "linux":
-                url = "http://phylosuite.jushengwu.com/updates/update_linux.zip"
-        else:
-            if platform.system().lower() == "windows":
-                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite/master/update.zip"
-            elif platform.system().lower() == "darwin":
-                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_Mac/master/update.zip"
-            elif platform.system().lower() == "linux":
-                url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_linux/master/update.zip"
+        url = self.factory.get_update_path()
         self.downloadPath = self.rootPath + os.sep + "update.zip"
         ###qhttp下载
         dict_args = {}
@@ -215,11 +201,12 @@ class UpdateAPP(QDialog):
         httpwindow.finishSig.connect(self.exec_unzip)
         httpwindow.ini_args()
 
-    def unzipNewApp(self):
+    def unzipNewApp(self, downloaded_zipfile=None):
+        self.downloadPath = downloaded_zipfile if downloaded_zipfile else self.downloadPath
         file_zip = zipfile.ZipFile(self.downloadPath, 'r')
         namelists = file_zip.namelist()
         for num, file in enumerate(namelists):
-            path_root = self.rootPath + os.sep + os.path.basename(file)
+            path_root = self.rootPath + os.sep + file #os.path.basename(file)
             if os.path.exists(path_root):
                 ##如果已经存在的文件夹就替换名字
                 if os.path.basename(file) not in ["settings", "plugins"]:
@@ -231,12 +218,17 @@ class UpdateAPP(QDialog):
                         pass
             try:
                 file_zip.extract(file, self.rootPath)
-                if platform.system().lower() in ["darwin", "linux"]:
-                    os.system("chmod 755 %s"%(self.rootPath + os.sep + file))
+                # if platform.system().lower() in ["darwin", "linux"]:
+                #     os.system("chmod 755 %s"%(self.rootPath + os.sep + file))
             except:
                 pass
-            self.progressSig.emit(95 + 5 * ((num+1)/len(namelists)))
+            if not downloaded_zipfile:
+                # 软件更新
+                self.progressSig.emit(95 + 5 * ((num+1)/len(namelists)))
         file_zip.close()
+        # assign permission
+        if platform.system().lower() in ["darwin", "linux"]:
+            os.system(f"bash {self.rootPath}{os.sep}assign_permission.sh")
         try:
             os.remove(self.downloadPath)
         except:

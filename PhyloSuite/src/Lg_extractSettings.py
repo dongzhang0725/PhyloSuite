@@ -83,6 +83,8 @@ class ExtractSettings(QDialog, Ui_ExtractSettings, object):
         self.spinBox_2.valueChanged[int].connect(
             lambda value: self.changeCheckboxSettings("overlapping regions threshold", value))
         self.guiRestore()
+        # 默认显示完整表格
+        self.on_toolButton_7_clicked()
         ## brief demo
         country = self.factory.path_settings.value("country", "UK")
         url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/" if \
@@ -164,6 +166,13 @@ class ExtractSettings(QDialog, Ui_ExtractSettings, object):
         if fileName[0]:
             with open(fileName[0], "w", encoding="utf-8") as f:
                 f.write(content)
+
+    @pyqtSlot()
+    def on_toolButton_7_clicked(self):
+        """
+        adjust table
+        """
+        self.tableView.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
     def guiSave(self):
         # Save geometry
@@ -250,7 +259,9 @@ class ExtractSettings(QDialog, Ui_ExtractSettings, object):
                     return True
             if event.type() == QEvent.Drop:
                 files = [u.toLocalFile() for u in event.mimeData().urls()]
-                list_csvs = [j for j in files if os.path.splitext(j)[1].upper() == ".CSV"]
+                csvs = [j for j in files if os.path.splitext(j)[1].upper() == ".CSV"]
+                tsvs = [j for j in files if os.path.splitext(j)[1].upper() == ".TSV"]
+                list_csvs = csvs + tsvs
                 self.importArray(list_csvs[0])
             if event.type() == QEvent.KeyPress:
                 if event.key() == Qt.Key_Delete:
@@ -377,13 +388,17 @@ class ExtractSettings(QDialog, Ui_ExtractSettings, object):
     def input_array(self, byFile=False):
         if not byFile:
             file = QFileDialog.getOpenFileName(
-                self, "Input Table", filter="CSV Format(*.csv);;")[0]
+                self, "Input Table", filter="Table format(*.csv *.tsv);;")[0]
         else:
             file=byFile
         if file:
             with open(file, encoding="utf-8", errors='ignore') as f:
                 content = f.read().strip()
-            return [i.strip().split(",") for i in [j for j in content.split("\n")] if "Old Name,New Name" not in i]
+            if "Old Name,New Name" in content:
+                list_ = [i.strip().split(",") for i in [j for j in content.split("\n")] if "Old Name,New Name" not in i]
+            else:
+                list_ = [i.strip().split("\t") for i in [j for j in content.split("\n")] if "Old Name\tNew Name" not in i]
+            return list_
         else:
             return None
 

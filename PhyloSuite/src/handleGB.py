@@ -2,16 +2,27 @@
 # -*- coding: utf-8 -*-
 
 import copy
+import csv
 import glob
 import itertools
 
 import datetime
+import pickle
+import subprocess
+import time
+import uuid
 from io import StringIO
+from multiprocessing import Pool, Queue, Manager
+# 解决有时候一直卡着的问题
+from multiprocessing import set_start_method, get_context
+# set_start_method("spawn", force=True)
 
-from Bio import SeqIO, Entrez, SeqFeature
+from Bio import SeqIO, Entrez, SeqFeature, AlignIO
 from Bio.Alphabet import generic_dna
+from Bio.Phylo.TreeConstruction import DistanceCalculator
 
-from src.factory import Factory, SeqGrab
+from src.Lg_mafft import CodonAlign
+from src.factory import Convertfmt, Factory, SeqGrab
 import re
 import os
 import traceback
@@ -25,7 +36,9 @@ from src.rscuStack import RSCUstack
 from Bio.Seq import _translate_str, Seq
 from Bio.Data import CodonTable
 from suds.client import Client
-from Bio.SeqFeature import FeatureLocation
+from Bio.SeqFeature import FeatureLocation, CompoundLocation
+from ete3 import NCBITaxa
+import platform
 
 '''item:
 [
@@ -33,6 +46,229 @@ from Bio.SeqFeature import FeatureLocation
  ['gene', '<1..>402', {'gene': 'COX1'}],
  ['CDS', '<1..>402', {'gene': 'COX1', 'codon_start': '1', 'transl_table': '9', 'protein_id': 'ANC98956.1', 'translation': 'FFGHPEVYVLILPGFGAVSHICLSISNNQEPFGYLGLVFAMFSIVCLGCVVWAHHMFTVGMDVKSTIFFSSVTMIIGVPTGIKVFSWLYMLASSNISRGDPIVWWVFAFIILFTMGGVTGIVLSSSVLDSLLHD', 'product': 'cytochrome c oxidase subunit I'}]
  ]'''
+
+class LabelNCR(object):
+
+    def __init__(self):
+        pass
+
+    def exec_(self, gbContent, intergene_length, totalID, base, process, progressSignal):
+        newContent = ""
+        for gb_record in SeqIO.parse(StringIO(gbContent), "genbank"):
+            features = gb_record.features
+            features = self.remove_join_associated_feature(features)
+            sequence = gb_record.seq
+            record_length = len(sequence)
+            new_features = []
+            reach_first_feature = False
+            for num, this_feature in enumerate(features):
+                if this_feature.type in ["source"]:
+                    new_features.append(this_feature)
+                    continue
+                before_feature = features[num - 1]
+                if str(this_feature.location) == str(before_feature.location):
+                    # 上面是gene，下面是CDS的情况
+                    new_features.append(this_feature)
+                    continue
+                this_start = self.get_start(this_feature)
+                if not reach_first_feature:
+                    # 第一个feature，在这个位置把开始和最后都以join的情况给考虑了？最后有join的情况可能得单独考虑
+                    last_feature = features[-1]
+                    last_end = self.get_end(last_feature)
+                    # print(this_start, last_end)
+                    ## 必须加上下面的条件判断，否则     gene            complement(join(15133..15415,1..11))会搞错
+                    if this_feature.location_operator != "join":
+                        # 如果不是join，那么肯定是从小数字开始的，而最后个feature的索引肯定大，所以是跨环
+                        new_features = self.location_cross_circle(record_length,
+                                                             intergene_length,
+                                                             this_start,
+                                                             last_end,
+                                                             new_features,
+                                                             features)
+                    else:
+                        # 如果是join，除了在下面单独判断join外，还要判断join的起始位置与上一个feature的结束位置
+                        if this_start > last_end:
+                            if (this_start - last_end) >= intergene_length:
+                                my_feature_location = SeqFeature.FeatureLocation(last_end, this_start, strand=+1)
+                                my_feature = SeqFeature.SeqFeature(my_feature_location,
+                                                                   type="misc_feature",
+                                                                   qualifiers={"gene": "NCR",
+                                                                               "note": "Added by PhyloSuite"})
+                                if not self.feature_existed(my_feature, new_features): new_features.append(my_feature)
+                        else:
+                            # 证明是cross circle的情况
+                            new_features = self.location_cross_circle(record_length,
+                                                                 intergene_length,
+                                                                 this_start,
+                                                                 last_end,
+                                                                 new_features,
+                                                                 features)
+                    reach_first_feature = True
+                else:
+                    if (this_start - last_end) >= intergene_length:
+                        my_feature_location = SeqFeature.FeatureLocation(last_end, this_start, strand=+1)
+                        my_feature = SeqFeature.SeqFeature(my_feature_location,
+                                                           type="misc_feature",
+                                                           qualifiers={"gene": "NCR",
+                                                                       "note": "Added by PhyloSuite"})
+                        if not self.feature_existed(my_feature, new_features): new_features.append(my_feature)
+                ## 处理 this_feature 有join的情况
+                if this_feature.location_operator == "join":
+                    if re.search(r"\[(\d+):(\d+)\]", str(this_feature.location)):
+                        list_index = re.findall(r"\[(\d+):(\d+)\]", str(this_feature.location))
+                        list_index = list_index if this_feature.strand == 1 else list(reversed(list_index))
+                        # 这里的list_index要反转一下吗
+                        for num1, tuple_index in enumerate(list_index):
+                            if (num1 + 1) < len(list_index):
+                                gap_start = int(tuple_index[1])
+                                gap_end = int(list_index[num1 + 1][0])
+                                if gap_end < gap_start:
+                                    # 证明是跨环的情况 {[1301:20896](+), [0:4](+)}。改为它们之间的差距比整个基因组还大？ 会不会也被overlap影响？
+                                    new_features = self.location_cross_circle(record_length,
+                                                                         intergene_length,
+                                                                         gap_end,
+                                                                         gap_start,
+                                                                         new_features,
+                                                                         features,
+                                                                         join=True)
+                                else:
+                                    if (gap_end - gap_start) >= intergene_length:
+                                        my_feature_location = SeqFeature.FeatureLocation(gap_start, gap_end,
+                                                                                         strand=+1)
+                                        if my_feature_location not in [feat.location for feat in features]:
+                                            # 有时候已经添加过这个feature了，但是还是重复判定了
+                                            my_feature = SeqFeature.SeqFeature(my_feature_location,
+                                                                               type="misc_feature",
+                                                                               qualifiers={"gene": "NCR",
+                                                                                           "note": "Added by PhyloSuite",
+                                                                                           "note2": "join associated"})
+                                            if not self.feature_existed(my_feature, new_features): new_features.append(
+                                                my_feature)
+                new_features.append(this_feature)
+                last_end = self.get_end(this_feature)
+            gb_record.features = new_features
+            newContent += gb_record.format("genbank")
+            num += 1
+            progressSignal.emit(
+                base + (num / totalID) * process)
+        return newContent
+
+    def remove_join_associated_feature(self, features):
+        ## 删除join的feature
+        new_features = []
+        for feat in features:
+            if "note2" in feat.qualifiers:
+                if (type(feat.qualifiers["note2"]) != str and feat.qualifiers["note2"][0] == "join associated") or \
+                        (type(feat.qualifiers["note2"]) == str and feat.qualifiers["note2"] == "join associated"):
+                    continue
+            else:
+                new_features.append(feat)
+        index_not_include = []
+        ## 删除起始位置的那个misc_feature，
+        for num, feature in enumerate(new_features):
+            if feature.type == "misc_feature":
+                if "note" in feature.qualifiers:
+                    if (type(feature.qualifiers["note"]) != str and feature.qualifiers["note"][
+                        0] == "Added by PhyloSuite") or \
+                            (type(feature.qualifiers["note"]) == str and feature.qualifiers[
+                                "note"] == "Added by PhyloSuite"):
+                        index_not_include.append(num)
+            if feature.type not in ["misc_feature", "source"]: break
+        new_features = [feature for index, feature in enumerate(new_features) if index not in index_not_include]
+        ## 删除最后的那个misc_feature，
+        index_not_include = []
+        for num, feature in enumerate(reversed(features)):
+            if feature.type == "misc_feature":
+                if "note" in feature.qualifiers:
+                    if (type(feature.qualifiers["note"]) != str and feature.qualifiers["note"][
+                        0] == "Added by PhyloSuite") or \
+                            (type(feature.qualifiers["note"]) == str and feature.qualifiers[
+                                "note"] == "Added by PhyloSuite"):
+                        index_not_include.append(len(features) - num)
+            if feature.type != "misc_feature": break
+        new_features = [feature for index, feature in enumerate(new_features) if index not in index_not_include]
+        return new_features
+
+    def get_start(self, this_feature):
+        if this_feature.location_operator == "join":
+            if re.search(r"\[(\d+):(\d+)\]", str(this_feature.location)):
+                list_index = re.findall(r"\[(\d+):(\d+)\]", str(this_feature.location))
+                list_index = list_index if this_feature.strand == 1 else list(reversed(list_index))
+                this_start = int(list_index[0][0])
+            else:
+                this_start = this_feature.location.start
+        else:
+            this_start = this_feature.location.start
+        return this_start
+
+    def get_end(self, this_feature):
+        if this_feature.location_operator == "join":
+            if re.search(r"\[(\d+):(\d+)\]", str(this_feature.location)):
+                list_index = re.findall(r"\[(\d+):(\d+)\]", str(this_feature.location))
+                list_index = list_index if this_feature.strand == 1 else list(reversed(list_index))
+                end = int(list_index[-1][1])
+            else:
+                end = this_feature.location.end
+        else:
+            end = this_feature.location.end
+        return end
+
+    def feature_existed(self, feature, features):
+        flag = False
+        if "note" in feature.qualifiers:
+            if (type(feature.qualifiers["note"]) != str and feature.qualifiers["note"][0] == "Added by PhyloSuite") or \
+                    (type(feature.qualifiers["note"]) == str and feature.qualifiers["note"] == "Added by PhyloSuite"):
+                for feat in features:
+                    if str(feat.location) == str(feature.location):
+                        flag = True
+        return flag
+
+    def not_include_any_features(self, tested_feature, features):
+        ## 有时候得到这种错误的 misc_feature    join(15140..15415,1..15132)。NCR不应该包含任何feature
+        flag = True
+        for feature in features:
+            if set(list(feature.location)).issubset(set(list(tested_feature.location))):
+                flag = False
+                break
+        return flag
+
+    def location_cross_circle(self, record_length,
+                                  intergene_length,
+                                  this_start,
+                                  last_end,
+                                  new_features,
+                                  features,
+                                  join=False):
+        if (record_length - last_end) + this_start >= intergene_length:
+            init_location = SeqFeature.FeatureLocation(0, this_start, strand=+1) if this_start > 0 else None
+            end_location = SeqFeature.FeatureLocation(last_end, record_length,
+                                                      strand=+1) if last_end < record_length else None
+            qualifier = {"gene": "NCR", "note": "Added by PhyloSuite"} if not join else {"gene": "NCR",
+                                                                                         "note": "Added by PhyloSuite",
+                                                                                         "note2": "join associated"}
+            if init_location and end_location:
+                my_feature_location = SeqFeature.CompoundLocation([end_location, init_location])
+                my_feature = SeqFeature.SeqFeature(my_feature_location,
+                                                   type="misc_feature",
+                                                   qualifiers=qualifier)
+                if (not self.feature_existed(my_feature, new_features)) and \
+                        self.not_include_any_features(my_feature, features): new_features.append(my_feature)
+            elif init_location:
+                my_feature_location = init_location
+                my_feature = SeqFeature.SeqFeature(my_feature_location,
+                                                   type="misc_feature",
+                                                   qualifiers=qualifier)
+                if (not self.feature_existed(my_feature, new_features)) and \
+                        self.not_include_any_features(my_feature, features): new_features.append(my_feature)
+            elif end_location:
+                my_feature_location = end_location
+                my_feature = SeqFeature.SeqFeature(my_feature_location,
+                                                   type="misc_feature",
+                                                   qualifiers=qualifier)
+                if (not self.feature_existed(my_feature, new_features)) and \
+                        self.not_include_any_features(my_feature, features): new_features.append(my_feature)
+        return new_features  # , my_last_feature
+
 
 
 class Normalize_MT(Factory):
@@ -49,10 +285,17 @@ class Normalize_MT(Factory):
         # [item, description]
         self.errors = []
         self.warnings = []
+        self.no_annotation_IDs = []
+        self.no_annotation_GBs = []
         self.totalID = self.dict_args["totalID"]
         self.progressSignal = self.dict_args["progressSig"]
+        if self.MarkNCR:
+            self.lableNCR = LabelNCR()
+            gbContents = self.lableNCR.exec_(self.dict_args["gbContents"], self.ncrLenth,
+                                             self.totalID, 10, 30, self.progressSignal)
+        else: gbContents = self.dict_args["gbContents"]
         gbManager = GbManager(self.dict_args["outpath"])
-        fileHandle = StringIO(self.dict_args["gbContents"])
+        fileHandle = StringIO(gbContents)
         try:
             line = fileHandle.readline()
             error_inf = ''
@@ -74,22 +317,26 @@ class Normalize_MT(Factory):
                     individual_gb, line, value, genome_size = self.source(
                         individual_gb, line, fileHandle)
                     latin = latin + value.replace(' ', '_')
-                    individual_gb, line, error_inf = self.get_item(
+                    individual_gb, line, error_inf, found_no_annotation = self.get_item(
                         individual_gb, fileHandle, line, error_inf, genome_size)
                     individual_gb, line, self.seq = self.get_sequence(
                         individual_gb, fileHandle, line)
-                    # 替换掉<和>,不然html会出错
-                    individual_gb = re.sub(
-                        r"<(?!span|/span)", "&lt;", individual_gb)
-                    individual_gb = re.sub(
-                        r"(?<=\d)>", "&gt;", individual_gb)
+                    # # 替换掉<和>,不然html会出错
+                    # individual_gb = re.sub(
+                    #     r"<(?!span|/span)", "&lt;", individual_gb)
+                    # individual_gb = re.sub(
+                    #     r"(?<=\d)>", "&gt;", individual_gb)
+                    if found_no_annotation:
+                        gb = SeqIO.read(StringIO(individual_gb), "genbank")
+                        self.no_annotation_IDs.append(gb.id)
+                        self.no_annotation_GBs.append(individual_gb)
                     sequences += individual_gb
                     gb_path = gbManager.fetchRecordPath(self.ID)
                     # 得到纯文本
-                    Dialog = QDialog()
-                    textBrowser = QTextBrowser(Dialog)
-                    textBrowser.setHtml("<pre>" + individual_gb + "</pre>")
-                    plainContent = textBrowser.toPlainText()
+                    # Dialog = QDialog()
+                    # textBrowser = QTextBrowser(Dialog)
+                    # textBrowser.setHtml("<pre>" + individual_gb + "</pre>")
+                    plainContent = individual_gb # textBrowser.toPlainText()
                     with open(gb_path, 'w', encoding="utf-8") as f1:
                         f1.write(plainContent)
                     # 生成为识别的tRNA
@@ -102,23 +349,24 @@ class Normalize_MT(Factory):
                             self.unRecognisetRNA += name + tRNA_seq + "\n"
                     num += 1
                     self.progressSignal.emit(
-                        (num / self.totalID) * 100)
+                        40 + (num / self.totalID) * 60)
                 # 保证读到下个物种的gb文件
                 while not line.startswith('LOCUS') and line != '':
                     line = fileHandle.readline()
-            self.allContent = '''<html>
-                                <head>
-                                <title>genbankfile</title>
-                                <style type=text/css>
-                                .error {color: red}
-                                .warning {color: blue}
-                                </style>
-                                </head>
-                                
-                                <body bgcolor=#f5f5a3>
-                                <pre>''' + sequences + '''</pre>
-                                </body>
-                                </html>'''
+            self.allContent = sequences
+            # '''<html>
+            #                     <head>
+            #                     <title>genbankfile</title>
+            #                     <style type=text/css>
+            #                     .error {color: red}
+            #                     .warning {color: blue}
+            #                     </style>
+            #                     </head>
+            #
+            #                     <body bgcolor=#f5f5a3>
+            #                     <pre>''' + sequences + '''</pre>
+            #                     </body>
+            #                     </html>'''
         except BaseException:
             if "exception_signal" in self.dict_args:
                 self.dict_args["exception_signal"].emit(''.join(
@@ -246,6 +494,7 @@ class Normalize_MT(Factory):
             error_inf,
             genome_size):
         generator_item = self.next_item(f, line)
+        found_no_annotation = False
         try:
             feature, feature_content, line = next(generator_item)
         except StopIteration:
@@ -253,9 +502,10 @@ class Normalize_MT(Factory):
             self.errors.append(
                 [individual_gb, "No features found, better to remove it"])
             ##"LOCUS%s" % (" " * 7 + self.gb_num)
-            individual_gb = '<span class="error">' + \
-                            individual_gb + '</span>'
-            return individual_gb, line, error_inf
+            # individual_gb = '<span class="error">' + \
+            #                 individual_gb + '</span>'
+            found_no_annotation = True
+            return individual_gb, line, error_inf, found_no_annotation
         included_features = [i.upper() for i in self.included_features]
         while True:
             try:
@@ -287,41 +537,43 @@ class Normalize_MT(Factory):
                                         print(feature_content)
                     if not has_qualifier or absent_qualifier:
                         # no recognization indentifier
-                        individual_gb += '<span class="error">' + \
-                                         feature_content + '</span>'
+                        individual_gb += feature_content
+                                        # '<span class="error">' + \
+                                        #  feature_content + '</span>'
                         self.errors.append(
                             [feature_content, "No identifiers (%s) for this gene"%", ".join(included_qualifiers)])
                     else:
                         # +=替换了名字的qualifier
                         if haveWarning:
                             ##tRNA模式，并且S和L都没有注释好
-                            individual_gb += '<span class="warning">' + feature_content + '</span>'
+                            individual_gb += feature_content # '<span class="warning">' + feature_content + '</span>'
                             self.warnings.append([feature_content, "Ambiguous annotation of S1/S2 or L1/L2"])
                         else:
                             individual_gb += feature_content
                 else:
                     ##feature_type没有包含
                     individual_gb += feature_content
-                last_feature = feature
+                # last_feature = feature
                 feature, feature_content, line = next(generator_item)
-                if self.MarkNCR:
-                    last_ter = self.position(last_feature[1])[1]
-                    now_ini = self.position(feature[1])[0]
-                    if last_ter and now_ini:
-                        # 这里上一个序号要+1才能拿来判断
-                        if (int(now_ini) - (int(last_ter) + 1)) >= self.ncrLenth:
-                            individual_gb += 'misc_feature'.ljust(16).rjust(21) + str(int(
-                                last_ter) + 1) + '..' + str(int(now_ini) - 1) + '\n' + 21 * ' ' + '/gene="NCR"\n'
+                # if self.MarkNCR:
+                #     # print(last_feature, feature, feature_content, line)
+                #     last_ter = self.position(last_feature[1])[1]
+                #     now_ini = self.position(feature[1])[0]
+                #     if last_ter and now_ini:
+                #         # 这里上一个序号要+1才能拿来判断
+                #         if (int(now_ini) - (int(last_ter) + 1)) >= self.ncrLenth:
+                #             individual_gb += 'misc_feature'.ljust(16).rjust(21) + str(int(
+                #                 last_ter) + 1) + '..' + str(int(now_ini) - 1) + '\n' + 21 * ' ' + '/gene="NCR"\n'
             except StopIteration:
-                if self.MarkNCR:
-                    last_ter = self.position(feature[1])[1]  # 判断最后一部分序列是否为NCR
-                    now_ini = genome_size
-                    if last_ter and now_ini:
-                        if (int(now_ini) - int(last_ter)) >= self.ncrLenth:
-                            individual_gb += 'misc_feature'.ljust(16).rjust(21) + str(
-                                int(last_ter) + 1) + '..' + str(int(now_ini)) + '\n' + 21 * ' ' + '/gene="NCR"\n'
+                # if self.MarkNCR:
+                #     last_ter = self.position(feature[1])[1]  # 判断最后一部分序列是否为NCR
+                #     now_ini = genome_size
+                #     if last_ter and now_ini:
+                #         if (int(now_ini) - int(last_ter)) >= self.ncrLenth:
+                #             individual_gb += 'misc_feature'.ljust(16).rjust(21) + str(
+                #                 int(last_ter) + 1) + '..' + str(int(now_ini)) + '\n' + 21 * ' ' + '/gene="NCR"\n'
                 break
-        return individual_gb, line, error_inf
+        return individual_gb, line, error_inf, found_no_annotation
 
     def position(self, subject):
         list1 = re.findall(r'[0-9]+', subject)
@@ -553,13 +805,61 @@ class SeqGrab(object):  # 统计序列
                 third += i
         return first, second, third
 
+    def judge_ddfs(self, list_codon, code_table):
+        nuc = ["A", "T", "C", "G"]
+        codon_ffds_site = []
+        # judge first codon site
+        AAs = [str(Seq("".join([i, list_codon[1], list_codon[2]])).translate(table=code_table)) for i in nuc]
+        if len(set(AAs)) == 1: codon_ffds_site.append(0)
+        # judge second codon site
+        AAs = [str(Seq("".join([list_codon[0], i, list_codon[2]])).translate(table=code_table)) for i in nuc]
+        if len(set(AAs)) == 1: codon_ffds_site.append(1)
+        # judge third codon site
+        AAs = [str(Seq("".join([list_codon[0], list_codon[1], i])).translate(table=code_table)) for i in nuc]
+        if len(set(AAs)) == 1: codon_ffds_site.append(2)
+        return codon_ffds_site
+
+    def extract_ffds1(self, code_table):
+        '''
+        Extract fourfold degenerate sequences from a codon sequence (obsolete)
+        :param seq: nucleotide sequences
+        :param code_table: NCBI code table, like Vertebrate Mitochondrial or 2
+        :return: fourfold degenerate sequences
+        '''
+        ffds = ""
+        if len(self.sequence)%3 == 0:
+            for a, b, c in zip(*[iter(self.sequence)]*3):
+                ffds += self.judge_ddfs([a, b, c], code_table)
+        return ffds
+
+    def extract_ffds(self, code_table):
+        '''
+        Extract fourfold degenerate sequences from a codon sequence
+        :param seq: nucleotide sequences
+        :param code_table: NCBI code table, like Vertebrate Mitochondrial or 2
+        :return: fourfold degenerate sequences
+        '''
+        bases = ['T', 'C', 'A', 'G']
+        codons = [a + b + c for a in bases for b in bases for c in bases]
+        dict_ffds = {} # {'TCT': [3], 'TCC': [3]}
+        for codon in codons:
+            codon_ffds_site = self.judge_ddfs(list(codon), code_table)
+            if codon_ffds_site: dict_ffds[codon] = codon_ffds_site
+        # print(dict_ffds)
+        ffds = ""
+        if len(self.sequence)%3 == 0:
+            for a, b, c in zip(*[iter(self.sequence)]*3):
+                codon_ = "".join([a, b, c])
+                if codon_ in dict_ffds: ffds += "".join([codon_[site] for site in dict_ffds[codon_]])
+        return ffds
+
 
 class CodonBias(object):
     '''
     未解决的问题是aa_stat_fun里面那个n=1的时候；
     '''
 
-    def __init__(self, seq, codeTable=1, codonW=r"E:\BioSoftware\CodonW\Win32CodonW\Win32\CodonW.exe", path=None):
+    def __init__(self, seq, codeTable=1, codonW=None, path=None):
         self.seq = seq
         self.codeTable = codeTable
         self.codonW = codonW
@@ -715,35 +1015,21 @@ class CodonBias(object):
 
 
 class Order2itol(object):
-    def __init__(self, order, dict_args):
+    def __init__(self, dict_order, dict_args):
         self.dict_args = dict_args
-        self.order = order
-        self.dict_order = OrderedDict()
-        self.read_order()
+        self.dict_order = dict_order
         self.align_order()
         self.number_NCR()
-        self.markDomain()
-
-    def read_order(self):
-        list_orders = self.order.split("\n")
-        list_orders.remove("")  # 删除空项
-        flag = False
-        for line in list_orders:
-            if line.startswith('>'):
-                name = line.strip(">")
-            else:
-                list_order = line.strip().split(" ")
-                flag = True
-            if flag:
-                self.dict_order[name] = list_order
+        self.exec()
+        self.make_header()
 
     def align_order(self):
-        list_dict_order = list(self.dict_order.keys())
-        for i in list_dict_order:
+        for i in self.dict_order:
             list_order = self.dict_order[i]
             for num, j in enumerate(list_order):
                 if self.dict_args["start_gene_with"] in j:
                     self.dict_order[i] = list_order[num:] + list_order[:num]
+                    break
 
     def number_NCR(self):
         list_dict_order = list(self.dict_order.keys())
@@ -767,141 +1053,81 @@ class Order2itol(object):
             shape = shape
         return shape
 
-    def addPCGs(self):
-        rgxNAD = re.compile(r'NAD4L|NAD[1-6]|ND[1-6]', re.I)
-        rgxCOX = re.compile(r'COX[1-3]', re.I)
-        rgxCOB = re.compile(r'COB|CYTB', re.I)
-        rgxATP = re.compile(r'ATP[68]', re.I)
-        #         self.orderName = self.orderName.strip("-")
-        haveItem = True
-        if rgxNAD.search(self.orderName) and self.dict_args["nadchecked"]:
-            self.secondNum = self.endNum + int(self.dict_args["nadlength"])
-            self.firstNum = self.endNum if self.endNum == 0 else self.endNum + \
-                                                                 self.dict_args["gene interval"]
-            self.secondNum = self.secondNum + 5 if "NAD4L" in self.orderName.upper() else self.secondNum
-            shape = self.dict_args["nadshape"]
-            shape = self.chainShape(shape)
-            self.itol_each_domain += ",%s|%.1f|%.1f|%s|%s" % (
-                shape, self.firstNum, self.secondNum, self.dict_args["nadcolour"], self.orderName)
-        elif rgxCOX.search(self.orderName) and self.dict_args["coxchecked"]:
-            self.secondNum = self.endNum + int(self.dict_args["coxlength"])
-            self.firstNum = self.endNum if self.endNum == 0 else self.endNum + \
-                                                                 self.dict_args["gene interval"]
-            shape = self.dict_args["coxshape"]
-            shape = self.chainShape(shape)
-            self.itol_each_domain += ",%s|%.1f|%.1f|%s|%s" % (
-                shape, self.firstNum, self.secondNum, self.dict_args["coxcolour"], self.orderName)
-        elif rgxCOB.search(self.orderName) and self.dict_args["cytbchecked"]:
-            self.secondNum = self.endNum + int(self.dict_args["cytblength"])
-            self.firstNum = self.endNum if self.endNum == 0 else self.endNum + \
-                                                                 self.dict_args["gene interval"]
-            shape = self.dict_args["cytbshape"]
-            shape = self.chainShape(shape)
-            self.itol_each_domain += ",%s|%.1f|%.1f|%s|%s" % (
-                shape, self.firstNum, self.secondNum, self.dict_args["cytbcolour"], self.orderName)
-        elif rgxATP.search(self.orderName) and self.dict_args["atpchecked"]:
-            self.secondNum = self.endNum + int(self.dict_args["atplength"])
-            self.firstNum = self.endNum if self.endNum == 0 else self.endNum + \
-                                                                 self.dict_args["gene interval"]
-            shape = self.dict_args["atpshape"]
-            shape = self.chainShape(shape)
-            self.itol_each_domain += ",%s|%.1f|%.1f|%s|%s" % (
-                shape, self.firstNum, self.secondNum, self.dict_args["atpcolour"], self.orderName)
-        else:
-            '''
-            不确定怎么执行
-            '''
-            haveItem = False
-            # self.itol_each_domain += ",RE|%.1f|%.1f|red|%s" % (
-            #     self.firstNum, self.secondNum, self.orderName)
-        self.endNum = self.secondNum if haveItem else self.endNum
-
-    def addRNAs(self):
-        self.secondNum = self.endNum + int(self.dict_args["rRNAlength"])
-        self.firstNum = self.endNum + \
-                        0 if self.endNum == 0 else self.endNum + self.dict_args["gene interval"]
-        shape = self.dict_args["rRNAshape"]
-        shape = self.chainShape(shape)
-        #         self.orderName = self.orderName.strip("-")
-        self.itol_each_domain += ",%s|%.1f|%.1f|%s|%s" % (
-            shape, self.firstNum, self.secondNum, self.dict_args["rRNAcolour"], self.orderName)
-        self.endNum = self.secondNum
-
-    def addNCRs(self):
-        self.secondNum = self.endNum + int(self.dict_args["NCRlength"])
-        self.firstNum = self.endNum + \
-                        0 if self.endNum == 0 else self.endNum + self.dict_args["gene interval"]
-        shape = self.dict_args["NCRshape"]
-        shape = self.chainShape(shape)
-        #         self.orderName = self.orderName.strip("-")
-        self.itol_each_domain += ",%s|%.1f|%.1f|%s|%s" % (
-            shape, self.firstNum, self.secondNum, self.dict_args["NCRcolour"], self.orderName)
-        self.endNum = self.secondNum
-
-    def addtRNAs(self):
-        self.secondNum = self.endNum + int(self.dict_args["tRNAlength"])
-        self.firstNum = self.endNum + \
-                        0 if self.endNum == 0 else self.endNum + self.dict_args["gene interval"]
-        shape = self.dict_args["tRNAshape"]
-        shape = self.chainShape(shape)
-        #         self.orderName = self.orderName.strip("-")
-        self.itol_each_domain += ",%s|%.1f|%.1f|%s|%s" % (
-            shape, self.firstNum, self.secondNum, self.dict_args["tRNAcolour"], self.orderName)
-
-        self.endNum = self.secondNum
-
-    def markDomain(self):
-        rgxPCGs = re.compile(
-            r'COX[1-3]|NAD4L|NAD[1-6]|ND[1-6]|COB|CYTB|ATP[68]', re.I)
-        rgxRNA = re.compile(r"rrnS|rrnL", re.I)
-        rgxNCR = re.compile(r"NCR", re.I)
-        listtRNAs = [
-            "T",
-            "C",
-            "E",
-            "Y",
-            "L",
-            "S",
-            "R",
-            "G",
-            "H",
-            "Q",
-            "F",
-            "M",
-            "V",
-            "A",
-            "D",
-            "N",
-            "P",
-            "I",
-            "K",
-            "W",
-            "S1",
-            "S2",
-            "L1",
-            "L2"]
+    def exec(self):
         self.itol_domain = ""
         list_dict_order = list(self.dict_order.keys())
+        self.gene_itol_info = {} # {name: [shape, color]}
+        self.list_count = []
         for i in list_dict_order:
             self.itol_each_domain = ""
             list_order = self.dict_order[i]
             self.endNum = 0
+            count = 0
             for self.orderName in list_order:
-                self.orderName = self.orderName.split("_copy")[0] #预防有copy的基因
-                pcgFlag = [self.dict_args[i + "checked"]
-                           for i in ["atp", "nad", "cytb", "cox"]]
-                if rgxPCGs.search(self.orderName) and (True in pcgFlag):
-                    self.addPCGs()
-                elif rgxRNA.search(self.orderName) and self.dict_args["rRNAchecked"]:
-                    self.addRNAs()
-                elif rgxNCR.search(self.orderName) and self.dict_args["NCRchecked"]:
-                    self.addNCRs()
-                # 增加判断了负链的基因
-                elif ((self.orderName.strip("-") in listtRNAs) or ("tRNA" in self.orderName)) and self.dict_args[
-                    "tRNAchecked"]:
-                    self.addtRNAs()
+                self.orderName = self.orderName.split("_copy")[0]  # 预防有copy的基因
+                # 是否有该基因对应的设置
+                match = False
+                for gene_name in self.dict_args["itol gene display"]:
+                    if gene_name not in ["PCGs", "rRNAs", "tRNAs", "NCR"]:
+                        rgx_gene_name = "-?" + "$|-?".join(gene_name.split("|")) + "$"
+                        num_range = re.findall(r"(\d+)\-(\d+)", gene_name)
+                        if num_range:
+                            nums = f'({"|".join([str(num) for num in range(int(num_range[0][0]), int(num_range[0][1])+1)])})'
+                            rgx_gene_name = re.sub(r"\d+\-\d+", nums, rgx_gene_name) # COX1-3 --> COX(1|2|3)
+                        rgx = re.compile(rgx_gene_name, re.I)
+                        # print(rgx)
+                        if rgx.match(self.orderName):
+                            color, size, shape = self.dict_args["itol gene display"][gene_name]
+                            self.secondNum = self.endNum + int(size)
+                            self.firstNum = self.endNum + \
+                                            0 if self.endNum == 0 else\
+                                self.endNum + self.dict_args["gene interval"]
+                            shape = self.chainShape(shape)
+                            self.itol_each_domain += ",%s|%.1f|%.1f|%s|%s" % (
+                                shape, self.firstNum, self.secondNum, color, self.orderName)
+                            self.endNum = self.secondNum
+                            if gene_name not in self.gene_itol_info:
+                                self.gene_itol_info[gene_name] = [shape, color]
+                            count += 1
+                            match = True
+                            break
+                if not match:
+                    # 如果单个基因没有设置，就看PCGs、tRNA等是否匹配
+                    judge_name = re.sub("^NCR\d+$", "NCR", self.orderName.lstrip("-"), re.I) # 用于判断用的名字
+                    for feature in ["PCGs", "rRNAs", "tRNAs", "NCR"]:
+                        if (feature in self.dict_args["itol gene display"]) and \
+                                (judge_name in self.dict_args[f"{feature} names"]):
+                            color, size, shape = self.dict_args["itol gene display"][feature]
+                            self.secondNum = self.endNum + int(size)
+                            self.firstNum = self.endNum + \
+                                            0 if self.endNum == 0 else self.endNum + self.dict_args["gene interval"]
+                            shape = self.chainShape(shape)
+                            self.itol_each_domain += ",%s|%.1f|%.1f|%s|%s" % (
+                                shape, self.firstNum, self.secondNum, color, self.orderName)
+                            self.endNum = self.secondNum
+                            if feature not in self.gene_itol_info:
+                                self.gene_itol_info[feature] = [shape, color]
+                            count += 1
+            self.list_count.append(count)
             self.itol_domain += i + "," + \
                                 str(self.endNum) + self.itol_each_domain + "\n"
+
+    def make_header(self):
+        list_names, list_shapes, list_colors = [], [], []
+        for name in sorted(self.gene_itol_info.keys()):
+            shape, color = self.gene_itol_info[name]
+            list_names.append(name)
+            list_shapes.append(shape)
+            list_colors.append(color)
+        width = max(self.list_count)*35
+        gene_order_header = f"DATASET_DOMAINS\nSEPARATOR COMMA\nDATASET_LABEL,Gene order\n" \
+                      f"COLOR,#ff00aa\nWIDTH,{width}\nBACKBONE_COLOR,black\nHEIGHT_FACTOR,0.8\n" \
+                      f"LEGEND_TITLE,Regions\n" \
+                      f"LEGEND_SHAPES,{','.join(list_shapes)}\n" \
+                      f"LEGEND_COLORS,{','.join(list_colors)}\n" \
+                      f"LEGEND_LABELS,{','.join(list_names)}\n" \
+                      f"#SHOW_INTERNAL,0\nSHOW_DOMAIN_LABELS,1\nLABELS_ON_TOP,1\nDATA\n"
+        self.itol_gene_order = gene_order_header + self.itol_domain
 
 
 class ArrayManager(object):
@@ -1047,13 +1273,13 @@ class GbManager(QObject, object):
         dict_taxonomy = {i[0]: i[1:] for i in zip_array}
         ###taxonomy
         dict_lineages = OrderedDict().fromkeys(lineages_name, "N/A")
-            # ida是针对绦虫的,如果有[family]这类似的注释，就先提取这个,这种现在一般没人这样注释
-            # rgx_tax_tag = re.compile(r"(.+?)\[(.+?)\]")
-            # if rgx_tax_tag.search(taxonomy):
-            #     name, lineage = rgx_tax_tag.findall(taxonomy)[0]
-            #     if lineage in dict_lineages:
-            #         dict_lineages[lineage] = name
-            #     continue
+        # ida是针对绦虫的,如果有[family]这类似的注释，就先提取这个,这种现在一般没人这样注释
+        # rgx_tax_tag = re.compile(r"(.+?)\[(.+?)\]")
+        # if rgx_tax_tag.search(taxonomy):
+        #     name, lineage = rgx_tax_tag.findall(taxonomy)[0]
+        #     if lineage in dict_lineages:
+        #         dict_lineages[lineage] = name
+        #     continue
         for lineage in lineages_name:
             if (not updateMode) and (lineage in source_feature.qualifiers) \
                     and (source_feature.qualifiers[lineage][0] not in ["N/A", ""]): #如果不是刷新界面，就以source里面的注释为准
@@ -1217,6 +1443,10 @@ class GbManager(QObject, object):
     def fetchRecordsByIDs(self, IDs):
         listGB_paths = [self.fetchRecordPath(ID) for ID in IDs]
         return self.merge_gbRecords(listGB_paths)
+
+    def fetchRecordByID(self, ID):
+        path = self.fetchRecordPath(ID)
+        return SeqIO.read(path, "genbank")
 
     # def fetchRecordPathByName(self, name):
     #     allGBpath = self.fetchAllGBpath()
@@ -1571,12 +1801,13 @@ class GbManager(QObject, object):
                 source_feature = self.fetch_source_feature(gb_record)
                 if "User_Note" not in source_feature.qualifiers:
                     source_feature.qualifiers["User_Note"] = ""
-                organism = gb_record.annotations["organism"]
+                organism = gb_record.annotations["organism"].split()[0]
+                record_tax = gb_record.annotations["taxonomy"]
                 if findLineage:
                     ## 自动从NCBI识别分类群
                     requiredLineageNames = self.factory.getCurrentTaxSetData()[0]
                     if database == "NCBI":
-                        self.update_NCBI_lineages(requiredLineageNames, organism, source_feature)
+                        self.update_NCBI_lineages(requiredLineageNames, organism, source_feature, record_tax)
                     elif database == "WoRMS":
                         self.update_WoRMS_lineages(requiredLineageNames, organism, source_feature)
                 ###存序列
@@ -1613,6 +1844,101 @@ class GbManager(QObject, object):
                     pass
                 exceptionInfo += "GenBank file parse failed"
             self.exception_signal.emit(exceptionInfo)
+
+    def fetch_records_by_tax(self, base, proportion, processSig, taxonomy=""):
+        '''更新界面的数据，适用于自动识别分类群'''
+        try:
+            gb_records = self.fetchAllRecords()
+            totleLen = len(self.fetchAllGBpath())
+            selected_ids = []
+            self.tax_error_ids = []
+            for num, gb_record in enumerate(gb_records):
+                ID = gb_record.id
+                ##新增注释
+                source_feature = self.fetch_source_feature(gb_record)
+                if "User_Note" not in source_feature.qualifiers:
+                    source_feature.qualifiers["User_Note"] = ""
+                organism = gb_record.annotations["organism"]
+                record_tax = gb_record.annotations["taxonomy"]
+                genus = organism.split()[0]
+                if self.is_in_tax(organism, taxonomy, ID, genus, record_tax):
+                    selected_ids.append(ID)
+                if processSig:
+                    num += 1
+                    processSig.emit(base + (num / totleLen) * proportion)
+            if self.tax_error_ids:
+                list_id_str = '\n'.join(['\t'.join(j) for j in self.tax_error_ids])
+                exceptionInfo = f"The following IDs get taxonomy failed: \n" \
+                                f"ID\tSpecies\tGenus" \
+                                f"{list_id_str}\n" \
+                                f"part of IDs failed taxonomy"
+                self.exception_signal.emit(exceptionInfo)
+            return selected_ids
+            # self.saveArray(array)
+        except Exception as ex:
+            exceptionInfo = ''.join(
+                traceback.format_exception(
+                    *sys.exc_info()))  # 捕获报错内容，只能在这里捕获，没有报错的地方无法捕获
+            if ex.__class__.__name__ == "URLError":
+                exceptionInfo += "Update: please check network connection"
+            else:
+                # try:
+                #     if os.path.exists(self.fetchRecordPath(ID)):
+                #         ##把报错这个序列删掉
+                #         os.remove(self.fetchRecordPath(ID))
+                # except:
+                #     pass
+                exceptionInfo += f"Error when parsing {ID}; Organism: {organism}\n"
+                exceptionInfo += "GenBank file parse failed"
+            self.exception_signal.emit(exceptionInfo)
+
+    def is_in_tax(self, organism, taxonomy, ID, genus, record_tax):
+        ncbi = NCBITaxa()
+        tax_id = ncbi.get_name_translator([taxonomy])
+        if taxonomy in tax_id:
+            tax_id = tax_id[taxonomy][0]
+        else:
+            return
+        for tax_ in reversed(record_tax + [genus, organism]):
+            query_id = ncbi.get_name_translator([tax_])
+            if tax_ in query_id:
+                if len(query_id[tax_]) == 1:
+                    id = query_id[tax_][0]
+                else:
+                    # 分类名对应了多个id的情况，如{'Brachycladium': [570638, 630351]}
+                    dict_id_lineages = {}
+                    for id_ in query_id[tax_]:
+                        dict_id_lineages[id_] = self.get_lineages(id_)
+                    # 哪个lineage和物种本身的lineage交集多，就用哪个id
+                    max_inter = 0
+                    for temp_id in dict_id_lineages:
+                        inter_num = len(list(set(record_tax).intersection(dict_id_lineages[temp_id])))
+                        # print(temp_id, inter_num)
+                        if inter_num >= max_inter:
+                            max_inter = inter_num
+                            id = temp_id
+                lineage_ids = ncbi.get_lineage(id)
+                return tax_id in lineage_ids
+        self.tax_error_ids.append([ID, organism, str(record_tax)])
+        return
+
+    def get_lineages(self, query_id):
+        ncbi = NCBITaxa()
+        # query_id = ncbi.get_name_translator([tax_])[tax_][0]
+        lineage_ids = ncbi.get_lineage(query_id)
+        dict_id_rank = ncbi.get_rank(lineage_ids)
+        dict_id_name = ncbi.get_taxid_translator(lineage_ids)
+        # print(dict_id_rank)
+        # print({dict_id_name[id]: dict_id_rank[id] for id in dict_id_name})
+        return list(dict_id_name.values())
+
+    def updateLineageOfAllWorDir(self):
+        requiredTaxonomy = self.factory.getCurrentTaxSetData()[0]
+        array = self.fetchAvailableInfo()
+        # 更新lineage
+        array[1][1] = requiredTaxonomy
+        name = re.sub(r"/|\\", "_", self.filePath) + "_availableInfo"
+        self.data_settings.setValue(name, array)  # lineage settings里面的
 
     def saveArray(self, array):
         name = re.sub(r"/|\\", "_", self.filePath) + "_displayedArray"
@@ -1678,6 +2004,11 @@ class GbManager(QObject, object):
                                 gb_content = gb_content.replace(whole, reference + "  " + subContent)
                         ###替换缩进
                         gb_content = gb_content.replace("\t", "    ")
+                        ###替換不標準的comment
+                        gb_content = re.sub(r"(?sm)(##[^#]+##)(.+?)(##[^#]+##)",
+                                            lambda x: x.group(1) +
+                                                      x.group(2).replace(":", " ::") +
+                                                      x.group(3), gb_content)
                         ###保存
                         gb_handle = StringIO(gb_content)
                         gb_record = next(self.merge_gbRecords([gb_handle], byHandle=True))  # 由于只有1个record，所以可以这样获取
@@ -1692,8 +2023,8 @@ class GbManager(QObject, object):
                             newIDs.append(ID)
                             New_gbRecords.append(gb_record)
                 except:
-                    # errorInfo = ''.join(
-                    #     traceback.format_exception(*sys.exc_info())) + "\n"
+                    error_contents += ''.join(
+                        traceback.format_exception(*sys.exc_info())) + "\n"
                     # print(errorInfo)
                     error_contents += gb_content + "\n\n"
                 ##进度条
@@ -1947,17 +2278,57 @@ class GbManager(QObject, object):
                 return i
         return None
 
-    def update_NCBI_lineages(self, LineageNames, query_name, source_feature):
-        tax_id = self.get_tax_id(query_name)
-        if tax_id: #有时候有些名字不能被识别，就是None
-            data = self.get_tax_data(tax_id)
-            LineageNames = [i.upper() for i in LineageNames]
+    def update_NCBI_lineages(self, LineageNames, query_name, source_feature, record_tax):
+        '''
+        :todo: there maybe many ids in dict_name_id, how to choose?
+        :param LineageNames:
+        :param query_name:
+        :param source_feature:
+        :return: source_feature
+        '''
+        LineageNames = [i.upper() for i in LineageNames]
+        db_file = f"{self.thisPath}{os.sep}db{os.sep}NCBI{os.sep}taxa.sqlite"
+        db_path = f"{self.thisPath}{os.sep}db{os.sep}NCBI"
+        ncbi = NCBITaxa(dbfile=db_file,
+                        taxdump_file=None,
+                        taxdump_path=db_path)
+        dict_name_id = ncbi.get_name_translator([query_name])
+        # print(query_name, dict_name_id)
+        if dict_name_id:
+            if len(dict_name_id[query_name]) == 1:
+                query_id = dict_name_id[query_name][0]
+            else:
+                # 分类名对应了多个id的情况，如{'Brachycladium': [570638, 630351]}
+                dict_id_lineages = {}
+                for id_ in dict_name_id[query_name]:
+                    dict_id_lineages[id_] = self.get_lineages(id_)
+                # 哪个lineage和物种本身的lineage交集多，就用哪个id
+                max_inter = 0
+                for temp_id in dict_id_lineages:
+                    inter_num = len(list(set(record_tax).intersection(dict_id_lineages[temp_id])))
+                    # print(temp_id, inter_num)
+                    if inter_num >= max_inter:
+                        max_inter = inter_num
+                        query_id = temp_id
+            lineage_ids = ncbi.get_lineage(query_id)
+            dict_id_rank = ncbi.get_rank(lineage_ids)
+            # print(query_name, lineage_ids, dict_id_rank)
             source_qualifiers = list(source_feature.qualifiers.keys())
-            for d in data[0]['LineageEx']:
-                if d['Rank'].upper() in LineageNames:
-                    key = self.get_key_in_source(d['Rank'].upper(), source_qualifiers)
+            for id in dict_id_rank:
+                if dict_id_rank[id].upper() in LineageNames:
+                    key = self.get_key_in_source(dict_id_rank[id].upper(), source_qualifiers)
                     if key:
-                        source_feature.qualifiers[key] = d['ScientificName']
+                        source_feature.qualifiers[key] = ncbi.get_taxid_translator([id])[id]
+        # tax_id = self.get_tax_id(query_name)
+        # if tax_id: #有时候有些名字不能被识别，就是None
+        #     data = self.get_tax_data(tax_id)
+        #     LineageNames = [i.upper() for i in LineageNames]
+        #     source_qualifiers = list(source_feature.qualifiers.keys())
+        #     for d in data[0]['LineageEx']:
+        #         if d['Rank'].upper() in LineageNames:
+        #             key = self.get_key_in_source(d['Rank'].upper(), source_qualifiers)
+        #             if key:
+        #                 source_feature.qualifiers[key] = d['ScientificName']
         return source_feature
 
     def update_WoRMS_lineages(self, LineageNames, query_name, source_feature):
@@ -2041,6 +2412,77 @@ class GBextract(object):
         self.dict_args = dict_args
 
     def init_args_all(self):
+        '''
+        gb_files: all GenBank files
+        dict_replace: 用户设置的替换基因名字的信息
+        included_features： 所有需要提取的features
+        name_contents: 输出时的物种名的情况
+        included_lineages： 需要包括的分类群信息
+        exportPath： 输出文件夹名
+        input_file： 保存提取的GenBank原始文件
+        extract_list_gene： 只提取列出来的这些基因
+        selected_code_table： 用户选择的密码表
+        progressSig： 发送提取进度的信号
+        totleID： 总共有多少个序列
+        absence： 用于记录没有提取到的ID
+        unextract_name： 提取指定基因模式，未提取的基因列出来
+        taxonomy_infos： 记录分类群信息
+        Error_ID： 报错的ID
+        dict_feature_fas： 存放feature及其所有序列
+        dict_name_replace： 存放基因名及其替换后的名字
+        dict_itol_name： {used name： 物种名}
+        dict_itol_gb: {used name： ID}
+        list_none_feature_IDs： 没有找到feature的ID
+        list_features： 记录有哪些feature
+        dict_gene_names： {基因名： [used name]}
+        list_used_names: [used name]
+        source_feature_IDs: 记录只有source这一个feature的ID
+        dict_pairwise_features： 用于寻找非编码区
+        dict_NCR_regions、dict_NCR_regions： 用于统计非编码区和重叠区
+        dict_pro： 存放PCGs的fas序列
+        dict_PCG： 存放PCGs的长度信息，生成geneStat.csv
+        dict_start： 存放PCGs的起始密码子信息，生成geneStat.csv
+        dict_stop： 存放PCGs的终止密码子信息，生成geneStat.csv
+        dict_AA: 存放PCGs的fas序列（AA）
+        PCGsCodonSkew： 所有PCGs的skew
+        firstCodonSkew： 1密码子位点的skew
+        secondCodonSkew: 2密码子位点的skew
+        thirdCodonSkew： 3密码子位点的skew
+        firstSecondCodonSkew: 1\2密码子位点的skew
+        dict_RSCU：存放RSCU表
+        dict_RSCU_stack： 存放RSCU stack的结果
+        dict_AAusage： 存放AA使用情况信息
+        dict_all_spe_RSCU： 存放所有物种的RSCU
+        dict_all_codon_COUNT： 存放所有物种codon统计的信息
+        dict_all_AA_RATIO： 存放所有物种AA比率
+        dict_all_AA_COUNT： 存放所有物种AA的统计信息
+        dict_AA_stack： 存放所有物种AA的stack
+        dict_rRNA： 存放rRNA的fas序列
+        dict_RNA： 存放rRNA的长度信息
+        dict_tRNA： 存放tRNA的fas序列
+        dict_spe_stat： 单个物种的统计表
+        dict_orgTable: 单个物种的组成表
+        list_name_gb： [(物种名， ID)]
+        dict_order: 存放基因顺序
+        gene_order： 每个物种的基因顺序
+        complete_seq： 整个序列的fas
+        PCG_seq: PCGs的fas，去除不标准终止密码子后的
+        tRNA_seqs: tRNA的fas
+        rRNA_seqs: rRNA的fas
+        dict_geom_seq: {id: 序列}
+        name_gb: 生成gbAccNum.csv
+        dict_all_stat: 生成 used_species.csv
+        species_info: 生成species_info.csv文件
+        line_spe_stat： 生成data_for_plot.csv
+        codon_bias： 生成codon_bias.csv
+        list_all_taxonmy: 存放所有分类群的信息
+        dict_gene_ATskews： 各基因的ATskew，生成geneStat.csv
+        dict_gene_GCskews： 各基因GCskew，生成geneStat.csv
+        dict_gene_ATCont： 各基因AT含量，生成geneStat.csv
+        dict_gene_GCCont： 各基因GC含量，生成geneStat.csv
+        # map ID and tree name
+        dict_ID_treeName： {ID： used name}
+        '''
         self.gb_files = self.dict_args["gb_files"]
         self.dict_replace = self.dict_args["replace"]
         self.included_features = self.dict_args["features"]
@@ -2058,6 +2500,7 @@ class GBextract(object):
         self.input_file = open(self.exportPath + os.sep + 'input.gb', 'a', encoding="utf-8")
         self.extract_list_gene = self.dict_args["extract_list_gene"]
         self.selected_code_table = int(self.dict_args["codon"]) #如果注释里面没找到，就用这个
+        self.code_table = self.selected_code_table
         # self.fetchTerCodon()
         if self.extract_list_gene:
             ##只提取指定基因
@@ -2066,28 +2509,31 @@ class GBextract(object):
         self.progressSig = self.dict_args["progressSig"]
         self.totleID = self.dict_args["totleID"]
         ###初始化各个属性###
-        self.absence = '="ID",Organism,Feature,Strand,Start,Stop\n'
+        self.absence = ['="ID",Organism,Feature,Strand,Start,Stop']
         #只提取指定基因模式，把未提取的基因列出来
-        self.unextract_name = "This is the list of names not included in the 'Names unification' table\n=\"ID\",Organism,Feature,Name,Strand,Start,Stop\n"
-        self.species_info = '="ID",Organism,Tree_Name,{},Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew\n'.format(
-            ",".join(self.included_lineages))
-        self.taxonomy_infos = 'Tree name,ID,Organism,{}\n'.format(
-            ",".join(self.included_lineages))
-        self.Error_ID = ""
-        self.dict_feature_fas = OrderedDict()  # 存放feature及其所有序列
-        self.dict_name_replace = OrderedDict()  # 存放名字及其替换后的名字
+        self.unextract_name = ["This is the list of names not included in the 'Names unification' "
+                               "table\n=\"ID\",Organism,Feature,Name,Strand,Start,Stop"]
+        self.taxonomy_infos = ['Tree name,ID,Organism,{}\n'.format(
+            ",".join(self.included_lineages))]
+        self.Error_ID = []
+        self.dict_feature_fas = OrderedDict()
+        self.dict_name_replace = OrderedDict()
         self.dict_itol_name = OrderedDict()
         self.dict_itol_gb = OrderedDict()
-        self.dict_all_stat = OrderedDict()
         ####itol###
         #         基因组长度条形图
-        self.itolLength = "DATASET_SIMPLEBAR\nSEPARATOR COMMA\nDATASET_LABEL,genome length bar\nCOLOR,#ffff00\nWIDTH,1000\nMARGIN,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nBAR_ZERO,12000\nDATA\n"
+        self.itolLength = ["DATASET_SIMPLEBAR\nSEPARATOR COMMA\nDATASET_LABEL,genome length bar\nCOLOR,#ffff00\n" \
+                          "WIDTH,1000\nMARGIN,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nBAR_ZERO,12000\nDATA\n"]
         #         基因组AT含量条形图
-        self.itolAT = "DATASET_SIMPLEBAR\nSEPARATOR COMMA\nDATASET_LABEL,AT content bar\nCOLOR,#ffff00\nWIDTH,1000\nMARGIN,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nBAR_ZERO,50\nDATA\n"
+        self.itolAT = ["DATASET_SIMPLEBAR\nSEPARATOR COMMA\nDATASET_LABEL,AT content bar\nCOLOR,#ffff00\nWIDTH,1000\n"
+                       "MARGIN,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nBAR_ZERO,50\nDATA\n"]
         #         基因组GC skew条形图
-        self.itolGCskew = "DATASET_SIMPLEBAR\nSEPARATOR COMMA\nDATASET_LABEL,GC skew bar\nCOLOR,#ffff00\nWIDTH,1000\nMARGIN,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nBAR_ZERO,0\nDATA\n"
+        self.itolGCskew = ["DATASET_SIMPLEBAR\nSEPARATOR COMMA\nDATASET_LABEL,GC skew bar\nCOLOR,#ffff00\nWIDTH,1000\n"
+                           "MARGIN,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nBAR_ZERO,0\nDATA\n"]
         #         基因组ATCG数量堆积图
-        self.itolLength_stack = "DATASET_MULTIBAR\nSEPARATOR COMMA\nDATASET_LABEL,ATCG multi bar chart\nCOLOR,#ff0000\nWIDTH,1000\nMARGIN,0\nSHOW_INTERNAL,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nALIGN_FIELDS,0\nFIELD_LABELS,A,T,C,G\nFIELD_COLORS,#2a9087,#5c2936,#913e40,#2366a1\nDATA\n"
+        self.itolLength_stack = ["DATASET_MULTIBAR\nSEPARATOR COMMA\nDATASET_LABEL,ATCG multi bar chart\nCOLOR,#ff0000\n" \
+                                "WIDTH,1000\nMARGIN,0\nSHOW_INTERNAL,0\nHEIGHT_FACTOR,0.7\nBAR_SHIFT,0\nALIGN_FIELDS,0\n" \
+                                "FIELD_LABELS,A,T,C,G\nFIELD_COLORS,#2a9087,#5c2936,#913e40,#2366a1\nDATA\n"]
         self.colours = []
         # 存itol的各种文件
         self.dict_itol_info = OrderedDict()
@@ -2096,20 +2542,21 @@ class GBextract(object):
                     ["Colour", "Text", "ColourStrip", "ColourRange", "colourUsed1", "colourUsed2"]):
                 if num == 0:
                     self.dict_itol_info["itol_%s_%s" % (
-                        lineage, item)] = "TREE_COLORS\nSEPARATOR COMMA\nDATA\n"
+                        lineage, item)] = ["TREE_COLORS\nSEPARATOR COMMA\nDATA\n"]
                 elif num == 1:
                     self.dict_itol_info["itol_%s_%s" % (
                         lineage,
-                        item)] = "DATASET_TEXT\nSEPARATOR COMMA\nDATASET_LABEL,%s text\nCOLOR,#ff0000\nMARGIN,0\nSHOW_INTERNAL,0\nLABEL_ROTATION,0\nALIGN_TO_TREE,0\nSIZE_FACTOR,1\nDATA\n" % lineage
+                        item)] = ["DATASET_TEXT\nSEPARATOR COMMA\nDATASET_LABEL,%s text\nCOLOR,#ff0000\nMARGIN,0\n"
+                                  "SHOW_INTERNAL,0\nLABEL_ROTATION,0\nALIGN_TO_TREE,0\nSIZE_FACTOR,1\nDATA\n" % lineage]
                 elif num == 2:
                     self.dict_itol_info["itol_%s_%s" % (
                         lineage,
-                        item)] = "DATASET_COLORSTRIP\nSEPARATOR SPACE\nDATASET_LABEL color_strip\nCOLOR #ff0000\n" \
-                                 "COLOR_BRANCHES 1\nSTRIP_WIDTH 25\nLEGEND_TITLE,None\nLEGEND_SHAPES\nLEGEND_COLORS\n" \
-                                 "LEGEND_LABELS\nDATA\n"
+                        item)] = ["DATASET_COLORSTRIP\nSEPARATOR SPACE\nDATASET_LABEL color_strip\nCOLOR #ff0000\n" 
+                                 "COLOR_BRANCHES 1\nSTRIP_WIDTH 25\nLEGEND_TITLE,None\nLEGEND_SHAPES\nLEGEND_COLORS\n" 
+                                 "LEGEND_LABELS\nDATA\n"]
                 elif num == 3:
                     self.dict_itol_info["itol_%s_%s" % (
-                        lineage, item)] = "TREE_COLORS\nSEPARATOR COMMA\nDATA\n"
+                        lineage, item)] = ["TREE_COLORS\nSEPARATOR COMMA\nDATA\n"]
                 elif num == 4:
                     self.dict_itol_info["itol_%s_%s" % (
                         lineage, item)] = OrderedDict()
@@ -2130,34 +2577,189 @@ class GBextract(object):
             "now_name": None,
             "last_end_temp": None
         }
-        ##用于统计非编码区和重叠区
+        ## 用于统计非编码区和重叠区
         self.dict_NCR_regions = OrderedDict()
         self.dict_overlapping_regions = OrderedDict()
+
+        ## 新增分析及统计
+        self.dict_pro = {}
+        self.dict_AA = OrderedDict()
+        self.dict_rRNA = {}
+        self.dict_tRNA = {}
+        self.dict_start = {}
+        self.dict_stop = {}
+        self.dict_PCG = {}
+        self.dict_RNA = {}
+        self.dict_spe_stat = {}
+        self.list_name_gb = []
+        # self.linear_order = ''
+        self.dict_order = {}
+        self.complete_seq = []
+        self.dict_geom_seq = {}
+        self.name_gb = ["Species name,Accession number"]  # 名字和gb num对照表
+        # 保存没有注释好的L和S
+        self.leu_ser = []
+        #         skewness
+        self.PCGsCodonSkew = ["Tree_name,species,Strand,AT skew,GC skew," +
+                             ",".join(self.included_lineages) + "\n"]
+        self.firstCodonSkew = ["Tree_name,species,Strand,AT skew,GC skew," +
+                              ",".join(self.included_lineages) + "\n"]
+        self.secondCodonSkew = ["Tree_name,species,Strand,AT skew,GC skew," +
+                               ",".join(self.included_lineages) + "\n"]
+        self.thirdCodonSkew = ["Tree_name,species,Strand,AT skew,GC skew," +
+                              ",".join(self.included_lineages) + "\n"]
+        self.firstSecondCodonSkew = ["Tree_name,species,Strand,AT skew,GC skew," +
+                                    ",".join(self.included_lineages) + "\n"]
+        #         统计图
+        self.dict_all_stat = OrderedDict()
+        #         PCG的串联序列
+        self.PCG_seq = []
+        self.tRNA_seqs = []
+        self.rRNA_seqs = []
+        #         新增统计物种组成表功能
+        self.dict_orgTable = OrderedDict()
+        # 新增RSCU相关
+        self.dict_RSCU = OrderedDict()  # RSCU table
+        self.dict_RSCU_stack = OrderedDict()
+        self.dict_AAusage = OrderedDict()
+        self.dict_all_spe_RSCU = OrderedDict()
+        self.dict_all_spe_RSCU["title"] = ["codon"]
+        self.dict_all_codon_COUNT = OrderedDict()
+        self.dict_all_codon_COUNT["title"] = ["codon"]
+        self.dict_all_AA_RATIO = OrderedDict()
+        self.dict_all_AA_RATIO["title"] = ["AA"]
+        self.dict_all_AA_COUNT = OrderedDict()
+        self.dict_all_AA_COUNT["title"] = ["AA"]
+        self.dict_AA_stack = OrderedDict()
+        self.dict_AA_stack["title"] = ["species,aa,ratio"]
+        self.species_info = [
+                            ["ID", "Organism", "Tree_Name"] + self.included_lineages + ["Code table"] + \
+                            ["Full length (bp)", "Coding region length (exclude NCR)", "GC skew (plus strand coding)",
+                             "GC skew (plus strand genes only)", "GC skew (fourfold degenerate sites)",
+                             "GC skew (fourfold degenerate sites on plus strand)", "GC skew (all NCR)", "NCR ratio"] + \
+                             (["A (%) (+)"] if self.dict_args["analyze + sequence"] else ["A (%)"]) + \
+                             (["T (%) (+)"] if self.dict_args["analyze + sequence"] else ["T (%)"]) + \
+                             (["C (%) (+)"] if self.dict_args["analyze + sequence"] else ["C (%)"]) + \
+                             (["G (%) (+)"] if self.dict_args["analyze + sequence"] else ["G (%)"]) + \
+                             (["A+T (%) (+)"] if self.dict_args["analyze + sequence"] else ["A+T (%)"]) + \
+                            (["G+C (%) (+)"] if self.dict_args["analyze + sequence"] else ["G+C (%)"]) + \
+                            (["G+T (%) (+)"] if self.dict_args["analyze + sequence"] else ["G+T (%)"]) + \
+                            (["AT skew (+)"] if self.dict_args["analyze + sequence"] else ["AT skew"]) + \
+                             (["GC skew (+)"] if self.dict_args["analyze + sequence"] else ["GC skew"]) + \
+                             (["AT skew (-)"] if self.dict_args["analyze - sequence"] else []) + \
+                             (["GC skew (-)"] if self.dict_args["analyze - sequence"] else [])
+                             ]
+        # 新增折线图的绘制
+        self.line_spe_stat = ["Regions,Strand,Size (bp),T(U),C,A,G,AT(%),GC(%),GT(%)," \
+                                "AT skewness,GC skewness,ID,Species," + ",".join(
+                                    list(reversed(self.included_lineages))) + "\n"]
+        # 密码子偏倚分析
+        self.codon_bias = ["Tree_name,Genes,GC1,GC2,GC12,GC3,CAI,CBI,Fop,ENC,L_sym,L_aa,Gravy,Aromo,Species," + ",".join(
+            list(reversed(self.included_lineages))) + "\n"]
+        self.list_all_taxonmy = []  # [[genus1, family1], [genus2, family2]]
+        self.dict_gene_ATskews = {}
+        self.dict_gene_GCskews = {}
+        self.dict_gene_ATCont = {}
+        self.dict_gene_GCCont = {}
+        # map ID and tree name
+        self.dict_ID_treeName = {}
+        # save gene names of each type
+        self.PCGs_names = []
+        self.rRNA_names = []
+        self.tRNA_names = []
+        # save all sequences
+        self.gb2fas = OrderedDict()
+        # NCR ratio
+        self.NCR_features = self.dict_args["NCR_features"]
+        self.cal_NCR_ratio = self.dict_args["cal_NCR_ratio"]
+
+    def init_args_each(self):
+        '''
+        PCGs_strim： 各物种的PCGs序列，去除不标准的终止密码子的
+        PCGs_strim_plus：正链——各物种的PCGs序列，去除不标准的终止密码子的
+        PCGs_strim_minus： 负链——各物种的PCGs序列，去除不标准的终止密码子的
+        tRNAs： 各物种tRNAs序列
+        tRNAs_plus： 正链——各物种tRNAs序列
+        tRNAs_minus: 负链——各物种tRNAs序列
+        rRNAs: 各物种rRNAs序列
+        rRNAs_plus: 正链——各物种rRNAs序列
+        rRNAs_minus: 负链——各物种rRNAs序列
+        NCR_seq: 存放所有非编码的序列
+        dict_genes: 存放基因的各种统计信息
+        orgTable： 刷新组成表的表头
+        lastEndIndex:0
+        overlap, gap:0, 0
+        dict_repeat_name_num: 存放一些带有重复名字的
+        list_feature_pos: 索引列表，用于统计NCR ratio # [0,1,2,3,4,...]
+        :return:
+        '''
+        self.PCGs_strim = []
+        self.PCGs_strim_plus = []
+        self.PCGs_strim_minus = []
+        self.tRNAs = []
+        self.tRNAs_plus = []
+        self.tRNAs_minus = []
+        self.rRNAs = []
+        self.rRNAs_plus = []
+        self.rRNAs_minus = []
+        self.NCR_seq = []
+        self.dict_genes = {}
+        self.dict_geom_seq[self.ID] = self.str_seq
+        self.list_name_gb.append((self.organism, self.ID))
+        self.name_gb.append(self.organism + "," + self.ID)
+        # self.igs = ""
+        # self.NCR = ''
+        # 刷新这个table
+        self.orgTable = ['Gene,Position,,Size,Intergenic nucleotides,Codon,,\n,From,To,,,Start,Stop,Strand,Sequence\n']
+        self.lastEndIndex = 0
+        self.overlap, self.gap = 0, 0
+        self.dict_repeat_name_num = OrderedDict()
+        self.list_feature_pos = [] # [0,1,2,3,4,...]
 
     def _exec(self):
         ####执行###
         try:
             self.init_args_all()
             self.progressSig.emit(5) #5
+            if self.dict_args["resolve duplicates"]:
+                progress_extract = 50
+                progress_sort_save = 70
+            else:
+                progress_extract = 70
+                progress_sort_save = 95
             if self.dict_args["extract_entire_seq"]:
-                self.entire_sequences = ""
-                self.extract_entire_seq() #90
+                output_path = self.factory.creat_dirs(self.exportPath + os.sep + 'individual_seqs')
+                self.entire_sequences = []
+                self.extract_entire_seq(output_path) #90
                 with open(self.exportPath + os.sep + self.dict_args["entire_seq_name"] + ".fas", "w", encoding="utf-8") as f:
-                    f.write(self.entire_sequences)
+                    f.write("".join(self.entire_sequences))
                 self.saveStatFile()
             else:
-                self.extract() #70
-                self.gene_sort_save() #20
+                self.extract(progress_extract) #70
+                self.gene_sort_save(progress_sort_save) #20
                 self.saveGeneralFile()
                 self.saveStatFile()
             if self.dict_args["if itol"]:
                 self.saveItolFiles()  # 存itol的文件
-            else:
-                self.progressSig.emit(100)
+            if self.dict_args["resolve duplicates"]:
+                rsl_dupl_worker = DetermineCopyGeneParallel()
+                rsl_dupl_worker.exec2_(
+                    self.exportPath,
+                    f"{self.exportPath}/resolve_duplicates",
+                    # None,
+                    self.dict_args["rsdpl_queue"],
+                    mafft_exe=self.dict_args["mafft_exe"],
+                    threads=self.dict_args["rsl_dupl threads"],
+                    exception_signal= self.dict_args["exception_signal"]
+                )
+            self.progressSig.emit(100)
         except:
-            print(''.join(
+            exceptionInfo = ''.join(
                 traceback.format_exception(
-                    *sys.exc_info())))
+                    *sys.exc_info()))  # 捕获报错内容，只能在这里捕获，没有报错的地方无法捕获
+            print(exceptionInfo)
+            self.dict_args["exception_signal"].emit(exceptionInfo)  # 激发这个信号
+
 
     def fetchTerCodon(self):
         if self.code_table in [1, 11, 12]:
@@ -2211,7 +2813,7 @@ class GBextract(object):
         self.list_used_names.append(used_name)
         return used_name
 
-    def fetchGeneName(self):
+    def fetchGeneName(self, seq=None, tRNA=False):
         feature_type = self.feature_type if self.included_features != "All" else "all"
         included_qualifiers = self.dict_qualifiers["Qualifiers to be recognized (%s):" % feature_type]
         hasQualifier = False
@@ -2222,20 +2824,28 @@ class GBextract(object):
                 break
         if not hasQualifier:
             ##没有找到指定的qualifier，返回
-            self.absence += ",".join([self.ID, self.organism, self.feature_type,
-                                      self.strand, str(self.start), str(self.end)]) + "\n"
+            self.absence.append(",".join([self.ID, self.organism, self.feature_type,
+                                      self.strand, str(self.start), str(self.end)]))
             return
         if self.extract_list_gene:
             ###只提取指定基因的模式，不符合就返回
             if not old_name in self.all_list_gene:
-                self.unextract_name += ",".join([self.ID, self.organism, self.feature_type, old_name,
-                                      self.strand, str(self.start), str(self.end)]) + "\n"
+                self.unextract_name.append(",".join([self.ID, self.organism, self.feature_type, old_name,
+                                      self.strand, str(self.start), str(self.end)]))
                 return
+        name4num = self.replace_name(old_name)
+        ## tRNA 要替换名字的情况
+        if tRNA:
+            values = ':' + ':'.join([i[0] for i in self.qualifiers.values()]) + ':'
+            name4num = self.judge(name4num, values, seq, old_name=old_name)
         ##重复基因的名字加编号
+        # print(self.replace_name(old_name), self.dict_type_genes)
         new_name, self.dict_type_genes[self.feature_type] = self.factory.numbered_Name(self.dict_type_genes.setdefault(self.feature_type, []),
-                                                                       self.replace_name(old_name), omit=True)
+                                                                                        name4num, omit=True)
         if old_name not in self.dict_name_replace:
-            self.dict_name_replace[old_name] = new_name
+            self.dict_name_replace[old_name] = new_name # [new_name, self.usedName]
+        # else:
+        #     self.dict_name_replace[old_name].append(self.usedName)
         return new_name
 
     def colourPicker(self, class_=None, Range=False):
@@ -2266,26 +2876,26 @@ class GBextract(object):
                 colour1 = self.colourPicker(class_)
                 self.dict_itol_info["itol_%s_colourUsed1" %
                                     class_][lineage] = colour1
-                self.dict_itol_info["itol_%s_Text" % class_] += "%s,%s,-1,%s,bold,2,0\n" % (
-                    self.usedName, lineage, colour1)
-                self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(LEGEND_SHAPES.*)\n", "\\1 RE\n",
-                                                                             self.dict_itol_info["itol_%s_ColourStrip" % class_])
-                self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(LEGEND_COLORS.*)\n", "\\1 %s\n"%colour1,
+                self.dict_itol_info["itol_%s_Text" % class_].append("%s,%s,-1,%s,bold,2,0\n" % (
+                    self.usedName, lineage, colour1))
+                self.dict_itol_info["itol_%s_ColourStrip" % class_][0] = re.sub(r"(LEGEND_SHAPES.*)\n", "\\1 RE\n",
+                                                                             self.dict_itol_info["itol_%s_ColourStrip" % class_][0])
+                self.dict_itol_info["itol_%s_ColourStrip" % class_][0] = re.sub(r"(LEGEND_COLORS.*)\n", "\\1 %s\n"%colour1,
                                                                              self.dict_itol_info[
-                                                                                 "itol_%s_ColourStrip" % class_])
-                self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(LEGEND_LABELS.*)\n", "\\1 %s\n"%lineage,
+                                                                                 "itol_%s_ColourStrip" % class_][0])
+                self.dict_itol_info["itol_%s_ColourStrip" % class_][0] = re.sub(r"(LEGEND_LABELS.*)\n", "\\1 %s\n"%lineage,
                                                                              self.dict_itol_info[
-                                                                                 "itol_%s_ColourStrip" % class_])
-                if "LEGEND_TITLE,None" in self.dict_itol_info["itol_%s_ColourStrip" % class_]:
-                    self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(LEGEND_TITLE.*)\n",
+                                                                                 "itol_%s_ColourStrip" % class_][0])
+                if "LEGEND_TITLE,None" in self.dict_itol_info["itol_%s_ColourStrip" % class_][0]:
+                    self.dict_itol_info["itol_%s_ColourStrip" % class_][0] = re.sub(r"(LEGEND_TITLE.*)\n",
                                                                                  "LEGEND_TITLE %s\n" % class_,
                                                                                  self.dict_itol_info[
-                                                                                     "itol_%s_ColourStrip" % class_])
-                if "DATASET_LABEL color_strip\n" in self.dict_itol_info["itol_%s_ColourStrip" % class_]:
-                    self.dict_itol_info["itol_%s_ColourStrip" % class_] = re.sub(r"(DATASET_LABEL.*)\n",
+                                                                                     "itol_%s_ColourStrip" % class_][0])
+                if "DATASET_LABEL color_strip\n" in self.dict_itol_info["itol_%s_ColourStrip" % class_][0]:
+                    self.dict_itol_info["itol_%s_ColourStrip" % class_][0] = re.sub(r"(DATASET_LABEL.*)\n",
                                                                                  "DATASET_LABEL color_strip_%s\n" % class_,
                                                                                  self.dict_itol_info[
-                                                                                     "itol_%s_ColourStrip" % class_])
+                                                                                     "itol_%s_ColourStrip" % class_][0])
                 # range的颜色
                 colour2 = self.colourPicker(class_, Range=True)
                 self.dict_itol_info["itol_%s_colourUsed2" %
@@ -2293,19 +2903,20 @@ class GBextract(object):
             for num, item in enumerate(
                     ["Colour", "ColourStrip", "ColourRange"]):
                 if num == 0:
-                    self.dict_itol_info["itol_%s_%s" % (class_, item)] += "%s,label,%s,normal,1\n" % (
-                        self.usedName, self.dict_itol_info["itol_%s_colourUsed1" % class_][lineage])
+                    self.dict_itol_info["itol_%s_%s" % (class_, item)].append("%s,label,%s,normal,1\n" % (
+                        self.usedName, self.dict_itol_info["itol_%s_colourUsed1" % class_][lineage]))
                 elif num == 1:
-                    self.dict_itol_info["itol_%s_%s" % (class_, item)] += "%s %s %s\n" % (
-                        self.usedName, self.dict_itol_info["itol_%s_colourUsed1" % class_][lineage], lineage)
+                    self.dict_itol_info["itol_%s_%s" % (class_, item)].append("%s %s %s\n" % (
+                        self.usedName, self.dict_itol_info["itol_%s_colourUsed1" % class_][lineage], lineage))
                 elif num == 2:
-                    self.dict_itol_info["itol_%s_%s" % (class_, item)] += "%s,range,%s,%s\n" % (
-                        self.usedName, self.dict_itol_info["itol_%s_colourUsed2" % class_][lineage], lineage)
+                    self.dict_itol_info["itol_%s_%s" % (class_, item)].append("%s,range,%s,%s\n" % (
+                        self.usedName, self.dict_itol_info["itol_%s_colourUsed2" % class_][lineage], lineage))
 
     def replace_name(self, old_name):
-        return self.dict_replace[old_name] if old_name in self.dict_replace else old_name
+        return self.dict_replace.get(old_name, old_name)
 
     def parseSource(self):
+        # try:
         self.usedName = self.fetchUsedName()
         self.org_gb = self.organism + " " + self.name
         ###加了下面的就报错
@@ -2330,56 +2941,258 @@ class GBextract(object):
             self.dict_itol_name[self.usedName] = self.organism
             self.dict_itol_gb[self.usedName] = self.name
             seqStat = SeqGrab(self.str_seq)
-            self.itolAT += self.usedName + "," + seqStat.AT_percent + "\n"
-            self.itolGCskew += self.usedName + "," + seqStat.GC_skew + "\n"
-            self.itolLength += self.usedName + "," + seqStat.size + "\n"
+            self.itolAT.append(self.usedName + "," + seqStat.AT_percent + "\n")
+            self.itolGCskew.append(self.usedName + "," + seqStat.GC_skew + "\n")
+            self.itolLength.append(self.usedName + "," + seqStat.size + "\n")
             A, T, C, G = str(
                 self.str_seq.upper().count('A')), str(
                 self.str_seq.upper().count('T')), str(
                 self.str_seq.upper().count('C')), str(
                 self.str_seq.upper().count('G'))
-            self.itolLength_stack += ",".join([self.usedName, A, T, C, G]) + "\n"
+            self.itolLength_stack.append(",".join([self.usedName, A, T, C, G]) + "\n")
             # 标记颜色
             self.colourTree()
+
+        list_taxonmy = list(reversed(self.list_lineages))
+        self.list_all_taxonmy.append(list_taxonmy)
+        self.taxonmy = ",".join(
+            [self.organism] + list_taxonmy)
+        # self.gene_order = '>' + self.usedName + '\n'
+        self.complete_seq.append('>' + self.usedName + '\n' + self.str_seq + '\n')
+        # except:
+        #     print(''.join(
+        #         traceback.format_exception(*sys.exc_info())))
 
     def parseFeature(self):
         new_name = self.fetchGeneName()
         if not new_name:
             return
+        seq = str(self.feature.extract(self.seq))
+        self.gb2fas[self.usedName] = self.gb2fas.get(self.usedName, "") + f">{new_name}\n{seq}\n"
         feature_name = "CDS_NUC" if self.feature_type.upper() == "CDS" else self.feature_type
         self.dict_feature_fas.setdefault(feature_name, OrderedDict())[new_name + '>' + self.organism + '_' +
-                                                 self.name] = '>' + self.usedName + '\n' + str(
-            self.feature.extract(self.seq)) + '\n'
+                                                                      self.name] = '>' + self.usedName + '\n' + seq + '\n'
         self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
         if "translation" in self.qualifiers:
             aa_seq = self.qualifiers["translation"][0]
             self.dict_feature_fas.setdefault("CDS_AA", OrderedDict())[new_name + '>' + self.organism + '_' +
-                                                 self.name] = '>' + self.usedName + '\n' + aa_seq + '\n'
-        ##间隔区提取
+                                                                      self.name] = '>' + self.usedName + '\n' + aa_seq + '\n'
+        self.fun_orgTable(new_name, len(seq), "", "", seq)
+        # 基因顺序
+        if new_name.upper().startswith("NCR"):
+            if self.gene_is_included(new_name, self.dict_args["checked gene names"], "NCR"):
+                self.dict_order.setdefault(self.usedName, []).append(f'{self.omit_strand}NCR')
+        else:
+            if self.gene_is_included(new_name, self.dict_args["checked gene names"], ""):
+                self.dict_order.setdefault(self.usedName, []).append(f'{self.omit_strand}{new_name}')
+        ## 间隔区提取
         self.refresh_pairwise_feature(new_name)
+        ## 基因统计
+        seqStat = SeqGrab(seq.upper())
+        self.dict_genes[new_name] = ",".join([new_name,
+                                              self.strand,
+                                              seqStat.size,
+                                              seqStat.T_percent,
+                                              seqStat.C_percent,
+                                              seqStat.A_percent,
+                                              seqStat.G_percent,
+                                              seqStat.AT_percent,
+                                              seqStat.GC_percent,
+                                              seqStat.GT_percent,
+                                              seqStat.AT_skew,
+                                              seqStat.GC_skew]) + "\n"
 
     def gb_record_stat(self):
-        ###used_species###
-        seqStat = SeqGrab(self.str_seq)
-        list_spe_stat = self.list_lineages + [
+        '''
+
+        :return:
+        '''
+        #         whole genome
+        seq = self.str_seq.upper()
+        seqStat = SeqGrab(seq)
+        all_seq_name = 'Full genome' if  self.dict_args["seq type"] == "Mitogenome" else "Full sequence"
+        geom_stat = ",".join([all_seq_name,
+                              "+",
+                              seqStat.size,
+                              seqStat.T_percent,
+                              seqStat.C_percent,
+                              seqStat.A_percent,
+                              seqStat.G_percent,
+                              seqStat.AT_percent,
+                              seqStat.GC_percent,
+                              seqStat.GT_percent,
+                              seqStat.AT_skew,
+                              seqStat.GC_skew]) + "\n"
+        # 物种的大统计表
+        self.list_spe_stat = self.list_lineages + [
             self.organism,
             self.ID,
             seqStat.size,
             seqStat.AT_percent,
             seqStat.AT_skew,
             seqStat.GC_skew]
-        self.dict_all_stat["_".join(
-            self.list_lineages + [self.organism + "_" + self.ID])] = list_spe_stat
         ###species_info###
-        # ID",Organism,%s,Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew
-        list_species_info = [self.ID, self.organism,self.usedName] + self.list_lineages + \
-                            [str(len(self.str_seq)), seqStat.A_percent, seqStat.T_percent,
-                             seqStat.C_percent, seqStat.G_percent, seqStat.AT_percent,
-                             seqStat.GC_percent, seqStat.AT_skew, seqStat.GC_skew]
-        self.species_info += ",".join(list_species_info) + "\n"
-        self.taxonomy_infos += ",".join([self.usedName, self.ID, self.organism] + self.list_lineages) + "\n"
+        rvscmp_seq = self.rvscmp_seq.upper()
+        seqStat_rvscmp = SeqGrab(rvscmp_seq)
+        self.plus_coding_seq = "".join(self.plus_coding_seq)
+        seqCoding = SeqGrab(self.plus_coding_seq)
+        self.plus_coding_gene_only = "".join(self.plus_coding_gene_only)
+        seqCodingOnly = SeqGrab(self.plus_coding_gene_only)
+        self.PCGs_strim = "".join(self.PCGs_strim)
+        self.PCGs_strim_plus = "".join(self.PCGs_strim_plus)
+        self.PCGs_strim_minus = "".join(self.PCGs_strim_minus)
+        ffds = SeqGrab(self.PCGs_strim).extract_ffds(self.code_table) # extract fourfold degenerate sites
+        ffds_seq = SeqGrab(ffds)
+        ffds_plus = SeqGrab(self.PCGs_strim_plus).extract_ffds(self.code_table)  # extract fourfold degenerate sites only for PCGs on plus strand
+        ffds_seq_plus = SeqGrab(ffds_plus)
+        # self.NCR_seq = "".join(self.NCR_seq)
+        if self.cal_NCR_ratio:
+            NCR_ratio, NCR_seq = self.get_NCR_ratio(self.list_feature_pos, len(self.str_seq))
+            NCR_seq_grab = SeqGrab(NCR_seq)
+            ncr_gc_skew = NCR_seq_grab.GC_skew
+        else:
+            ncr_gc_skew, NCR_ratio = "N/A", "N/A"
+        self.species_info.append([self.ID, self.organism, self.usedName] + self.list_lineages + [self.code_table] + \
+                            [str(len(self.str_seq)), str(seqCoding.length),
+                             seqCoding.GC_skew, seqCodingOnly.GC_skew,
+                             ffds_seq.GC_skew, ffds_seq_plus.GC_skew,
+                             ncr_gc_skew, NCR_ratio,
+                             seqStat.A_percent, seqStat.T_percent,
+                             seqStat.C_percent, seqStat.G_percent,
+                             seqStat.AT_percent, seqStat.GC_percent,
+                             seqStat.GT_percent,
+                             seqStat.AT_skew, seqStat.GC_skew] + \
+                             ([seqStat_rvscmp.AT_skew] if self.dict_args["analyze - sequence"] else []) + \
+                             ([seqStat_rvscmp.GC_skew] if self.dict_args["analyze - sequence"] else []))
+        self.taxonomy_infos.append(",".join([self.usedName, self.ID, self.organism] + self.list_lineages) + "\n")
 
-    def extract_entire_seq(self):
+        # 统计单个物种
+        list_genes = [
+            value for (key, value) in sorted(self.dict_genes.items())]
+
+        #         PCG
+        PCGs_stat_plus, first_stat_plus, second_stat_plus, third_stat_plus = self.stat_PCG_sub(self.PCGs_strim_plus, "+") \
+                                                    if (self.PCGs_strim_plus and self.dict_args["analyze + sequence"] and self.dict_args["analyze all PCGs"]) \
+                                                    else ["", "", "", ""]
+        PCGs_stat_minus, first_stat_minus, second_stat_minus, third_stat_minus = self.stat_PCG_sub(self.PCGs_strim_minus, "-") \
+                                                    if (self.PCGs_strim_minus and self.dict_args["analyze - sequence"] and self.dict_args["analyze all PCGs"]) \
+                                                    else ["", "", "", ""]
+        PCGs_stat, first_stat, second_stat, third_stat = self.stat_PCG_sub(self.PCGs_strim, "all") \
+                                                    if (self.PCGs_strim and self.dict_args["analyze all PCGs"]) \
+                                                    else ["", "", "", ""]
+        #         rRNA
+        self.rRNAs = "".join(self.rRNAs)
+        self.rRNAs_plus = "".join(self.rRNAs_plus)
+        self.rRNAs_minus = "".join(self.rRNAs_minus)
+        rRNA_stat = self.stat_other_sub(self.rRNAs, "all", "rRNAs") if \
+            (self.rRNAs and self.dict_args["analyze all rRNAs"]) else ""
+        if not self.rRNAs and self.dict_args["analyze all rRNAs"]:
+            self.geneStat_sub("rRNAs(all)", "N/A")  ##要补个NA
+        rRNA_stat_plus = self.stat_other_sub(self.rRNAs_plus, "+", "rRNAs") if \
+            (self.rRNAs_plus and self.dict_args["analyze + sequence"] and self.dict_args["analyze all rRNAs"]) else ""
+        if not self.rRNAs_plus and self.dict_args["analyze + sequence"] and self.dict_args["analyze all rRNAs"]:
+            self.geneStat_sub("rRNAs(+)", "N/A") ##要补个NA
+        rRNA_stat_minus = self.stat_other_sub(self.rRNAs_minus, "-", "rRNAs") if \
+            (self.rRNAs_minus and self.dict_args["analyze - sequence"] and self.dict_args["analyze all rRNAs"]) else ""
+        if not self.rRNAs_minus and self.dict_args["analyze - sequence"] and self.dict_args["analyze all rRNAs"]:
+            self.geneStat_sub("rRNAs(-)", "N/A")  ##要补个NA
+        #         tRNA
+        self.tRNAs = "".join(self.tRNAs)
+        self.tRNAs_plus = "".join(self.tRNAs_plus)
+        self.tRNAs_minus = "".join(self.tRNAs_minus)
+        tRNA_stat = self.stat_other_sub(self.tRNAs, "all", "tRNAs") if \
+            (self.tRNAs and self.dict_args["analyze all tRNAs"]) else ""
+        if not self.tRNAs and self.dict_args["analyze all tRNAs"]:
+            self.geneStat_sub("tRNAs(all)", "N/A")  ##要补个NA
+        tRNA_stat_plus = self.stat_other_sub(self.tRNAs_plus, "+", "tRNAs") if \
+            (self.tRNAs_plus and self.dict_args["analyze + sequence"] and self.dict_args["analyze all tRNAs"]) else ""
+        if not self.tRNAs_plus and self.dict_args["analyze + sequence"] and self.dict_args["analyze all tRNAs"]:
+            self.geneStat_sub("tRNAs(+)", "N/A")  ##要补个NA
+        tRNA_stat_minus = self.stat_other_sub(self.tRNAs_minus, "-", "tRNAs") if \
+            (self.tRNAs_minus and self.dict_args["analyze - sequence"] and self.dict_args["analyze all tRNAs"]) else ""
+        if not self.tRNAs_minus and self.dict_args["analyze - sequence"] and self.dict_args["analyze all tRNAs"]:
+            self.geneStat_sub("tRNAs(-)", "N/A")  ##要补个NA
+        stat = 'Regions,Strand,Size (bp),T(U),C,A,G,AT(%),GC(%),GT(%),AT skew,GC skew\n' + PCGs_stat + PCGs_stat_plus + \
+               PCGs_stat_minus + first_stat + first_stat_plus + first_stat_minus + second_stat + second_stat_plus + second_stat_minus +\
+               third_stat + third_stat_plus + third_stat_minus + ''.join(list_genes) + \
+               rRNA_stat + rRNA_stat_plus + rRNA_stat_minus + tRNA_stat + tRNA_stat_plus + tRNA_stat_minus + geom_stat
+        self.dict_spe_stat[self.ID] = stat + "PCGs: protein-coding genes; +: major strand; -: minus strand\n"
+        # 生成折线图分类信息
+        list_genes_line = [
+            value for (
+                key, value) in sorted(
+                self.dict_genes.items()) if not key.startswith("zNCR")]
+        p_spe = PCGs_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if PCGs_stat else ""
+        p_spe_plus = PCGs_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if PCGs_stat_plus else ""
+        p_spe_minus = PCGs_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if PCGs_stat_minus else ""
+        t_spe = tRNA_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if tRNA_stat else ""
+        t_spe_plus = tRNA_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if tRNA_stat_plus else ""
+        t_spe_minus = tRNA_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if tRNA_stat_minus else ""
+        r_spe = rRNA_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if rRNA_stat else ""
+        r_spe_plus = rRNA_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if rRNA_stat_plus else ""
+        r_spe_minus = rRNA_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if rRNA_stat_minus else ""
+        fst_spe = first_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if first_stat else ""
+        fst_spe_plus = first_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if first_stat_plus else ""
+        fst_spe_minus = first_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if first_stat_minus else ""
+        scd_spe = second_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if second_stat else ""
+        scd_spe_plus = second_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if second_stat_plus else ""
+        scd_spe_minus = second_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if second_stat_minus else ""
+        trd_spe = third_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if third_stat else ""
+        trd_spe_plus = third_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if third_stat_plus else ""
+        trd_spe_minus = third_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if third_stat_minus else ""
+        self.line_spe_stat.append(geom_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" + p_spe + p_spe_plus + p_spe_minus + \
+                              t_spe + t_spe_plus + t_spe_minus + r_spe + r_spe_plus + r_spe_minus + fst_spe + fst_spe_plus + fst_spe_minus + \
+                              scd_spe + scd_spe_plus + scd_spe_minus + trd_spe + trd_spe_plus + trd_spe_minus + \
+                              "".join([i.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" for i in list_genes_line]))
+        if self.dict_pro and self.dict_args["analyze RSCU"]:
+            rscu_sum = RSCUsum(self.organism_1, self.PCGs_strim, str(self.code_table))
+            rscu_table = rscu_sum.table
+            self.dict_RSCU[self.ID] = rscu_table
+            self.dict_all_spe_RSCU["title"].append(self.usedName)
+            self.dict_all_codon_COUNT["title"].append(self.usedName)
+            self.dict_all_AA_COUNT["title"].append(self.usedName)
+            self.dict_all_AA_RATIO["title"].append(self.usedName)
+            rscu_stack = RSCUstack(
+                rscu_table,
+                self.dict_all_spe_RSCU,
+                self.dict_all_codon_COUNT,
+                self.dict_all_AA_COUNT,
+                self.dict_all_AA_RATIO,
+                self.numbered_Name(
+                    self.organism,
+                    omit=True))
+            self.dict_all_spe_RSCU = rscu_stack.dict_all_rscu
+            self.dict_all_codon_COUNT = rscu_stack.dict_all_codon_count
+            self.dict_all_AA_COUNT = rscu_stack.dict_all_AA_count
+            self.dict_all_AA_RATIO = rscu_stack.dict_all_AA_ratio
+            self.dict_AAusage[self.ID] = rscu_stack.stat
+            self.dict_RSCU_stack[self.ID] = rscu_stack.stack
+            self.dict_AA_stack[self.ID] = rscu_stack.aaStack
+        # 存放基因间隔区序列
+        # self.dict_igs[self.ID] = self.igs
+        # self.list_spe_stat.append(self.reference_)
+        self.dict_all_stat["_".join(
+            self.list_lineages + [self.organism + "_" + self.ID])] = self.list_spe_stat
+        #         生成PCG串联序列
+        self.PCG_seq.append('>' + self.usedName + '\n' + self.PCGs_strim + '\n' if self.PCGs_strim else "")
+        self.tRNA_seqs.append('>' + self.usedName + '\n' + self.tRNAs + '\n' if self.tRNAs else "")
+        self.rRNA_seqs.append('>' + self.usedName + '\n' + self.rRNAs + '\n' if self.rRNAs else "")
+        #         组成表
+        self.orgTable.append("Overlap:," + \
+                         str(self.overlap) + "," + "gap:," + str(self.gap))
+        self.dict_orgTable[self.ID] = self.orgTable
+        # 密码子偏倚分析
+        if self.dict_args["cal_codon_bias"] and self.dict_pro:
+            codonBias = CodonBias(self.PCGs_strim,
+                                  codeTable=self.code_table,
+                                  codonW=self.dict_args["CodonW_exe"],
+                                  path=self.exportPath)
+            list_cBias = codonBias.getCodonBias()
+            self.codon_bias.append(",".join([self.usedName, "PCGs"] + list_cBias) + "," + self.taxonmy + "\n")
+        # map ID to tree name
+        self.dict_ID_treeName[self.ID] = self.usedName
+
+    def extract_entire_seq(self, output_path):
         # gb_records = SeqIO.parse(self.gbContentIO, "genbank")
         for num, gb_file in enumerate(self.gb_files):
             try:
@@ -2394,26 +3207,30 @@ class GBextract(object):
                 self.ID = gb_record.id
                 self.seq = gb_record.seq
                 self.str_seq = str(self.seq)
+                source_parsed = False
                 for self.feature in features:
                     self.qualifiers = self.feature.qualifiers
                     # self.start = int(self.feature.location.start) + 1
                     # self.end = int(self.feature.location.end)
                     # self.strand = "+" if self.feature.location.strand == 1 else "-"
-                    if self.feature.type == "source":
+                    if (self.feature.type == "source") and (not source_parsed):
                         self.parseSource()
-                self.entire_sequences += ">%s\n%s\n" % (self.usedName, self.str_seq)
-                self.gb_record_stat()
+                        source_parsed = True
+                self.entire_sequences.append(">%s\n%s\n" % (self.usedName, self.str_seq))
+                # 存每个文件
+                with open(os.path.join(output_path, self.usedName + ".fas"),
+                          "w", encoding="utf-8", errors='ignore') as f:
+                    f.write(">%s\n%s\n" % (self.usedName, self.str_seq))
                 self.input_file.write(gb_record.format("genbank"))
             except:
-                self.Error_ID += self.name + ":\n" + \
+                self.Error_ID.append(self.name + ":\n" + \
                                  ''.join(
-                                     traceback.format_exception(*sys.exc_info())) + "\n"
-            num += 1
-            self.progressSig.emit(num * 90 / self.totleID)
+                                     traceback.format_exception(*sys.exc_info())) + "\n")
+            self.progressSig.emit((num + 1) * 90 / self.totleID)
         self.input_file.close()
 
-    def extract(self):
-        # gb_records = SeqIO.parse(self.gbContentIO, "genbank")
+    def extract(self, progress):
+        self.init_args_all()
         # 专门用于判断
         included_features = [i.upper() for i in self.included_features]
         for num, gb_file in enumerate(self.gb_files):
@@ -2424,45 +3241,363 @@ class GBextract(object):
                 features = gb_record.features
                 annotations = gb_record.annotations
                 self.organism = annotations["organism"]
+                self.organism_1 = self.organism.replace(" ", "_")
                 self.description = gb_record.description
                 self.date = annotations["date"]
                 self.ID = gb_record.id
                 self.seq = gb_record.seq
                 self.str_seq = str(self.seq)
+                self.rvscmp_seq = str(Seq(self.str_seq, generic_dna).reverse_complement())
                 self.dict_type_genes = OrderedDict()
+                self.init_args_each()
+                self.plus_coding_seq = []  # 正链编码的序列，负链编码基因的序列会被反向互补并与这个一起
+                self.plus_coding_gene_only = []  # 仅在正链编码基因的序列
                 ok = self.check_records(features)
                 if not ok: continue
                 has_feature = False
                 has_source = False
+                source_parsed = False
+                # print(features)
                 for self.feature in features:
                     self.qualifiers = self.feature.qualifiers
                     self.start = int(self.feature.location.start) + 1
                     self.end = int(self.feature.location.end)
                     self.strand = "+" if self.feature.location.strand == 1 else "-"
+                    self.omit_strand = "" if self.strand == "+" else "-"
+                    # # 用于生成organization表
+                    # self.positionFrom, self.positionTo = list1[0], list1[-1]
                     self.feature_type = self.feature.type
+                    ## 用于计算 NCR ratio
+                    if self.feature_type not in ["source"] + self.NCR_features:
+                        if not ((self.start == 1) and (self.end == len(self.str_seq))):
+                            # 有些物种的gene注释涵盖了整个序列，如 NC_044850
+                            self.list_feature_pos.extend(list(self.feature.location))
                     if self.feature_type not in (self.list_features + ["source"]):
                         self.list_features.append(self.feature_type)
-                    if self.feature_type == "source":
+                    if (self.feature.type == "source") and (not source_parsed):
                         self.parseSource()
                         has_source = True
+                        source_parsed = True
+                    elif (("CDS" in included_features) or (self.included_features == "All")) and \
+                            self.feature_type == 'CDS':
+                        self.code_table = int(self.qualifiers["transl_table"][0]) if ("transl_table" in self.qualifiers) \
+                                                                                     and \
+                                                                                     self.qualifiers["transl_table"][
+                                                                                         0].isnumeric() else self.selected_code_table
+                        self.fetchTerCodon()  # 得到终止密码子
+                        self.CDS_()
+                        self.getNCR()
+                        has_feature = True
+                    elif (("RRNA" in included_features) or (self.included_features == "All")) and \
+                            self.feature_type == 'rRNA':
+                        self.rRNA_()
+                        self.getNCR()
+                        has_feature = True
+                    elif (("TRNA" in included_features) or (self.included_features == "All")) and \
+                            self.feature_type == 'tRNA':
+                        self.tRNA_()
+                        self.getNCR()
+                        has_feature = True
                     elif self.included_features == "All" or (self.feature_type.upper() in included_features):
+                        # 剩下的按照常规的来提取
                         self.parseFeature()
                         self.getNCR()
                         has_feature = True
-                self.getNCR(mode="end") ##判断最后的间隔区
                 if not has_feature:
                     ##ID里面没有找到任何对应的feature的情况
                     name = self.usedName if has_source else self.ID
                     self.list_none_feature_IDs.append(name)
                 self.gb_record_stat()
+                self.getNCR(mode="end")  ##判断最后的间隔区
                 self.input_file.write(gb_record.format("genbank"))
             except:
-                self.Error_ID += self.name + ":\n" + \
+                self.Error_ID.append(self.name + ":\n" + \
                                  ''.join(
-                                     traceback.format_exception(*sys.exc_info())) + "\n"
-            num += 1
-            self.progressSig.emit(num * 70 / self.totleID)
+                                     traceback.format_exception(*sys.exc_info())) + "\n")
+            self.progressSig.emit((num + 1) * progress / self.totleID)
         self.input_file.close()
+
+    def trim_ter(self, raw_sequence):
+        size = len(raw_sequence)
+        if size % 3 == 0:
+            if raw_sequence[-3:].upper() in self.stopCodon:
+                trim_sequence = raw_sequence[:-3]
+            else:
+                trim_sequence = raw_sequence
+        elif size % 3 == 1:
+            trim_sequence = raw_sequence[:-1]
+        elif size % 3 == 2:
+            trim_sequence = raw_sequence[:-2]
+        else:
+            trim_sequence = raw_sequence
+        return trim_sequence
+
+    def CDS_(self):
+        seq = str(self.feature.extract(self.seq))
+        new_name = self.fetchGeneName()
+        self.gb2fas[self.usedName] = self.gb2fas.get(self.usedName, "") + f">{new_name}\n{seq}\n"
+        codon_start = self.qualifiers['codon_start'][0] if "codon_start" in self.qualifiers else "1"
+        seq = seq[int(codon_start)-1:] if codon_start != "1" else seq
+        def codon(seq):
+            seq = seq.upper()
+            size = len(seq)
+            ini = seq[0:3]
+            if size % 3 == 0:
+                if seq[-3:].upper() in self.stopCodon:
+                    trim_sequence = seq[:-3]
+                    ter = seq[-3:]
+                else:
+                    ter = "---"
+                    trim_sequence = seq
+                # 计算RSCU用的，保留终止密码子，但是不保留不完整的终止密码子
+                RSCU_seq = seq
+            elif size % 3 == 1:
+                ter = seq[-1]
+                trim_sequence = seq[:-1]
+                RSCU_seq = seq[:-1]
+            elif size % 3 == 2:
+                ter = seq[-2:]
+                trim_sequence = seq[:-2]
+                RSCU_seq = seq[:-2]
+            return ini, ter, size, seq, trim_sequence, RSCU_seq
+
+        # trim_sequence是删除终止子以后的
+        ini, ter, size, seq, trim_sequence, RSCU_seq = codon(seq)
+
+        if not new_name:
+            return
+        self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
+        self.dict_pro[new_name + '>' + self.usedName] = '>' + \
+                                                          self.usedName + '\n' + seq + \
+                                                          '\n'  # 这里不能用seq代替，因为要用大小写区分正负链
+        translation = self.qualifiers['translation'][0] if 'translation' in self.qualifiers else ""  # 有时候没有translation
+        self.dict_AA[new_name + '>' + self.usedName] = '>' + self.usedName + '\n' + translation + "\n"
+        if self.gene_is_included(new_name, self.dict_args["checked gene names"], "PCGs"):
+            self.dict_order.setdefault(self.usedName, []).append(f'{self.omit_strand}{new_name}')
+        seqStat = SeqGrab(seq)
+        self.dict_genes[new_name] = ",".join(
+            [
+                new_name,
+                self.strand,
+                seqStat.size,
+                seqStat.T_percent,
+                seqStat.C_percent,
+                seqStat.A_percent,
+                seqStat.G_percent,
+                seqStat.AT_percent,
+                seqStat.GC_percent,
+                seqStat.GT_percent,
+                seqStat.AT_skew,
+                seqStat.GC_skew]) + "\n"
+        self.dict_PCG.setdefault(new_name, {}).setdefault(self.usedName, str(size))  # {"atp6": {"spe1": "15610", "spe2": "15552"}}
+        self.dict_start.setdefault(new_name, {}).setdefault(self.usedName, ini)
+        self.dict_stop.setdefault(new_name, {}).setdefault(self.usedName, ter)
+        self.dict_gene_ATskews.setdefault(new_name, {}).setdefault(self.usedName, seqStat.AT_skew)
+        self.dict_gene_GCskews.setdefault(new_name, {}).setdefault(self.usedName, seqStat.GC_skew)
+        self.dict_gene_ATCont.setdefault(new_name, {}).setdefault(self.usedName, seqStat.AT_percent)
+        self.dict_gene_GCCont.setdefault(new_name, {}).setdefault(self.usedName, seqStat.GC_percent)
+        self.PCGs_strim.append(RSCU_seq)
+        if self.strand == "+":
+            self.PCGs_strim_plus.append(RSCU_seq)
+        else:
+            self.PCGs_strim_minus.append(RSCU_seq)
+        # 生成组成表相关
+        self.fun_orgTable(new_name, size, ini, ter, seq)
+        ##间隔区提取
+        self.refresh_pairwise_feature(new_name)
+        ##密码子偏倚分析
+        if self.dict_args["cal_codon_bias"]:
+            codonBias = CodonBias(RSCU_seq,
+                                  codeTable=self.code_table,
+                                  codonW=self.dict_args["CodonW_exe"],
+                                  path=self.exportPath)
+            list_cBias = codonBias.getCodonBias()
+            self.codon_bias.append(",".join([self.usedName, new_name] + list_cBias) + "," + self.taxonmy + "\n")
+        # 存PCGs基因名字
+        if new_name not in self.PCGs_names:
+            self.PCGs_names.append(new_name)
+
+    def rRNA_(self):
+        new_name = self.fetchGeneName()
+        if not new_name:
+            return
+        seq = str(self.feature.extract(self.seq))
+        self.gb2fas[self.usedName] = self.gb2fas.get(self.usedName, "") + f">{new_name}\n{seq}\n"
+        self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
+        self.dict_rRNA[new_name + '>' + self.usedName] = '>' + self.usedName + '\n' + seq + '\n'
+        if self.gene_is_included(new_name, self.dict_args["checked gene names"], "rRNAs"):
+            self.dict_order.setdefault(self.usedName, []).append(f'{self.omit_strand}{new_name}')
+        seqStat = SeqGrab(seq.upper())
+        self.dict_genes[new_name] = ",".join([new_name,
+                                              self.strand,
+                                              seqStat.size,
+                                              seqStat.T_percent,
+                                              seqStat.C_percent,
+                                              seqStat.A_percent,
+                                              seqStat.G_percent,
+                                              seqStat.AT_percent,
+                                              seqStat.GC_percent,
+                                              seqStat.GT_percent,
+                                              seqStat.AT_skew,
+                                              seqStat.GC_skew]) + "\n"
+        self.dict_RNA.setdefault(new_name, {}).setdefault(self.usedName,str(len(seq)))  # {"atp6": {"spe1": "15610", "spe2": "15552"}}
+        self.dict_gene_ATskews.setdefault(new_name, {}).setdefault(self.usedName, seqStat.AT_skew)
+        self.dict_gene_GCskews.setdefault(new_name, {}).setdefault(self.usedName, seqStat.GC_skew)
+        self.dict_gene_ATCont.setdefault(new_name, {}).setdefault(self.usedName, seqStat.AT_percent)
+        self.dict_gene_GCCont.setdefault(new_name, {}).setdefault(self.usedName, seqStat.GC_percent)
+        self.rRNAs.append(seq)
+        if self.strand == "+":
+            self.rRNAs_plus.append(seq)
+        else:
+            self.rRNAs_minus.append(seq)
+        # 生成组成表相关
+        self.fun_orgTable(new_name, seqStat.length, "", "", seq)
+        ##间隔区提取
+        self.refresh_pairwise_feature(new_name)
+        # 存rRNA基因名字
+        if new_name not in self.rRNA_names:
+            self.rRNA_names.append(new_name)
+
+    def tRNA_(self):
+        seq = str(self.feature.extract(self.seq))
+        name = self.fetchGeneName(seq=seq, tRNA=True)
+        if not name:
+            return
+        self.gb2fas[self.usedName] = self.gb2fas.get(self.usedName, "") + f">{name}\n{seq}\n"
+        # values = ':' + ':'.join([i[0] for i in self.qualifiers.values()]) + ':'
+        # name = self.judge(replace_name, values, seq)
+        list_tRNA = [
+            "T",
+            "C",
+            "E",
+            "Y",
+            "R",
+            "G",
+            "H",
+            "L1",
+            "L2",
+            "S1",
+            "S2",
+            "Q",
+            "F",
+            "M",
+            "V",
+            "A",
+            "D",
+            "N",
+            "P",
+            "I",
+            "K",
+            "W",
+            "S",
+            "L"]
+        new_name = "trn" + name if name in list_tRNA else name
+        self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
+        self.dict_tRNA[new_name + '>' + self.usedName] = '>' + self.usedName + '\n' + seq + '\n'
+        if self.gene_is_included(name, self.dict_args["checked gene names"], "tRNAs"):
+            self.dict_order.setdefault(self.usedName, []).append(f'{self.omit_strand}{name}')
+        self.tRNAs.append(seq.upper())
+        if self.strand == "+":
+            self.tRNAs_plus.append(seq.upper())
+        else:
+            self.tRNAs_minus.append(seq.upper())
+        # 生成组成表相关
+        self.fun_orgTable(new_name, len(seq), "", "", seq)
+        ##间隔区提取
+        self.refresh_pairwise_feature(new_name)
+        # 存tRNA基因名字
+        if name not in self.tRNA_names:
+            self.tRNA_names.append(name)
+
+    def sort_CDS(self):
+        list_pro = sorted(list(self.dict_pro.keys()))
+        previous = ''
+        seq_pro = []
+        trans_pro = []
+        seq_aa = []  # 存放读取的translation里面的AA序列
+        it = iter(list_pro)
+        table = CodonTable.ambiguous_dna_by_id[self.code_table]
+        while True:
+            try:
+                i = next(it)
+                gene = re.match('^[^>]+', i).group()
+                if gene == previous or previous == '':
+                    seq_pro.append(self.dict_pro[i])
+                    seq_aa.append(self.dict_AA[i])
+                    raw_sequence = self.dict_pro[i].split('\n')[1]
+                    trim_sequence = self.trim_ter(raw_sequence)
+                    try:
+                        protein = _translate_str(trim_sequence, table)
+                    except:
+                        protein = ""
+                    trans_pro.append(self.dict_pro[
+                        i].replace(raw_sequence, protein))
+                    previous = gene
+                if gene != previous:
+                    self.save2file("".join(seq_pro), previous, self.CDS_nuc_path)
+                    self.save2file("".join(seq_aa), previous, self.CDS_aa_path)
+                    self.save2file("".join(trans_pro), previous, self.CDS_TrsAA_path)
+                    seq_pro = []
+                    trans_pro = []
+                    seq_aa = []  # 存放读取的translation里面的AA序列
+                    seq_pro.append(self.dict_pro[i])
+                    seq_aa.append(self.dict_AA[i])
+                    raw_sequence = self.dict_pro[i].split('\n')[1]
+                    trim_sequence = self.trim_ter(raw_sequence)
+                    try:
+                        protein = _translate_str(trim_sequence, table)
+                    except:
+                        protein = ""
+                    trans_pro.append(self.dict_pro[
+                        i].replace(raw_sequence, protein))
+                    previous = gene
+            except StopIteration:
+                self.save2file("".join(seq_pro), previous, self.CDS_nuc_path)
+                self.save2file("".join(seq_aa), previous, self.CDS_aa_path)
+                self.save2file("".join(trans_pro), previous, self.CDS_TrsAA_path)
+                break
+
+    def sort_rRNA(self):
+        list_rRNA = sorted(list(self.dict_rRNA.keys()))
+        previous = ''
+        seq_rRNA = []
+        it = iter(list_rRNA)
+        while True:
+            try:
+                i = next(it)
+                gene = re.match('^[^>]+', i).group()
+                if gene == previous or previous == '':
+                    seq_rRNA.append(self.dict_rRNA[i])
+                    previous = gene
+                if gene != previous:
+                    self.save2file("".join(seq_rRNA), previous, self.rRNA_path)
+                    seq_rRNA = []
+                    seq_rRNA.append(self.dict_rRNA[i])
+                    previous = re.match('^[^>]+', i).group()
+            except StopIteration:
+                self.save2file("".join(seq_rRNA), previous, self.rRNA_path)
+                break
+
+    def sort_tRNA(self):
+        list_tRNA = sorted(list(self.dict_tRNA.keys()))
+        previous = ''
+        seq_tRNA = []
+        it = iter(list_tRNA)
+        while True:
+            try:
+                i = next(it)
+                gene = re.match('^[^>]+', i).group()
+                if gene == previous or previous == '':
+                    seq_tRNA.append(self.dict_tRNA[i])
+                    previous = gene
+                if gene != previous:
+                    self.save2file("".join(seq_tRNA), previous, self.tRNA_path)
+                    seq_tRNA = []
+                    seq_tRNA.append(self.dict_tRNA[i])
+                    previous = re.match('^[^>]+', i).group()
+            except StopIteration:
+                self.save2file("".join(seq_tRNA), previous, self.tRNA_path)
+                break
 
     def save2file(self, content, name, featurePath):
         name = self.factory.refineName(name, remain_words=".-", limit=(254-len(featurePath)))  # 替换名字里面的不识别符号
@@ -2472,7 +3607,7 @@ class GBextract(object):
     def save_each_feature(self, dict_gene_fas, featurePath, base, proportion):
         list_gene_fas = sorted(list(dict_gene_fas.keys()))
         previous = ''
-        gene_seq = ''
+        gene_seq = []
         # 避免报错
         gene = ""
         it = iter(list_gene_fas)
@@ -2485,15 +3620,15 @@ class GBextract(object):
                 i = next(it)
                 gene = re.match('^[^>]+', i).group()
                 if gene == previous or previous == '':
-                    gene_seq += dict_gene_fas[i]
+                    gene_seq.append(dict_gene_fas[i])
                     previous = gene
                 if gene != previous:
-                    self.save2file(gene_seq, previous, featurePath)
-                    gene_seq = ''
-                    gene_seq += dict_gene_fas[i]
+                    self.save2file("".join(gene_seq), previous, featurePath)
+                    gene_seq = []
+                    gene_seq.append(dict_gene_fas[i])
                     previous = re.match('^[^>]+', i).group()
             except StopIteration:
-                self.save2file(gene_seq, gene, featurePath)
+                self.save2file("".join(gene_seq), gene, featurePath)
                 num += 1
                 self.progressSig.emit(base + num * proportion / total)
                 break
@@ -2501,13 +3636,32 @@ class GBextract(object):
         self.progressSig.emit(base + num * proportion / total)
         return base + proportion
 
-    def gene_sort_save(self):
-        # open(r"C:\Users\Administrator\Desktop\dict.txt", "w").write(str(self.dict_feature_fas))
+    def gene_sort_save(self, progress):
+        if self.dict_pro:
+            self.CDS_nuc_path = self.factory.creat_dirs(self.exportPath + os.sep + "CDS_NUC")
+            self.CDS_aa_path = self.factory.creat_dirs(self.exportPath + os.sep + "CDS_AA")
+            self.CDS_TrsAA_path = self.factory.creat_dirs(self.exportPath + os.sep + "self-translated_AA")
+            self.sort_CDS()
+        self.progressSig.emit(0.86*progress)
+        if self.dict_rRNA:
+            self.rRNA_path = self.factory.creat_dirs(self.exportPath + os.sep + "rRNA")
+            self.sort_rRNA()
+        self.progressSig.emit(0.92*progress)
+        if self.dict_tRNA:
+            self.tRNA_path = self.factory.creat_dirs(self.exportPath + os.sep + "tRNA")
+            self.sort_tRNA()
+        self.progressSig.emit(0.97*progress)
+        keys = list(self.dict_feature_fas.keys())
+        # 只保留有效值
+        for i in keys:
+            if not self.dict_feature_fas[i]:
+                del self.dict_feature_fas[i]
         total = len(self.dict_feature_fas)
         if not total:
+            self.progressSig.emit(progress)
             return
-        base = 75
-        proportion = 20 / total
+        base = 0.97*progress
+        proportion = 3 / total
         for feature in self.dict_feature_fas:
             feature_fas = self.dict_feature_fas[feature]
             if not feature_fas:
@@ -2519,76 +3673,103 @@ class GBextract(object):
     def saveItolFiles(self):
         itolPath = self.factory.creat_dirs(self.exportPath + os.sep + 'itolFiles')
         list_name = sorted(list(self.dict_itol_name.keys()))
-        itol_labels = 'LABELS\nSEPARATOR COMMA\nDATA\n'
-        itol_ori_labels = itol_labels
-        itol_gb_labels = itol_labels
+        itol_labels = ['LABELS\nSEPARATOR COMMA\nDATA\n']
+        itol_ori_labels = itol_labels[:]
+        itol_gb_labels = itol_labels[:]
         for i in list_name:
-            itol_labels += i + ',' + self.dict_itol_name[i] + '\n'
-            itol_ori_labels += i + "," + i + "\n"
-            itol_gb_labels += i + ',' + self.dict_itol_gb[i] + '\n'
+            itol_labels.append(i + ',' + self.dict_itol_name[i] + '\n')
+            itol_ori_labels.append(i + "," + i + "\n")
+            itol_gb_labels.append(i + ',' + self.dict_itol_gb[i] + '\n')
         with open(itolPath + os.sep + 'itol_labels.txt', 'w', encoding="utf-8") as f:
-            f.write(itol_labels)
+            f.write("".join(itol_labels))
         with open(itolPath + os.sep + 'itol_ori_labels.txt', 'w', encoding="utf-8") as f:
-            f.write(itol_ori_labels)
+            f.write("".join(itol_ori_labels))
         with open(itolPath + os.sep + 'itol_gb_labels.txt', 'w', encoding="utf-8") as f:
-            f.write(itol_gb_labels)
+            f.write("".join(itol_gb_labels))
         with open(itolPath + os.sep + 'itolAT.txt', 'w', encoding="utf-8") as f2:
-            f2.write(self.itolAT)
+            f2.write("".join(self.itolAT))
         with open(itolPath + os.sep + 'itolGCskew.txt', 'w', encoding="utf-8") as f2:
-            f2.write(self.itolGCskew)
+            f2.write("".join(self.itolGCskew))
         with open(itolPath + os.sep + 'itolLength.txt', 'w', encoding="utf-8") as f3:
-            f3.write(self.itolLength)
+            f3.write("".join(self.itolLength))
         with open(itolPath + os.sep + 'itolLength_stack.txt', 'w', encoding="utf-8") as f4:
-            f4.write(self.itolLength_stack)
+            f4.write("".join(self.itolLength_stack))
         # colour
         for lineage in self.included_lineages:
             for num, item in enumerate(
                     ["Colour", "Text", "ColourStrip", "ColourRange"]):
                 name = "itol_%s_%s" % (lineage, item)
                 with open(itolPath + os.sep + '%s.txt' % name, 'w', encoding="utf-8") as f5:
-                    f5.write(self.dict_itol_info[name])
-        self.progressSig.emit(100)
+                    f5.write("".join(self.dict_itol_info[name]))
+        # gene order
+        if not self.dict_args["extract_entire_seq"]:
+            itolPath = self.factory.creat_dirs(self.exportPath + os.sep + 'itolFiles')
+            self.dict_args["PCGs names"] = self.PCGs_names
+            self.dict_args["rRNAs names"] = self.rRNA_names
+            self.dict_args["tRNAs names"] = self.tRNA_names
+            self.dict_args["NCR names"] = ["NCR"]
+            order2itol = Order2itol(self.dict_order, self.dict_args)
+            with open(itolPath + os.sep + 'itol_gene_order.txt', 'w', encoding="utf-8") as f1:
+                f1.write(order2itol.itol_gene_order)
 
-    # def saveGeneralFile(self):
-    #     if self.absence != '="ID",Organism,Feature,Strand,Start,Stop\n':
-    #         gfilePath = self.factory.creat_dirs(self.exportPath + os.sep + 'files')
-    #         with open(gfilePath + os.sep + 'feature_unrecognized.csv', 'w', encoding="utf-8") as f4:
-    #             f4.write(self.absence)
-    #     if self.unextract_name != "This is the list of names not included in the 'Names unification' table\n=\"ID\",Organism,Feature,Name,Strand,Start,Stop\n":
-    #         gfilePath = self.factory.creat_dirs(self.exportPath + os.sep + 'files')
-    #         with open(gfilePath + os.sep + 'name_not_included.csv', 'w', encoding="utf-8") as f4:
-    #             f4.write(self.unextract_name)
+    def generateGeneStat(self, dict_gene_stat):
+        list_all = []
+        list_genes = sorted(dict_gene_stat.keys())
+        for gene in list_genes:
+            list_ = [gene]
+            for species in self.list_used_names:
+                list_.append(dict_gene_stat[gene].get(species, "N/A"))
+            if (len(set(list_[1:])) == 1) and list(set(list_[1:]))[0] == "N/A":
+                continue
+            list_all.append(list_)
+        return list_all
 
     def saveStatFile(self):
+        if self.dict_args["extract_entire_seq"]:
+            return
         # self.factory.creat_dirs(self.exportPath + os.sep + 'rRNA')
         # self.factory.creat_dirs(self.exportPath + os.sep + 'tRNA')
         statFilePath = self.factory.creat_dirs(self.exportPath + os.sep + 'StatFiles')
         # allStat = self.fetchAllStatTable()
         # with open(statFilePath + os.sep + 'used_species.csv', 'w', encoding="utf-8") as f4:
         #     f4.write(allStat)
-        with open(statFilePath + os.sep + 'species_info.csv', 'w', encoding="utf-8") as f4:
-            if (self.dict_args["seq type"] == "Mitogenome") and (not self.dict_args["extract_entire_seq"]):
-                f4.write(self.species_info + "+: major strand; -: minus strand\n")
-            else:
-                f4.write(self.species_info)
+        if (self.dict_args["seq type"] == "Mitogenome") and (not self.dict_args["extract_entire_seq"]):
+            self.factory.write_csv_file(statFilePath + os.sep + 'species_info.csv',
+                                        self.species_info +
+                                        ([["+: sequences on major strand; -: sequences on minus strand\n"]]
+                                        if self.dict_args["analyze + sequence"] or self.dict_args["analyze - sequence"]
+                                        else []),
+                                        None,
+                                        silence=True)
+        else:
+            self.factory.write_csv_file(statFilePath + os.sep + 'species_info.csv',
+                                        self.species_info,
+                                        None,
+                                        silence=True)
         with open(statFilePath + os.sep + 'taxonomy.csv', 'w', encoding="utf-8") as f5:
-            f5.write(self.taxonomy_infos)
-        if self.dict_args["extract_entire_seq"]:
-            return
+            f5.write("".join(self.taxonomy_infos))
+        # if self.dict_args["extract_entire_seq"]:
+        #     return
         ##名字及其替换后的名字
+        name_replace = "Old Name\tNew Name\n" + "\n".join(
+            ["\t".join([i] + [self.dict_name_replace[i]])
+             for i in self.dict_name_replace])
+        with open(statFilePath + os.sep + 'name_for_unification.tsv', 'w', encoding="utf-8") as f4:
+            f4.write(name_replace)
+        # csv格式的
         name_replace = "Old Name,New Name\n" + "\n".join(
-            [",".join([i, self.dict_name_replace[i]]) for i in self.dict_name_replace])
+            [",".join([i] + [self.dict_name_replace[i]])
+             for i in self.dict_name_replace])
         with open(statFilePath + os.sep + 'name_for_unification.csv', 'w', encoding="utf-8") as f4:
             f4.write(name_replace)
         # if self.absence != '="ID",Organism,Feature,Strand,Start,Stop\n':
         #     # gfilePath = self.factory.creat_dirs(self.exportPath + os.sep + 'files')
         #     with open(statFilePath + os.sep + 'feature_unrecognized.csv', 'w', encoding="utf-8") as f4:
         #         f4.write(self.absence)
-        if self.unextract_name != "This is the list of names not included in the 'Names unification' table\n" \
-                                  "=\"ID\",Organism,Feature,Name,Strand,Start,Stop\n":
+        if len(self.unextract_name) > 1:
             # gfilePath = self.factory.creat_dirs(self.exportPath + os.sep + 'files')
             with open(statFilePath + os.sep + 'name_not_included.csv', 'w', encoding="utf-8") as f4:
-                f4.write(self.unextract_name)
+                f4.write("\n".join(self.unextract_name))
         ##NCR和overlap的统计
         ncr_path = self.exportPath + os.sep + 'intergenic_regions'
         ovlap_path = self.exportPath + os.sep + 'overlapping_regions'
@@ -2627,14 +3808,178 @@ class GBextract(object):
         # if self.none_feature_IDs != '="ID",\n':
         #     with open(statFilePath + os.sep + 'ID_with_no_features.csv', 'w', encoding="utf-8") as f4:
         #         f4.write(self.none_feature_IDs)
+        statFilePath = self.factory.creat_dirs(self.exportPath + os.sep + 'StatFiles')
+        # 生成speciesStat文件夹
+        speciesStatPath = self.factory.creat_dirs(statFilePath + os.sep + 'speciesStat')
+        if self.dict_pro:
+            ## 如果有CDS序列再执行
+            # 生成CDS文件夹
+            CDSpath = self.factory.creat_dirs(statFilePath + os.sep + 'CDS')
+            # skewness
+            if (self.dict_args["analyze 1st codon"] and
+                    self.dict_args["analyze 2nd codon"] and
+                    self.dict_args["analyze 3rd codon"]):
+                with open(CDSpath + os.sep + 'PCGsCodonSkew.csv', 'w', encoding="utf-8") as f4:
+                    f4.write("".join(self.PCGsCodonSkew))
+            if self.dict_args["analyze 1st codon"]:
+                with open(CDSpath + os.sep + 'firstCodonSkew.csv', 'w', encoding="utf-8") as f5:
+                    f5.write("".join(self.firstCodonSkew))
+            if self.dict_args["analyze 2nd codon"]:
+                with open(CDSpath + os.sep + 'secondCodonSkew.csv', 'w', encoding="utf-8") as f6:
+                    f6.write("".join(self.secondCodonSkew))
+            if self.dict_args["analyze 3rd codon"]:
+                with open(CDSpath + os.sep + 'thirdCodonSkew.csv', 'w', encoding="utf-8") as f7:
+                    f7.write("".join(self.thirdCodonSkew))
+            if self.dict_args["analyze 1st codon"] and self.dict_args["analyze 2nd codon"]:
+                with open(CDSpath + os.sep + 'firstSecondCodonSkew.csv', 'w', encoding="utf-8") as f8:
+                    f8.write("".join(self.firstSecondCodonSkew))
+            # # 生成密码子偏倚统计
+            if self.dict_args["cal_codon_bias"]:
+                with open(CDSpath + os.sep + 'codon_bias.csv', 'w', encoding="utf-8") as f11:
+                    f11.write("".join(self.codon_bias))
+            if self.dict_args["analyze RSCU"]:
+                # 生成RSCU文件夹
+                RSCUpath = self.factory.creat_dirs(statFilePath + os.sep + 'RSCU')
+                # RSCU  PCA# 生成PCA用的统计表
+                title_rscu = [",".join(self.dict_all_spe_RSCU.pop("title")) + "\n"]
+                title_rscu.extend([j + "," + ",".join(self.dict_all_spe_RSCU[j]) + "\n"
+                                                                for j in self.dict_all_spe_RSCU])
+                # for j in self.dict_all_spe_RSCU:
+                #     title_rscu += j + "," + \
+                #                   ",".join(self.dict_all_spe_RSCU[j]) + "\n"
+                # 生成文件
+                with open(RSCUpath + os.sep + "all_rscu_stat.csv", "w", encoding="utf-8") as f:
+                    f.write("".join(title_rscu))
+                # COUNT codon PCA# 生成PCA用的统计表
+                title_codon_count = [",".join(self.dict_all_codon_COUNT.pop(
+                    "title")) + "\n"]
+                title_codon_count.extend([j + "," + ",".join(self.dict_all_codon_COUNT[j]) + "\n"
+                                          for j in self.dict_all_codon_COUNT])
+                # for j in self.dict_all_codon_COUNT:
+                #     title_codon_count += j + "," + \
+                #                          ",".join(self.dict_all_codon_COUNT[j]) + "\n"
+                # 生成文件
+                with open(RSCUpath + os.sep + "all_codon_count_stat.csv", "w", encoding="utf-8") as f:
+                    f.write("".join(title_codon_count))
+                # COUNT aa PCA# 生成PCA用的统计表
+                title_AA_count = [",".join(self.dict_all_AA_COUNT.pop(
+                    "title")) + "\n"]
+                title_AA_count.extend([j + "," + ",".join(self.dict_all_AA_COUNT[j]) + "\n"
+                                       for j in self.dict_all_AA_COUNT])
+                # for j in self.dict_all_AA_COUNT:
+                #     title_AA_count += j + "," + \
+                #                       ",".join(self.dict_all_AA_COUNT[j]) + "\n"
+                # 生成文件
+                with open(RSCUpath + os.sep + "all_AA_count_stat.csv", "w", encoding="utf-8") as f:
+                    f.write("".join(title_AA_count))
+                # ratio aa PCA# 生成PCA用的统计表
+                title_AA_ratio = [",".join(self.dict_all_AA_RATIO.pop(
+                    "title")) + "\n"]
+                title_AA_ratio.extend([j + "," + ",".join(self.dict_all_AA_RATIO[j]) + "\n"
+                                       for j in self.dict_all_AA_RATIO])
+                # for j in self.dict_all_AA_RATIO:
+                #     title_AA_ratio += j + "," + \
+                #                       ",".join(self.dict_all_AA_RATIO[j]) + "\n"
+                # 生成文件
+                with open(RSCUpath + os.sep + "all_AA_ratio_stat.csv", "w", encoding="utf-8") as f:
+                    f.write("".join(title_AA_ratio))
+                # 生成AA stack的文件
+                title_aa_stack = [",".join(self.dict_AA_stack.pop(
+                                    "title")) + "\n"]
+                title_aa_stack.extend([self.dict_AA_stack[k] for k in self.dict_AA_stack])
+                # for k in self.dict_AA_stack:
+                #     title_aa_stack += self.dict_AA_stack[k]
+                with open(RSCUpath + os.sep + "all_AA_stack.csv", "w", encoding="utf-8") as f:
+                    f.write("".join(title_aa_stack))
+        # 统计单个物种
+        for j in self.dict_spe_stat:
+            file_name = self.dict_ID_treeName.get(j, j)
+            if j in self.dict_spe_stat:
+                with open(speciesStatPath + os.sep + file_name + '.csv', 'w', encoding="utf-8") as f:
+                    f.write(self.dict_spe_stat[j])
+            if j in self.dict_orgTable:
+                with open(speciesStatPath + os.sep + file_name + '_org.csv', 'w', encoding="utf-8") as f:
+                    f.write("".join(self.dict_orgTable[j]))
+            if self.dict_pro and self.dict_args["analyze RSCU"]:
+                if j in self.dict_AAusage:
+                    with open(RSCUpath + os.sep + file_name + '_AA_usage.csv', 'w', encoding="utf-8") as f:
+                        f.write(self.dict_AAusage[j])
+                if j in self.dict_RSCU:
+                    with open(RSCUpath + os.sep + file_name + '_RSCU.csv', 'w', encoding="utf-8") as f:
+                        f.write(self.dict_RSCU[j])
+                if j in self.dict_RSCU_stack:
+                    with open(RSCUpath + os.sep + file_name + '_RSCU_stack.csv', 'w', encoding="utf-8") as f:
+                        f.write(self.dict_RSCU_stack[j])
+        list_start = self.generateGeneStat(self.dict_start)
+        list_stop = self.generateGeneStat(self.dict_stop)
+        list_PCGs = self.generateGeneStat(self.dict_PCG)
+        list_RNA = self.generateGeneStat(self.dict_RNA)
+        list_ATskew = self.generateGeneStat(self.dict_gene_ATskews)
+        list_GCskew = self.generateGeneStat(self.dict_gene_GCskews)
+        list_ATCont = self.generateGeneStat(self.dict_gene_ATCont)
+        list_GCCont = self.generateGeneStat(self.dict_gene_GCCont)
+        list_abbre = self.assignAbbre(self.list_name_gb)
+        header_taxonomy, footnote = self.geneStatSlot(list_abbre)
+        headers = ['Species'] + list_abbre
+        prefix_PCG = ['Length of PCGs (bp)']
+        prefix_rRNA = ['Length of rRNA genes (bp)']
+        prefix_ini = ['Putative start codon']
+        prefix_ter = ['Putative terminal codon']
+        prefix_ATskew = ['AT skew']
+        prefix_GCskew = ['GC skew']
+        prefix_ATCont = ['AT content']
+        prefix_GCCont = ['GC content']
+        array = header_taxonomy + \
+                [headers] + \
+                ([prefix_PCG] if list_PCGs else []) + \
+                list_PCGs + \
+                ([prefix_rRNA] if list_RNA else []) + \
+                list_RNA + \
+                ([prefix_ini] if list_start else []) + \
+                list_start + \
+                ([prefix_ter] if list_stop else []) + \
+                list_stop + \
+                ([prefix_ATskew] if list_ATskew else []) + \
+                list_ATskew + \
+                ([prefix_GCskew] if list_GCskew else []) + \
+                list_GCskew + \
+                ([prefix_ATCont] if list_ATCont else []) + \
+                list_ATCont + \
+                ([prefix_GCCont] if list_GCCont else []) + \
+                list_GCCont + \
+                [["N/A: Not Available; tRNAs: concatenated tRNA genes; rRNAs: concatenated rRNA genes;"
+                 " +: major strand; -: minus strand"]] + \
+                footnote
+        self.factory.write_csv_file(statFilePath + os.sep + 'geneStat.csv',
+                                    array,
+                                    None,
+                                    silence=True)
+        with open(statFilePath + os.sep + 'gbAccNum.csv', 'w', encoding="utf-8") as f8:
+            f8.write("\n".join(self.name_gb))
+        # # ncr统计
+        # self.ncr_stat_fun()
+        # with open(statFilePath + os.sep + 'ncrStat.csv', 'w', encoding="utf-8") as f9:
+        #     f9.write(self.ncrInfo)
+        allStat = self.fetchAllStatTable()
+        with open(statFilePath + os.sep + 'used_species.csv', 'w', encoding="utf-8") as f4:
+            f4.write(allStat)
+        # 生成画图所需原始数据
+        with open(statFilePath + os.sep + 'data_for_plot.csv', 'w', encoding="utf-8") as f11:
+            f11.write("".join(self.line_spe_stat))
+        # 删除ENC的中间文件
+        try:
+            for file in ["codonW_infile.fas", "codonW_outfile.txt", "codonW_blk.txt"]:
+                os.remove(self.exportPath + os.sep + file)
+        except:
+            pass
 
     def saveGeneralFile(self):
         # overview表
-        overview = "Extraction overview:\n\nVisit here to see how to customize the extraction: " \
+        overview = ["Extraction overview:\n\nVisit here to see how to customize the extraction: " \
                    "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/ or " \
-                   "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/ (China)\n\n"
+                   "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/customize_extraction/ (China)\n\n"]
         ## species in total
-        overview += "%d species in total\n\n" % self.totleID
+        overview.append("%d species in total\n\n" % self.totleID)
         list_ = []
         for k in self.dict_qualifiers:
             try:
@@ -2643,20 +3988,21 @@ class GBextract(object):
             except:
                 pass
         included_features = self.included_features if self.included_features != "All" else ["All"]
-        overview += "Data type setting used to extract: %s\n  included features: %s\n" \
+        overview.append("Data type setting used to extract: %s\n  included features: %s\n" \
                     "  qualifiers of each feature: %s\n\n" % (self.dict_args["seq type"],
-                                                     " & ".join(included_features), " | ".join(list_))
-        overview += "Features found in sequences: %s\n\n" % " & ".join(self.list_features)
-        # overview += "Features set to extract: %s\n\n" % ", ".join(self.included_features)
+                                                     " & ".join(included_features), " | ".join(list_)))
+        overview.append("Features found in sequences: %s\n\n" % " & ".join(self.list_features))
+        # overview.append("Features set to extract: %s\n\n" % ", ".join(self.included_features))
         ###
-        if self.absence != '="ID",Organism,Feature,Strand,Start,Stop\n':
-            overview += "Qualifiers set in the settings were not found in these features:\n %s\n" % self.absence.replace('="ID"', "ID")
+        if len(self.absence) > 1:
+            overview.append("Qualifiers set in the settings were not found in these features:\n %s\n" % \
+                        "\n".join(self.absence).replace('="ID"', "ID"))
         ###
         if self.list_none_feature_IDs:
-            overview += "Features (%s) set in the settings were not found in these species: %s\n\n" %(" & ".join(included_features), " & ".join(
-                self.list_none_feature_IDs))
+            overview.append("Features (%s) set in the settings were not found in these species: %s\n\n" %(" & ".join(included_features), " & ".join(
+                self.list_none_feature_IDs)))
         if self.source_feature_IDs:
-            overview += "No features could be found in these IDs: %s\n\n" % " | ".join(self.source_feature_IDs)
+            overview.append("No features could be found in these IDs: %s\n\n" % " | ".join(self.source_feature_IDs))
         ##基因情况
         sorted_keys = sorted(self.dict_gene_names.keys())
         # gene_names = ",".join(["Genes"] + self.list_used_names) + "\n"
@@ -2669,7 +4015,7 @@ class GBextract(object):
         #             list_states.append("no")
         #     gene_names += ",".join([i] + list_states) + "\n"
         # overview += "Genes found in species:\n %s\n\n" % gene_names
-        name_genes = ",".join(["Species"] + sorted_keys) + "\n"
+        name_genes = [["Species"] + sorted_keys]
         for i in self.list_used_names:
             list_states = []
             for j in sorted_keys:
@@ -2677,23 +4023,59 @@ class GBextract(object):
                     list_states.append("yes")
                 else:
                     list_states.append("no")
-            name_genes += ",".join([i] + list_states) + "\n"
-        overview += "Genes found in species:\n %s\n\n" % name_genes
+            name_genes.append([i] + list_states)
+
+        overview.append("Genes found in species:\n %s\n\n" % "\n".join([",".join(i) for i in name_genes]))
         with open(self.exportPath + os.sep + 'overview.csv', 'w', encoding="utf-8") as f4:
-            f4.write(overview)
+            f4.write("".join(overview))
+
+        filesPath = self.factory.creat_dirs(self.exportPath + os.sep + 'files')
+        with open(filesPath + os.sep + 'linear_order.txt', 'w', encoding="utf-8") as f:
+            t = "\t"
+            linear_order = "\n".join([f">{species}\n{t.join(self.dict_order[species])}"
+                                      for species in self.dict_order])
+            f.write(linear_order)
+        with open(filesPath + os.sep + 'complete_seq.fas', 'w', encoding="utf-8") as f:
+            f.write("".join(self.complete_seq))
+        if self.PCG_seq:
+            with open(filesPath + os.sep + 'PCG_seqs.fas', 'w', encoding="utf-8") as f6:
+                f6.write("".join(self.PCG_seq))
+        if self.tRNA_seqs:
+            with open(filesPath + os.sep + 'tRNA_seqs.fas', 'w', encoding="utf-8") as f7:
+                f7.write("".join(self.tRNA_seqs))
+        if self.rRNA_seqs:
+            with open(filesPath + os.sep + 'rRNA_seqs.fas', 'w', encoding="utf-8") as f8:
+                f8.write("".join(self.rRNA_seqs))
+        # genome fas
+        for spe in self.gb2fas:
+            gb2fas_path = self.factory.creat_dirs(filesPath + os.sep + "gb2fas")
+            with open(gb2fas_path + os.sep + f'{spe}.fas', 'w', encoding="utf-8") as f9:
+                f9.write(self.gb2fas[spe])
+        # if self.PCGs_names:
+        #     import pickle
+        #     with open('PCGs_names.pkl', 'wb') as f:
+        #         pickle.dump(self.PCGs_names, f)
+        # if self.tRNA_names:
+        #     import pickle
+        #     with open('tRNA_names.pkl', 'wb') as f:
+        #         pickle.dump(self.tRNA_names, f)
+        # if self.rRNA_names:
+        #     import pickle
+        #     with open('rRNA_names.pkl', 'wb') as f:
+        #         pickle.dump(self.rRNA_names, f)
 
     def compareLineage(self, lineage1, lineage2, list_stat):
-        string = ""
+        string = []
         for num, i in enumerate(lineage1):
             if i != lineage2[num]:  # 出现不一致的分类阶元
-                string += num * "    " + i + "\n"
+                string.append(num * "    " + i + "\n")
         if lineage1[-1] == lineage2[-1]:  # 同一个物种，不同登录号
-            string += num * "    " + i + "\n"
-        string = string.strip("\n") + "," + ",".join(list_stat) + "\n"
+            string.append(num * "    " + i + "\n")
+        string = "".join(string).strip("\n") + "," + ",".join(list_stat) + "\n"
         return string
 
     def fetchAllStatTable(self):
-        allStat = "Taxon,Accession number,Size(bp),AT%,AT-Skew,GC-Skew\n"
+        allStat = ["Taxon,Accession number,Size(bp),AT%,AT-Skew,GC-Skew\n"]
         list_dict_sorted = sorted(list(self.dict_all_stat.keys()))
         lineage_count = len(self.included_lineages) + 1
         last_lineage = [1] * lineage_count
@@ -2701,9 +4083,9 @@ class GBextract(object):
             lineage1 = self.dict_all_stat[i][:lineage_count]
             content = self.compareLineage(
                 lineage1, last_lineage, self.dict_all_stat[i][lineage_count:])
-            allStat += content
+            allStat.append(content)
             last_lineage = lineage1
-        return allStat
+        return "".join(allStat)
 
     def check_records(self, features):
         if len(features) == 1 and features[0].type == "source":
@@ -2771,173 +4153,41 @@ class GBextract(object):
         except:
             pass
 
-
-class GBextract_MT(GBextract, object):
-    def __init__(self, **dict_args):
-        super(GBextract_MT, self).__init__(**dict_args)
-
-    def init_args_all(self):
-        super(GBextract_MT, self).init_args_all()
-        self.dict_pro = {}
-        self.dict_AA = OrderedDict()
-        self.dict_rRNA = {}
-        self.dict_tRNA = {}
-        self.dict_name = {}
-        self.dict_gb = {}
-        self.dict_start = {}
-        self.dict_stop = {}
-        self.dict_PCG = {}
-        self.dict_RNA = {}
-        # self.dict_geom = {}
-        self.dict_spe_stat = {}
-        self.list_name_gb = []
-        self.linear_order = ''
-        self.complete_seq = ''
-        self.list_PCGs = [
-            'cox1',
-            'cox2',
-            'nad6',
-            'nad5',
-            'cox3',
-            'cytb',
-            'nad4L',
-            'nad4',
-            'atp6',
-            'nad2',
-            'nad1',
-            'nad3',
-            'atp8',
-            'rrnS',
-            'rrnL']
-        self.dict_unify_mtname = {
-            'COX1': 'cox1',
-            'COX2': 'cox2',
-            'NAD6': 'nad6',
-            'NAD5': 'nad5',
-            'COX3': 'cox3',
-            'CYTB': 'cytb',
-            'NAD4L': 'nad4L',
-            'NAD4': 'nad4',
-            'ATP6': 'atp6',
-            'NAD2': 'nad2',
-            'NAD1': 'nad1',
-            'NAD3': 'nad3',
-            'ATP8': 'atp8',
-            'RRNS': 'rrnS',
-            'RRNL': 'rrnL'
-        }
-        self.dict_geom_seq = {}
-        self.name_gb = "Species name,Accession number\n"  # 名字和gb num对照表
-        # 有物种没有解析成功，保存在这里
-        # self.dict_igs = OrderedDict()  # 存放基因间隔区的序列
-        # self.ncr_stat = OrderedDict()
-        # 保存没有注释好的L和S
-        self.leu_ser = ""
-        #         skewness
-        self.PCGsCodonSkew = "species,Strand,AT skew,GC skew," + \
-                             ",".join(self.included_lineages) + "\n"
-        self.firstCodonSkew = "species,Strand,AT skew,GC skew," + \
-                              ",".join(self.included_lineages) + "\n"
-        self.secondCodonSkew = "species,Strand,AT skew,GC skew," + \
-                               ",".join(self.included_lineages) + "\n"
-        self.thirdCodonSkew = "species,Strand,AT skew,GC skew," + \
-                              ",".join(self.included_lineages) + "\n"
-        #         统计图
-        self.dict_all_stat = OrderedDict()
-        #         PCG的串联序列
-        self.PCG_seq = ""
-        self.tRNA_seqs = ""
-        self.rRNA_seqs = ""
-        #         新增统计物种组成表功能
-        self.dict_orgTable = OrderedDict()
-        # 新增RSCU相关
-        self.dict_RSCU = OrderedDict()  # RSCU table
-        self.dict_RSCU_stack = OrderedDict()
-        self.dict_AAusage = OrderedDict()
-        self.dict_all_spe_RSCU = OrderedDict()
-        self.dict_all_spe_RSCU["title"] = "codon,"
-        self.dict_all_codon_COUNT = OrderedDict()
-        self.dict_all_codon_COUNT["title"] = "codon,"
-        self.dict_all_AA_RATIO = OrderedDict()
-        self.dict_all_AA_RATIO["title"] = "AA,"
-        self.dict_all_AA_COUNT = OrderedDict()
-        self.dict_all_AA_COUNT["title"] = "AA,"
-        self.dict_AA_stack = OrderedDict()
-        self.dict_AA_stack["title"] = "species,aa,ratio"
-        self.species_info = '="ID",Organism,Tree_Name,{},Full length (bp),A (%) (+),T (%) (+),C (%) (+),G (%) (+),A+T (%) (+),' \
-                            'G+C (%) (+),AT skew (+),GC skew (+),AT skew (-),GC skew (-),GC skew (plus strand coding)\n'.format(
-                            ",".join(self.included_lineages))
-        # 新增折线图的绘制
-        self.line_spe_stat = "Regions,Strand,Size (bp),T(U),C,A,G,AT(%),GC(%),GT(%),AT skewness,GC skewness,Species," + ",".join(
-            list(reversed(self.included_lineages))) + "\n"
-        # 密码子偏倚分析
-        self.codon_bias = "Genes,GC1,GC2,GC12,GC3,CAI,CBI,Fop,ENC,L_sym,L_aa,Gravy,Aromo,Species," + ",".join(
-            list(reversed(self.included_lineages))) + "\n"
-        # self.all_taxonmy = "Species," + \
-        #                    ",".join(list(reversed(self.included_lineages))) + "\n"
-        self.list_all_taxonmy = []  # [[genus1, family1], [genus2, family2]]
-        # {NC_029245:Hymenolepis nana}
-        self.dict_gb_latin = OrderedDict()
-        self.dict_gene_ATskews = {}
-        self.dict_gene_GCskews = {}
-        self.dict_gene_ATCont = {}
-        self.dict_gene_GCCont = {}
-
-    def init_args_each(self):
-        # self.PCGs = ''
-        self.PCGs_strim = '' #去除不标准的终止密码子的
-        self.PCGs_strim_plus = ""
-        self.PCGs_strim_minus = ""
-        self.tRNAs = ''
-        self.tRNAs_plus = ""
-        self.tRNAs_minus = ""
-        self.rRNAs = ""
-        self.rRNAs_plus = ""
-        self.rRNAs_minus = ""
-        self.dict_genes = {}
-        self.dict_geom_seq[self.ID] = self.str_seq
-        self.list_name_gb.append((self.organism, self.ID))
-        self.name_gb += self.organism + "," + self.ID + "\n"
-        # self.igs = ""
-        # self.NCR = ''
-        # 刷新这个table
-        self.orgTable = '''Gene,Position,,Size,Intergenic nucleotides,Codon,,\n,From,To,,,Start,Stop,Strand,Sequence\n'''
-        self.lastEndIndex = 0
-        self.overlap, self.gap = 0, 0
-        self.dict_repeat_name_num = OrderedDict()
-
-    def parseSource(self):
-        super(GBextract_MT, self).parseSource()
-        list_taxonmy = list(reversed(self.list_lineages))
-        self.list_all_taxonmy.append(list_taxonmy)
-        self.taxonmy = ",".join(
-            [self.organism] + list_taxonmy)
-        # self.all_taxonmy += self.taxonmy + "\n"
-        self.gene_order = '>' + self.usedName + '\n'
-        self.complete_seq += '>' + self.usedName + '\n' + self.str_seq + '\n'
-
-    def parseFeature(self):
-        new_name = self.fetchGeneName()
-        if not new_name:
-            return
-        seq = str(self.feature.extract(self.seq))
-        feature_name = "CDS_NUC" if self.feature_type.upper() == "CDS" else self.feature_type
-        self.dict_feature_fas.setdefault(feature_name, OrderedDict())[new_name + '>' + self.organism + '_' +
-                                                 self.name] = '>' + self.usedName + '\n' + seq + '\n'
-        self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
-        if "translation" in self.qualifiers:
-            aa_seq = self.qualifiers["translation"][0]
-            self.dict_feature_fas.setdefault("CDS_AA", OrderedDict())[new_name + '>' + self.organism + '_' +
-                                                 self.name] = '>' + self.usedName + '\n' + aa_seq + '\n'
-        self.fun_orgTable(new_name, len(seq), "", "", seq)
-        if new_name.upper().startswith("NCR") and self.dict_args["NCRchecked"]:
-            self.gene_order += self.omit_strand + 'NCR '
-        ##间隔区提取
-        self.refresh_pairwise_feature(new_name)
+    def geneStatSlot(self, list_abbre):
+        zip_taxonmy = list(zip(
+            *self.list_all_taxonmy))  # [('Gyrodactylidae', 'Capsalidae', 'Ancyrocephalidae', 'Chauhaneidae'), ('Gyrodactylidea', 'Capsalidea', 'Dactylogyridea', 'Mazocraeidea'), ('Monogenea', 'Monogenea', 'Monogenea', 'Monogenea')]
+        lineage = list(reversed(self.included_lineages))
+        header_taxonmy = [[lineage[num]] + list(i) for num, i in enumerate(
+            zip_taxonmy)]  # [['Family', 'Gyrodactylidae', 'Capsalidae', 'Ancyrocephalidae'], ['Superfamily', 'Gyrodactylidea', 'Capsalidea', 'Dactylogyridea'], ['Class', 'Monogenea', 'Monogenea', 'Monogenea']]
+        # str_taxonmy = [lineage for lineage in header_taxonmy]
+        zip_name = list(zip(list_abbre, self.list_name_gb))
+        footnote = [[each_name[0] + ": " + " ".join(each_name[1])] for each_name in zip_name]
+        return header_taxonmy, footnote
 
     def stat_PCG_sub(self, seq, strand):
         seqStat = SeqGrab(seq)
         PCGs_stat = ",".join(['PCGs',
+                               strand,
+                               seqStat.size,
+                               seqStat.T_percent,
+                               seqStat.C_percent,
+                               seqStat.A_percent,
+                               seqStat.G_percent,
+                               seqStat.AT_percent,
+                               seqStat.GC_percent,
+                               seqStat.GT_percent,
+                               seqStat.AT_skew,
+                               seqStat.GC_skew]) + "\n"
+        self.PCGsCodonSkew.append(",".join([self.usedName,
+                                        self.organism,
+                                        strand,
+                                        seqStat.AT_skew,
+                                        seqStat.GC_skew] + self.list_lineages) + "\n")
+        first, second, third = seqStat.splitCodon()
+        if self.dict_args["analyze 1st codon"]:
+            seq = first
+            seqStat = SeqGrab(seq)
+            first_stat = ",".join(['1st codon position',
                                    strand,
                                    seqStat.size,
                                    seqStat.T_percent,
@@ -2949,95 +4199,97 @@ class GBextract_MT(GBextract, object):
                                    seqStat.GT_percent,
                                    seqStat.AT_skew,
                                    seqStat.GC_skew]) + "\n"
-        self.PCGsCodonSkew += ",".join([self.organism,
-                                        strand,
-                                        seqStat.AT_skew,
-                                        seqStat.GC_skew] + self.list_lineages) + "\n"
-        first, second, third = seqStat.splitCodon()
-        seq = first
-        seqStat = SeqGrab(seq)
-        first_stat = ",".join(['1st codon position',
-                               strand,
-                               seqStat.size,
-                               seqStat.T_percent,
-                               seqStat.C_percent,
-                               seqStat.A_percent,
-                               seqStat.G_percent,
-                               seqStat.AT_percent,
-                               seqStat.GC_percent,
-                               seqStat.GT_percent,
-                               seqStat.AT_skew,
-                               seqStat.GC_skew]) + "\n"
 
-        self.firstCodonSkew += ",".join([self.organism,
-                                         strand,
-                                         seqStat.AT_skew,
-                                         seqStat.GC_skew] + self.list_lineages) + "\n"
+            self.firstCodonSkew.append(",".join([self.usedName,
+                                             self.organism,
+                                             strand,
+                                             seqStat.AT_skew,
+                                             seqStat.GC_skew] + self.list_lineages) + "\n")
+        else:
+            first_stat = ""
 
-        seq = second
-        seqStat = SeqGrab(seq)
-        second_stat = ",".join(['2nd codon position',
-                                strand,
-                                seqStat.size,
-                                seqStat.T_percent,
-                                seqStat.C_percent,
-                                seqStat.A_percent,
-                                seqStat.G_percent,
-                                seqStat.AT_percent,
-                                seqStat.GC_percent,
-                                seqStat.GT_percent,
-                                seqStat.AT_skew,
-                                seqStat.GC_skew]) + "\n"
+        if self.dict_args["analyze 2nd codon"]:
+            seq = second
+            seqStat = SeqGrab(seq)
+            second_stat = ",".join(['2nd codon position',
+                                    strand,
+                                    seqStat.size,
+                                    seqStat.T_percent,
+                                    seqStat.C_percent,
+                                    seqStat.A_percent,
+                                    seqStat.G_percent,
+                                    seqStat.AT_percent,
+                                    seqStat.GC_percent,
+                                    seqStat.GT_percent,
+                                    seqStat.AT_skew,
+                                    seqStat.GC_skew]) + "\n"
 
-        self.secondCodonSkew += ",".join([self.organism,
-                                          strand,
-                                          seqStat.AT_skew,
-                                          seqStat.GC_skew] + self.list_lineages) + "\n"
+            self.secondCodonSkew.append(",".join([self.usedName,
+                                              self.organism,
+                                              strand,
+                                              seqStat.AT_skew,
+                                              seqStat.GC_skew] + self.list_lineages) + "\n")
+        else:
+            second_stat = ""
 
-        seq = third
-        seqStat = SeqGrab(seq)
-        third_stat = ",".join(['3rd codon position',
-                               strand,
-                               seqStat.size,
-                               seqStat.T_percent,
-                               seqStat.C_percent,
-                               seqStat.A_percent,
-                               seqStat.G_percent,
-                               seqStat.AT_percent,
-                               seqStat.GC_percent,
-                               seqStat.GT_percent,
-                               seqStat.AT_skew,
-                               seqStat.GC_skew]) + "\n"
+        if self.dict_args["analyze 3rd codon"]:
+            seq = third
+            seqStat = SeqGrab(seq)
+            third_stat = ",".join(['3rd codon position',
+                                   strand,
+                                   seqStat.size,
+                                   seqStat.T_percent,
+                                   seqStat.C_percent,
+                                   seqStat.A_percent,
+                                   seqStat.G_percent,
+                                   seqStat.AT_percent,
+                                   seqStat.GC_percent,
+                                   seqStat.GT_percent,
+                                   seqStat.AT_skew,
+                                   seqStat.GC_skew]) + "\n"
 
-        self.thirdCodonSkew += ",".join([self.organism,
-                                         strand,
-                                         seqStat.AT_skew,
-                                         seqStat.GC_skew] + self.list_lineages) + "\n"
+            self.thirdCodonSkew.append(",".join([self.usedName,
+                                             self.organism,
+                                             strand,
+                                             seqStat.AT_skew,
+                                             seqStat.GC_skew] + self.list_lineages) + "\n")
+        else:
+            third_stat = ""
+
+        if self.dict_args["analyze 1st codon"] and self.dict_args["analyze 2nd codon"]:
+            seq = first + second
+            seqStat = SeqGrab(seq)
+            firstSecond_stat = ",".join(['1st+2nd codon position',
+                                   strand,
+                                   seqStat.size,
+                                   seqStat.T_percent,
+                                   seqStat.C_percent,
+                                   seqStat.A_percent,
+                                   seqStat.G_percent,
+                                   seqStat.AT_percent,
+                                   seqStat.GC_percent,
+                                   seqStat.GT_percent,
+                                   seqStat.AT_skew,
+                                   seqStat.GC_skew]) + "\n"
+
+            self.firstSecondCodonSkew.append(",".join([self.usedName,
+                                             self.organism,
+                                             strand,
+                                             seqStat.AT_skew,
+                                             seqStat.GC_skew] + self.list_lineages) + "\n")
+        else:
+            firstSecond_stat = ""
         return [PCGs_stat, first_stat, second_stat, third_stat]
 
     def geneStat_sub(self, name, seqStat):
-        if seqStat == "N/A":
-            if name in self.dict_gene_ATskews:
-                self.dict_gene_ATskews[name] += ",N/A"
-                self.dict_gene_ATCont[name] += ",N/A"
-                self.dict_gene_GCskews[name] += ",N/A"
-                self.dict_gene_GCCont[name] += ",N/A"
-            else:
-                self.dict_gene_ATskews[name] = name + ",N/A"
-                self.dict_gene_ATCont[name] = name + ",N/A"
-                self.dict_gene_GCskews[name] = name + ",N/A"
-                self.dict_gene_GCCont[name] = name + ",N/A"
-        else:
-            if name in self.dict_gene_ATskews:
-                self.dict_gene_ATskews[name] += "," + seqStat.AT_skew
-                self.dict_gene_ATCont[name] += "," + seqStat.AT_percent
-                self.dict_gene_GCskews[name] += "," + seqStat.GC_skew
-                self.dict_gene_GCCont[name] += "," + seqStat.GC_percent
-            else:
-                self.dict_gene_ATskews[name] = name + "," + seqStat.AT_skew
-                self.dict_gene_ATCont[name] = name + "," + seqStat.AT_percent
-                self.dict_gene_GCskews[name] = name + "," + seqStat.GC_skew
-                self.dict_gene_GCCont[name] = name + "," + seqStat.GC_percent
+        self.dict_gene_ATskews.setdefault(name, {}).setdefault(self.usedName,
+                                                               seqStat.AT_skew if seqStat != "N/A" else "N/A")
+        self.dict_gene_ATCont.setdefault(name, {}).setdefault(self.usedName,
+                                                              seqStat.AT_percent if seqStat != "N/A" else "N/A")
+        self.dict_gene_GCskews.setdefault(name, {}).setdefault(self.usedName,
+                                                               seqStat.GC_skew if seqStat != "N/A" else "N/A")
+        self.dict_gene_GCCont.setdefault(name, {}).setdefault(self.usedName,
+                                                              seqStat.GC_percent if seqStat != "N/A" else "N/A")
 
     def stat_other_sub(self, seq, strand, flag):
         seqStat = SeqGrab(seq)
@@ -3056,815 +4308,6 @@ class GBextract_MT(GBextract, object):
         name = "%s(%s)"%(flag, strand)
         self.geneStat_sub(name, seqStat)
         return stat_
-
-    def gb_record_stat(self):
-        # 统计单个物种
-        list_genes = [
-            value for (key, value) in sorted(self.dict_genes.items())]
-        #         whole genome
-        seq = self.str_seq.upper()
-        seqStat = SeqGrab(seq)
-        geom_stat = ",".join(['Full genome',
-                              "+",
-                              seqStat.size,
-                              seqStat.T_percent,
-                              seqStat.C_percent,
-                              seqStat.A_percent,
-                              seqStat.G_percent,
-                              seqStat.AT_percent,
-                              seqStat.GC_percent,
-                              seqStat.GT_percent,
-                              seqStat.AT_skew,
-                              seqStat.GC_skew]) + "\n"
-        # 物种的大统计表
-        self.list_spe_stat = self.list_lineages + [
-            self.organism,
-            self.ID,
-            seqStat.size,
-            seqStat.AT_percent,
-            seqStat.AT_skew,
-            seqStat.GC_skew]
-        ###species_info###
-        # ID",Organism,%s,Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew
-        rvscmp_seq = self.rvscmp_seq.upper()
-        seqStat_rvscmp = SeqGrab(rvscmp_seq)
-        seqCoding = SeqGrab(self.plus_coding_seq)
-        list_species_info = [self.ID, self.organism, self.usedName] + self.list_lineages + \
-                            [str(len(self.str_seq)), seqStat.A_percent, seqStat.T_percent,
-                             seqStat.C_percent, seqStat.G_percent, seqStat.AT_percent,
-                             seqStat.GC_percent, seqStat.AT_skew, seqStat.GC_skew,
-                             seqStat_rvscmp.AT_skew, seqStat_rvscmp.GC_skew, seqCoding.GC_skew]
-                             # seqStat_rvscmp.A_percent, seqStat_rvscmp.T_percent,
-                             # seqStat_rvscmp.C_percent, seqStat_rvscmp.G_percent, seqStat_rvscmp.AT_percent,
-                             # seqStat_rvscmp.GC_percent, seqStat_rvscmp.AT_skew, seqStat_rvscmp.GC_skew]
-        self.species_info += ",".join(list_species_info) + "\n"
-        self.taxonomy_infos += ",".join([self.usedName, self.ID, self.organism] + self.list_lineages) + "\n"
-
-        #         PCG
-        PCGs_stat_plus, first_stat_plus, second_stat_plus, third_stat_plus = self.stat_PCG_sub(self.PCGs_strim_plus, "+") \
-                                                                 if self.PCGs_strim_plus else ["", "", "", ""]
-        PCGs_stat_minus, first_stat_minus, second_stat_minus, third_stat_minus = self.stat_PCG_sub(self.PCGs_strim_minus, "-") \
-                                                                    if self.PCGs_strim_minus else ["", "", "", ""]
-        #         rRNA
-        rRNA_stat_plus = self.stat_other_sub(self.rRNAs_plus, "+", "rRNAs") if self.rRNAs_plus else ""
-        if not self.rRNAs_plus: self.geneStat_sub("rRNAs(+)", "N/A") ##要补个NA
-        rRNA_stat_minus = self.stat_other_sub(self.rRNAs_minus, "-", "rRNAs") if self.rRNAs_minus else ""
-        if not self.rRNAs_minus: self.geneStat_sub("rRNAs(-)", "N/A")  ##要补个NA
-        #         tRNA
-        tRNA_stat_plus = self.stat_other_sub(self.tRNAs_plus, "+", "tRNAs") if self.tRNAs_plus else ""
-        if not self.tRNAs_plus: self.geneStat_sub("tRNAs(+)", "N/A")  ##要补个NA
-        tRNA_stat_minus = self.stat_other_sub(self.tRNAs_minus, "-", "tRNAs") if self.tRNAs_minus else ""
-        if not self.tRNAs_minus: self.geneStat_sub("tRNAs(-)", "N/A")  ##要补个NA
-        stat = 'Regions,Strand,Size (bp),T(U),C,A,G,AT(%),GC(%),GT(%),AT skew,GC skew\n' + PCGs_stat_plus + \
-               PCGs_stat_minus + first_stat_plus + first_stat_minus + second_stat_plus + second_stat_minus +\
-               third_stat_plus + third_stat_minus + ''.join(list_genes) + \
-               rRNA_stat_plus + rRNA_stat_minus + tRNA_stat_plus + tRNA_stat_minus + geom_stat
-        self.dict_spe_stat[self.ID] = stat + "PCGs: protein-coding genes; +: major strand; -: minus strand\n"
-        # 生成折线图分类信息
-        list_genes_line = [
-            value for (
-                key, value) in sorted(
-                self.dict_genes.items()) if not key.startswith("zNCR")]
-        p_spe_plus = PCGs_stat_plus.strip("\n") + "," + self.taxonmy + "\n" if PCGs_stat_plus else ""
-        p_spe_minus = PCGs_stat_minus.strip("\n") + "," + self.taxonmy + "\n" if PCGs_stat_minus else ""
-        t_spe_plus = tRNA_stat_plus.strip("\n") + "," + self.taxonmy + "\n" if tRNA_stat_plus else ""
-        t_spe_minus = tRNA_stat_minus.strip("\n") + "," + self.taxonmy + "\n" if tRNA_stat_minus else ""
-        r_spe_plus = rRNA_stat_plus.strip("\n") + "," + self.taxonmy + "\n" if rRNA_stat_plus else ""
-        r_spe_minus = rRNA_stat_minus.strip("\n") + "," + self.taxonmy + "\n" if rRNA_stat_minus else ""
-        fst_spe_plus = first_stat_plus.strip("\n") + "," + self.taxonmy + "\n" if first_stat_plus else ""
-        fst_spe_minus = first_stat_minus.strip("\n") + "," + self.taxonmy + "\n" if first_stat_minus else ""
-        scd_spe_plus = second_stat_plus.strip("\n") + "," + self.taxonmy + "\n" if second_stat_plus else ""
-        scd_spe_minus = second_stat_minus.strip("\n") + "," + self.taxonmy + "\n" if second_stat_minus else ""
-        trd_spe_plus = third_stat_plus.strip("\n") + "," + self.taxonmy + "\n" if third_stat_plus else ""
-        trd_spe_minus = third_stat_minus.strip("\n") + "," + self.taxonmy + "\n" if third_stat_minus else ""
-        self.line_spe_stat += geom_stat.strip("\n") + "," + self.taxonmy + "\n" + p_spe_plus + p_spe_minus + \
-                              t_spe_plus + t_spe_minus + r_spe_plus + r_spe_minus + fst_spe_plus + fst_spe_minus + \
-                              scd_spe_plus + scd_spe_minus + trd_spe_plus + trd_spe_minus + \
-                              "".join([i.strip("\n") + "," + self.taxonmy + "\n" for i in list_genes_line])
-        rscu_sum = RSCUsum(self.organism_1, self.PCGs_strim, str(self.code_table))
-        rscu_table = rscu_sum.table
-        self.dict_RSCU[self.ID] = rscu_table
-        self.dict_all_spe_RSCU["title"] += self.organism + ","
-        self.dict_all_codon_COUNT["title"] += self.organism + ","
-        self.dict_all_AA_COUNT["title"] += self.organism + ","
-        self.dict_all_AA_RATIO["title"] += self.organism + ","
-        rscu_stack = RSCUstack(
-            rscu_table,
-            self.dict_all_spe_RSCU,
-            self.dict_all_codon_COUNT,
-            self.dict_all_AA_COUNT,
-            self.dict_all_AA_RATIO,
-            self.numbered_Name(
-                self.organism,
-                omit=True))
-        self.dict_all_spe_RSCU = rscu_stack.dict_all_rscu
-        self.dict_all_codon_COUNT = rscu_stack.dict_all_codon_count
-        self.dict_all_AA_COUNT = rscu_stack.dict_all_AA_count
-        self.dict_all_AA_RATIO = rscu_stack.dict_all_AA_ratio
-        self.dict_AAusage[self.ID] = rscu_stack.stat
-        self.dict_RSCU_stack[self.ID] = rscu_stack.stack
-        self.dict_AA_stack[self.ID] = rscu_stack.aaStack
-        # 存放基因间隔区序列
-        # self.dict_igs[self.ID] = self.igs
-        # self.list_spe_stat.append(self.reference_)
-        self.dict_all_stat["_".join(
-            self.list_lineages + [self.organism + "_" + self.ID])] = self.list_spe_stat
-        #         生成PCG串联序列
-        self.PCG_seq += '>' + self.usedName + '\n' + self.PCGs_strim + '\n'
-        self.tRNA_seqs += '>' + self.usedName + '\n' + self.tRNAs + '\n'
-        self.rRNA_seqs += '>' + self.usedName + '\n' + self.rRNAs + '\n'
-        #         组成表
-        self.orgTable += "Overlap:," + \
-                         str(self.overlap) + "," + "gap:," + str(self.gap)
-        self.dict_orgTable[self.ID] = self.orgTable
-        self.linear_order += self.gene_order + '\n'
-        # 密码子偏倚分析
-        if self.dict_args["cal_codon_bias"]:
-            codonBias = CodonBias(self.PCGs_strim, self.code_table, path=self.exportPath)
-            list_cBias = codonBias.getCodonBias()
-            self.codon_bias += ",".join(["PCGs"] + list_cBias) + "," + self.taxonmy + "\n"
-
-    def check_Absence(self):
-        if len(self.list_pro) != 0:  # 有些物种缺失部分基因
-            for i in self.list_pro:
-                if i in ["rrnS", "rrnL"]:
-                    if i in list(self.dict_RNA.keys()):  # 如果字典已经有这个键
-                        self.dict_RNA[i] += ',N/A'
-                        self.dict_gene_ATskews[i] += ',N/A'
-                        self.dict_gene_GCskews[i] += ',N/A'
-                        self.dict_gene_ATCont[i] += ',N/A'
-                        self.dict_gene_GCCont[i] += ',N/A'
-                    else:
-                        self.dict_RNA[i] = i + ',N/A'
-                        self.dict_gene_ATskews[i] = i + ',N/A'
-                        self.dict_gene_GCskews[i] = i + ',N/A'
-                        self.dict_gene_ATCont[i] = i + ',N/A'
-                        self.dict_gene_GCCont[i] = i + ',N/A'
-                else:
-                    if i in list(self.dict_PCG.keys()):
-                        self.dict_PCG[i] += ',N/A'
-                        self.dict_start[i] += ',N/A'
-                        self.dict_stop[i] += ',N/A'
-                        self.dict_gene_ATskews[i] += ',N/A'
-                        self.dict_gene_GCskews[i] += ',N/A'
-                        self.dict_gene_ATCont[i] += ',N/A'
-                        self.dict_gene_GCCont[i] += ',N/A'
-                    else:
-                        self.dict_PCG[i] = i + ',N/A'
-                        self.dict_start[i] = i + ',N/A'
-                        self.dict_stop[i] = i + ',N/A'
-                        self.dict_gene_ATskews[i] = i + ',N/A'
-                        self.dict_gene_GCskews[i] = i + ',N/A'
-                        self.dict_gene_ATCont[i] = i + ',N/A'
-                        self.dict_gene_GCCont[i] = i + ',N/A'
-
-    def fun_orgTable(self, new_name, size, ini, ter, seq):
-        # 生成组成表相关
-        orgSize = self.end - self.start + 1
-        orgSize = orgSize if self.orgTable[-7:
-                             ] != 'Strand\n' else int(size)
-        space = self.start - self.lastEndIndex - 1
-        if space > 0:
-            self.gap += 1
-        elif space < 0:
-            self.overlap += 1
-        overlap_start_index = abs(space) if space < 0 else 0  # 为了去掉重叠区
-        space = "" if space == 0 or self.orgTable[-7:] == 'Strand\n' else str(
-            space)
-        chain = "H" if self.strand == "+" else "L"
-        # 新增了添加序列功能
-        self.orgTable += ",".join([new_name,
-                                   str(self.start),
-                                   str(self.end),
-                                   str(orgSize),
-                                   space,
-                                   ini,
-                                   ter,
-                                   chain,
-                                   seq]) + "\n"
-        self.lastEndIndex = self.end
-        # 编码序列，负链基因反向互补
-        if chain == "H": self.plus_coding_seq += seq[overlap_start_index:]
-        else: self.plus_coding_seq += str(Seq(seq, generic_dna).reverse_complement())[overlap_start_index:]
-        # 如果space负的，就是重叠区，如果是正链的基因，就从序列头部减掉overlapping，如果是负链的基因，就从序列的尾部减去
-
-    def judge(self, name, values, seq):
-        if name == 'tRNA-Leu' or name == 'tRNA-Ser' or name == "L" or name == "S":
-            if re.search(
-                    r'(?<=[^1-9a-z_])(CUA|CUN|[tu]ag|L1|trnL1|Leu1)(?=[^1-9a-z_])',
-                    values,
-                    re.I):
-                name = 'tRNA-Leu1' if name == 'tRNA-Leu' else "L1"
-            elif re.search(r'(?<=[^1-9a-z_])(UUA|UUR|[tu]aa|L2|trnL2|Leu2)(?=[^1-9a-z_])', values, re.I):
-                name = 'tRNA-Leu2' if name == 'tRNA-Leu' else "L2"
-            elif re.search(r'(?<=[^1-9a-z_])(UCA|UCN|[tu]ga|S2|trnS2|Ser2)(?=[^1-9a-z_])', values, re.I):
-                name = 'tRNA-Ser2' if name == 'tRNA-Ser' else "S2"
-            elif re.search(r'(?<=[^1-9a-z_])(AGC|AGN|AGY|gc[tu]|[tu]c[tu]|S1|trnS1|Ser1)(?=[^1-9a-z_])', values, re.I):
-                name = 'tRNA-Ser1' if name == 'tRNA-Ser' else "S1"
-            else:
-                # 单独把序列生成出来
-                trnaName = self.factory.refineName(self.usedName +
-                                                   "_" + str(self.start) + "_" + str(self.end), remain_words=".-")
-                self.leu_ser += ">%s\n%s\n" % (trnaName, seq)
-        else:
-            name = name
-        return name
-
-    def trim_ter(self, raw_sequence):
-        size = len(raw_sequence)
-        if size % 3 == 0:
-            if raw_sequence[-3:].upper() in self.stopCodon:
-                trim_sequence = raw_sequence[:-3]
-            else:
-                trim_sequence = raw_sequence
-        elif size % 3 == 1:
-            trim_sequence = raw_sequence[:-1]
-        elif size % 3 == 2:
-            trim_sequence = raw_sequence[:-2]
-        else:
-            trim_sequence = raw_sequence
-        return trim_sequence
-
-    def CDS_(self):
-        seq = str(self.feature.extract(self.seq))
-        codon_start = self.qualifiers['codon_start'][0] if "codon_start" in self.qualifiers else "1"
-        seq = seq[int(codon_start)-1:] if codon_start != "1" else seq
-        def codon(seq):
-            seq = seq.upper()
-            size = len(seq)
-            ini = seq[0:3]
-            if size % 3 == 0:
-                if seq[-3:].upper() in self.stopCodon:
-                    trim_sequence = seq[:-3]
-                    ter = seq[-3:]
-                else:
-                    ter = "---"
-                    trim_sequence = seq
-                # 计算RSCU用的，保留终止密码子，但是不保留不完整的终止密码子
-                RSCU_seq = seq
-            elif size % 3 == 1:
-                ter = seq[-1]
-                trim_sequence = seq[:-1]
-                RSCU_seq = seq[:-1]
-            elif size % 3 == 2:
-                ter = seq[-2:]
-                trim_sequence = seq[:-2]
-                RSCU_seq = seq[:-2]
-            return ini, ter, size, seq, trim_sequence, RSCU_seq
-
-        # trim_sequence是删除终止子以后的
-        ini, ter, size, seq, trim_sequence, RSCU_seq = codon(seq)
-        new_name = self.fetchGeneName()
-        if not new_name:
-            return
-        if new_name.upper() in self.dict_unify_mtname:
-            # 换成标准的名字
-            new_name = self.dict_unify_mtname[new_name.upper()]
-        if new_name in self.list_pro:
-            self.list_pro.remove(new_name)
-        self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
-        self.dict_pro[new_name + '>' + self.organism_1 + '_' + self.ID] = '>' + \
-                                                                          self.usedName + '\n' + seq + \
-                                                                          '\n'  # 这里不能用seq代替，因为要用大小写区分正负链
-        translation = self.qualifiers['translation'][0] if 'translation' in self.qualifiers else ""  # 有时候没有translation
-        self.dict_AA[new_name + '>' + self.organism_1 + '_' +
-                     self.ID] = '>' + self.usedName + '\n' + translation + "\n"
-        self.gene_order += self.omit_strand + new_name + ' '
-        seqStat = SeqGrab(seq)
-        self.dict_genes[new_name] = ",".join(
-            [
-                new_name,
-                self.strand,
-                seqStat.size,
-                seqStat.T_percent,
-                seqStat.C_percent,
-                seqStat.A_percent,
-                seqStat.G_percent,
-                seqStat.AT_percent,
-                seqStat.GC_percent,
-                seqStat.GT_percent,
-                seqStat.AT_skew,
-                seqStat.GC_skew]) + "\n"
-        if new_name in self.list_PCGs:  # 确保是属于那14或者15个基因
-            if new_name in self.dict_PCG.keys():  # 看字典是否已经有这个键
-                self.dict_PCG[new_name] += ',' + str(size)
-                self.dict_start[new_name] += ',' + ini
-                self.dict_stop[new_name] += ',' + ter
-                self.dict_gene_ATskews[new_name] += ',' + seqStat.AT_skew
-                self.dict_gene_GCskews[new_name] += ',' + seqStat.GC_skew
-                self.dict_gene_ATCont[new_name] += ',' + seqStat.AT_percent
-                self.dict_gene_GCCont[new_name] += ',' + seqStat.GC_percent
-            else:
-                self.dict_PCG[new_name] = new_name + ',' + str(size)
-                self.dict_start[new_name] = new_name + ',' + ini
-                self.dict_stop[new_name] = new_name + ',' + ter
-                self.dict_gene_ATskews[new_name] = new_name + ',' + seqStat.AT_skew
-                self.dict_gene_GCskews[new_name] = new_name + ',' + seqStat.GC_skew
-                self.dict_gene_ATCont[new_name] = new_name + ',' + seqStat.AT_percent
-                self.dict_gene_GCCont[new_name] = new_name + ',' + seqStat.GC_percent
-        self.PCGs_strim += RSCU_seq
-        if self.strand == "+":
-            self.PCGs_strim_plus += RSCU_seq
-        else:
-            self.PCGs_strim_minus += RSCU_seq
-        # self.PCGs += seq
-        # 生成组成表相关
-        self.fun_orgTable(new_name, size, ini, ter, seq)
-        ##间隔区提取
-        self.refresh_pairwise_feature(new_name)
-        ##密码子偏倚分析
-        if self.dict_args["cal_codon_bias"]:
-            codonBias = CodonBias(RSCU_seq, self.code_table, path=self.exportPath)
-            list_cBias = codonBias.getCodonBias()
-            self.codon_bias += ",".join([new_name] + list_cBias) + "," + self.taxonmy + "\n"
-
-    def rRNA_(self):
-        new_name = self.fetchGeneName()
-        if not new_name:
-            return
-        seq = str(self.feature.extract(self.seq))
-        if new_name.upper() in self.dict_unify_mtname:
-            # 换成标准的名字
-            new_name = self.dict_unify_mtname[new_name.upper()]
-        if new_name in self.list_pro:
-            self.list_pro.remove(new_name)
-        self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
-        self.dict_rRNA[new_name + '>' + self.organism_1 + '_' +
-                       self.ID] = '>' + self.usedName + '\n' + seq + '\n'
-        if self.dict_args["rRNAchecked"]:
-            self.gene_order += self.omit_strand + new_name + ' '
-        seqStat = SeqGrab(seq.upper())
-        self.dict_genes[new_name] = ",".join([new_name,
-                                              self.strand,
-                                              seqStat.size,
-                                              seqStat.T_percent,
-                                              seqStat.C_percent,
-                                              seqStat.A_percent,
-                                              seqStat.G_percent,
-                                              seqStat.AT_percent,
-                                              seqStat.GC_percent,
-                                              seqStat.GT_percent,
-                                              seqStat.AT_skew,
-                                              seqStat.GC_skew]) + "\n"
-        if new_name in self.dict_RNA:  # 如果字典已经有这个键
-            self.dict_RNA[new_name] += ',' + str(len(seq))
-            self.dict_gene_ATskews[new_name] += ',' + seqStat.AT_skew
-            self.dict_gene_GCskews[new_name] += ',' + seqStat.GC_skew
-            self.dict_gene_ATCont[new_name] += ',' + seqStat.AT_percent
-            self.dict_gene_GCCont[new_name] += ',' + seqStat.GC_percent
-        else:
-            self.dict_RNA[new_name] = new_name + \
-                                      ',' + str(len(seq))
-            self.dict_gene_ATskews[new_name] = new_name + ',' + seqStat.AT_skew
-            self.dict_gene_GCskews[new_name] = new_name + ',' + seqStat.GC_skew
-            self.dict_gene_ATCont[new_name] = new_name + ',' + seqStat.AT_percent
-            self.dict_gene_GCCont[new_name] = new_name + ',' + seqStat.GC_percent
-        self.rRNAs += seq
-        if self.strand == "+":
-            self.rRNAs_plus += seq
-        else:
-            self.rRNAs_minus += seq
-        # 生成组成表相关
-        self.fun_orgTable(new_name, seqStat.length, "", "", seq)
-        ##间隔区提取
-        self.refresh_pairwise_feature(new_name)
-
-    def tRNA_(self):
-        replace_name = self.fetchGeneName()
-        if not replace_name:
-            return
-        seq = str(self.feature.extract(self.seq))
-        values = ':' + ':'.join([i[0] for i in self.qualifiers.values()]) + ':'
-        name = self.judge(replace_name, values, seq)
-        list_tRNA = [
-            "T",
-            "C",
-            "E",
-            "Y",
-            "R",
-            "G",
-            "H",
-            "L1",
-            "L2",
-            "S1",
-            "S2",
-            "Q",
-            "F",
-            "M",
-            "V",
-            "A",
-            "D",
-            "N",
-            "P",
-            "I",
-            "K",
-            "W",
-            "S",
-            "L"]
-        new_name = "trn" + name if name in list_tRNA else name
-        self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
-        self.dict_tRNA[new_name + '>' + self.organism_1 + '_' +
-                       self.ID] = '>' + self.usedName + '\n' + seq + '\n'
-        if self.dict_args["tRNAchecked"]:
-            self.gene_order += self.omit_strand + name + ' '
-        self.tRNAs += seq.upper()
-        if self.strand == "+":
-            self.tRNAs_plus += seq.upper()
-        else:
-            self.tRNAs_minus += seq.upper()
-        # 生成组成表相关
-        self.fun_orgTable(new_name, len(seq), "", "", seq)
-        ##间隔区提取
-        self.refresh_pairwise_feature(new_name)
-
-    def extract(self):
-        # gb_records = SeqIO.parse(self.gbContentIO, "genbank")
-        self.init_args_all()
-        # 专门用于判断
-        included_features = [i.upper() for i in self.included_features]
-        for num, gb_file in enumerate(self.gb_files):
-            try:
-                gb = SeqIO.parse(gb_file, "genbank")
-                gb_record = next(gb)
-                self.name = gb_record.name
-                self.list_pro = self.list_PCGs[:]
-                features = gb_record.features
-                annotations = gb_record.annotations
-                self.organism = annotations["organism"]
-                self.organism_1 = self.organism.replace(" ", "_")
-                self.description = gb_record.description
-                self.date = annotations["date"]
-                self.ID = gb_record.id
-                self.seq = gb_record.seq
-                self.str_seq = str(self.seq)
-                self.rvscmp_seq = str(Seq(self.str_seq, generic_dna).reverse_complement())
-                self.dict_type_genes = OrderedDict()
-                self.init_args_each()
-                self.plus_coding_seq = ""  # 正链编码的序列
-                ok = self.check_records(features)
-                if not ok: continue
-                has_feature = False
-                has_source = False
-                for self.feature in features:
-                    self.qualifiers = self.feature.qualifiers
-                    self.start = int(self.feature.location.start) + 1
-                    self.end = int(self.feature.location.end)
-                    self.strand = "+" if self.feature.location.strand == 1 else "-"
-                    self.omit_strand = "" if self.strand == "+" else "-"
-                    # # 用于生成organization表
-                    # self.positionFrom, self.positionTo = list1[0], list1[-1]
-                    self.feature_type = self.feature.type
-                    if self.feature_type not in (self.list_features + ["source"]):
-                        self.list_features.append(self.feature_type)
-                    if self.feature.type == "source":
-                        self.parseSource()
-                        has_source = True
-                    elif self.feature_type == 'CDS':
-                        self.code_table = int(self.qualifiers["transl_table"][0]) if ("transl_table" in self.qualifiers) \
-                            and self.qualifiers["transl_table"][0].isnumeric() else self.selected_code_table
-                        self.fetchTerCodon() #得到终止密码子
-                        self.CDS_()
-                        self.getNCR()
-                        has_feature = True
-                    elif self.feature_type == 'rRNA':
-                        self.rRNA_()
-                        self.getNCR()
-                        has_feature = True
-                    elif self.feature_type == 'tRNA':
-                        self.tRNA_()
-                        self.getNCR()
-                        has_feature = True
-                    elif self.included_features == "All" or self.feature_type.upper() in included_features:
-                        # 剩下的按照常规的来提取
-                        self.parseFeature()
-                        self.getNCR()
-                        has_feature = True
-                if not has_feature:
-                    ##ID里面没有找到任何对应的feature的情况
-                    name = self.usedName if has_source else self.ID
-                    self.list_none_feature_IDs.append(name)
-                self.gb_record_stat()
-                self.check_Absence()
-                self.getNCR(mode="end")  ##判断最后的间隔区
-                self.input_file.write(gb_record.format("genbank"))
-            except:
-                self.Error_ID += self.name + ":\n" + \
-                                 ''.join(
-                                     traceback.format_exception(*sys.exc_info())) + "\n"
-            num += 1
-            self.progressSig.emit(num * 70 / self.totleID)
-        self.input_file.close()
-
-    def sort_CDS(self):
-        list_pro = sorted(list(self.dict_pro.keys()))
-        previous = ''
-        seq_pro = ''
-        trans_pro = ''
-        seq_aa = ""  # 存放读取的translation里面的AA序列
-        # 避免报错
-        gene = ""
-        it = iter(list_pro)
-        table = CodonTable.ambiguous_dna_by_id[self.code_table]
-        while True:
-            try:
-                i = next(it)
-                gene = re.match('^[^>]+', i).group()
-                if gene == previous or previous == '':
-                    seq_pro += self.dict_pro[i]
-                    seq_aa += self.dict_AA[i]
-                    raw_sequence = self.dict_pro[i].split('\n')[1]
-                    trim_sequence = self.trim_ter(raw_sequence)
-                    try:
-                        protein = _translate_str(trim_sequence, table)
-                    except:
-                        protein = ""
-                    trans_pro += self.dict_pro[
-                        i].replace(raw_sequence, protein)
-                    previous = gene
-                if gene != previous:
-                    self.save2file(seq_pro, previous, self.CDS_nuc_path)
-                    self.save2file(seq_aa, previous, self.CDS_aa_path)
-                    self.save2file(trans_pro, previous, self.CDS_TrsAA_path)
-                    seq_pro = ''
-                    trans_pro = ''
-                    seq_aa = ""  # 存放读取的translation里面的AA序列
-                    seq_pro += self.dict_pro[i]
-                    seq_aa += self.dict_AA[i]
-                    raw_sequence = self.dict_pro[i].split('\n')[1]
-                    trim_sequence = self.trim_ter(raw_sequence)
-                    try:
-                        protein = _translate_str(trim_sequence, table)
-                    except:
-                        protein = ""
-                    trans_pro += self.dict_pro[
-                        i].replace(raw_sequence, protein)
-                    previous = gene
-            except StopIteration:
-                self.save2file(seq_pro, previous, self.CDS_nuc_path)
-                self.save2file(seq_aa, previous, self.CDS_aa_path)
-                self.save2file(trans_pro, previous, self.CDS_TrsAA_path)
-                break
-
-    def sort_rRNA(self):
-        list_rRNA = sorted(list(self.dict_rRNA.keys()))
-        previous = ''
-        seq_rRNA = ''
-        # 避免报错
-        gene = ""
-        it = iter(list_rRNA)
-        while True:
-            try:
-                i = next(it)
-                gene = re.match('^[^>]+', i).group()
-                if gene == previous or previous == '':
-                    seq_rRNA += self.dict_rRNA[i]
-                    previous = gene
-                if gene != previous:
-                    self.save2file(seq_rRNA, previous, self.rRNA_path)
-                    seq_rRNA = ''
-                    seq_rRNA += self.dict_rRNA[i]
-                    previous = re.match('^[^>]+', i).group()
-            except StopIteration:
-                self.save2file(seq_rRNA, previous, self.rRNA_path)
-                break
-
-    def sort_tRNA(self):
-        list_tRNA = sorted(list(self.dict_tRNA.keys()))
-        previous = ''
-        seq_tRNA = ''
-        # 避免报错
-        gene = ""
-        it = iter(list_tRNA)
-        while True:
-            try:
-                i = next(it)
-                gene = re.match('^[^>]+', i).group()
-                if gene == previous or previous == '':
-                    seq_tRNA += self.dict_tRNA[i]
-                    previous = gene
-                if gene != previous:
-                    self.save2file(seq_tRNA, previous, self.tRNA_path)
-                    seq_tRNA = ''
-                    seq_tRNA += self.dict_tRNA[i]
-                    previous = re.match('^[^>]+', i).group()
-            except StopIteration:
-                self.save2file(seq_tRNA, previous, self.tRNA_path)
-                break
-
-    def gene_sort_save(self):
-        self.CDS_nuc_path = self.factory.creat_dirs(self.exportPath + os.sep + "CDS_NUC")
-        self.CDS_aa_path = self.factory.creat_dirs(self.exportPath + os.sep + "CDS_AA")
-        self.CDS_TrsAA_path = self.factory.creat_dirs(self.exportPath + os.sep + "self-translated_AA")
-        self.sort_CDS()
-        self.progressSig.emit(82)
-        self.rRNA_path = self.factory.creat_dirs(self.exportPath + os.sep + "rRNA")
-        self.sort_rRNA()
-        self.progressSig.emit(87)
-        self.tRNA_path = self.factory.creat_dirs(self.exportPath + os.sep + "tRNA")
-        self.sort_tRNA()
-        self.progressSig.emit(92)
-        keys = list(self.dict_feature_fas.keys())
-        #只保留有效值
-        for i in keys:
-            if not self.dict_feature_fas[i]:
-                del self.dict_feature_fas[i]
-        total = len(self.dict_feature_fas)
-        if not total:
-            self.progressSig.emit(95)
-            return
-        base = 92
-        proportion = 3 / total
-        for feature in self.dict_feature_fas:
-            feature_fas = self.dict_feature_fas[feature]
-            if not feature_fas:
-                ##如果没有提取到任何东西就返回
-                continue
-            featurePath = self.factory.creat_dirs(self.exportPath + os.sep + feature)
-            base = self.save_each_feature(feature_fas, featurePath, base, proportion)
-
-    def saveGeneralFile(self):
-        super(GBextract_MT, self).saveGeneralFile()
-        filesPath = self.factory.creat_dirs(self.exportPath + os.sep + 'files')
-        with open(filesPath + os.sep + 'linear_order.txt', 'w', encoding="utf-8") as f:
-            f.write(self.linear_order)
-        with open(filesPath + os.sep + 'complete_seq.fas', 'w', encoding="utf-8") as f:
-            f.write(self.complete_seq)
-        with open(filesPath + os.sep + 'PCG_seqs.fas', 'w', encoding="utf-8") as f6:
-            f6.write(self.PCG_seq)
-        with open(filesPath + os.sep + 'tRNA_seqs.fas', 'w', encoding="utf-8") as f7:
-            f7.write(self.tRNA_seqs)
-        with open(filesPath + os.sep + 'rRNA_seqs.fas', 'w', encoding="utf-8") as f8:
-            f8.write(self.rRNA_seqs)
-        # super(GBextract_MT, self).saveGeneralFile()
-
-    def saveItolFiles(self):
-        itolPath = self.factory.creat_dirs(self.exportPath + os.sep + 'itolFiles')
-        itol_domain = "DATASET_DOMAINS\nSEPARATOR COMMA\nDATASET_LABEL,Mito gene order\nCOLOR,#ff00aa\nWIDTH,1250\nBACKBONE_COLOR,black\nHEIGHT_FACTOR,0.8\nLEGEND_TITLE,Regions\nLEGEND_SHAPES,%s,%s,%s,%s,%s,%s,%s\nLEGEND_COLORS,%s,%s,%s,%s,%s,%s,%s\nLEGEND_LABELS,atp6|atp8,nad1-6|nad4L,cytb,cox1-3,rRNA,tRNA,NCR\n#SHOW_INTERNAL,0\nSHOW_DOMAIN_LABELS,1\nLABELS_ON_TOP,1\nDATA\n" % (
-            self.dict_args["atpshape"], self.dict_args["nadshape"], self.dict_args["cytbshape"],
-            self.dict_args["coxshape"], self.dict_args["rRNAshape"], self.dict_args["tRNAshape"],
-            self.dict_args["NCRshape"], self.dict_args["atpcolour"], self.dict_args["nadcolour"],
-            self.dict_args["cytbcolour"], self.dict_args["coxcolour"], self.dict_args["rRNAcolour"],
-            self.dict_args["tRNAcolour"], self.dict_args["NCRcolour"])
-        order2itol = Order2itol(self.linear_order, self.dict_args)
-        itol_domain += order2itol.itol_domain
-        super(GBextract_MT, self).saveItolFiles()
-        with open(itolPath + os.sep + 'itol_gene_order.txt', 'w', encoding="utf-8") as f1:
-            f1.write(itol_domain)
-
-    def saveStatFile(self):
-        super(GBextract_MT, self).saveStatFile()
-        statFilePath = self.factory.creat_dirs(self.exportPath + os.sep + 'StatFiles')
-        # 生成speciesStat文件夹
-        speciesStatPath = self.factory.creat_dirs(statFilePath + os.sep + 'speciesStat')
-        # 生成RSCU文件夹
-        RSCUpath = self.factory.creat_dirs(statFilePath + os.sep + 'RSCU')
-        # 生成CDS文件夹
-        CDSpath = self.factory.creat_dirs(statFilePath + os.sep + 'CDS')
-        # RSCU  PCA# 生成PCA用的统计表
-        title_rscu = self.dict_all_spe_RSCU.pop("title").strip(",") + "\n"
-        for j in list(self.dict_all_spe_RSCU.keys()):
-            title_rscu += j + "," + \
-                          ",".join(self.dict_all_spe_RSCU[j]) + "\n"
-        # 生成文件
-        with open(RSCUpath + os.sep + "all_rscu_stat.csv", "w", encoding="utf-8") as f:
-            f.write(title_rscu)
-        # COUNT codon PCA# 生成PCA用的统计表
-        title_codon_count = self.dict_all_codon_COUNT.pop(
-            "title").strip(",") + "\n"
-        for j in list(self.dict_all_codon_COUNT.keys()):
-            title_codon_count += j + "," + \
-                                 ",".join(self.dict_all_codon_COUNT[j]) + "\n"
-        # 生成文件
-        with open(RSCUpath + os.sep + "all_codon_count_stat.csv", "w", encoding="utf-8") as f:
-            f.write(title_codon_count)
-        # COUNT aa PCA# 生成PCA用的统计表
-        title_AA_count = self.dict_all_AA_COUNT.pop(
-            "title").strip(",") + "\n"
-        for j in list(self.dict_all_AA_COUNT.keys()):
-            title_AA_count += j + "," + \
-                              ",".join(self.dict_all_AA_COUNT[j]) + "\n"
-        # 生成文件
-        with open(RSCUpath + os.sep + "all_AA_count_stat.csv", "w", encoding="utf-8") as f:
-            f.write(title_AA_count)
-        # ratio aa PCA# 生成PCA用的统计表
-        title_AA_ratio = self.dict_all_AA_RATIO.pop(
-            "title").strip(",") + "\n"
-        for j in list(self.dict_all_AA_RATIO.keys()):
-            title_AA_ratio += j + "," + \
-                              ",".join(self.dict_all_AA_RATIO[j]) + "\n"
-        # 生成文件
-        with open(RSCUpath + os.sep + "all_AA_ratio_stat.csv", "w", encoding="utf-8") as f:
-            f.write(title_AA_ratio)
-        # 生成AA stack的文件
-        title_aa_stack = self.dict_AA_stack.pop(
-            "title") + "\n"
-        for k in self.dict_AA_stack:
-            title_aa_stack += self.dict_AA_stack[k]
-        with open(RSCUpath + os.sep + "all_AA_stack.csv", "w", encoding="utf-8") as f:
-            f.write(title_aa_stack)
-        # 统计单个物种
-        for j in self.dict_spe_stat:
-            if j in self.dict_spe_stat:
-                with open(speciesStatPath + os.sep + j + '.csv', 'w', encoding="utf-8") as f:
-                    f.write(self.dict_spe_stat[j])
-            if j in self.dict_orgTable:
-                with open(speciesStatPath + os.sep + j + '_org.csv', 'w', encoding="utf-8") as f:
-                    f.write(self.dict_orgTable[j])
-            if j in self.dict_AAusage:
-                with open(RSCUpath + os.sep + j + '_AA_usage.csv', 'w', encoding="utf-8") as f:
-                    f.write(self.dict_AAusage[j])
-            if j in self.dict_RSCU:
-                with open(RSCUpath + os.sep + j + '_RSCU.csv', 'w', encoding="utf-8") as f:
-                    f.write(self.dict_RSCU[j])
-            if j in self.dict_RSCU_stack:
-                with open(RSCUpath + os.sep + j + '_RSCU_stack.csv', 'w', encoding="utf-8") as f:
-                    f.write(self.dict_RSCU_stack[j])
-        # with open(statFilePath + os.sep + 'taxonomy.csv', 'w', encoding="utf-8") as f1:
-        #     f1.write(self.all_taxonmy)
-        # list_geom = list(sorted(self.dict_geom.values()))
-        list_start = list(sorted(self.dict_start.values()))
-        list_stop = list(sorted(self.dict_stop.values()))
-        list_PCGs = list(sorted(self.dict_PCG.values()))
-        list_RNA = list(sorted(self.dict_RNA.values()))
-        list_ATskew = list(sorted(self.dict_gene_ATskews.values()))
-        list_GCskew = list(sorted(self.dict_gene_GCskews.values()))
-        list_ATCont = list(sorted(self.dict_gene_ATCont.values()))
-        list_GCCont = list(sorted(self.dict_gene_GCCont.values()))
-        # with open(statFilePath + os.sep + 'genomeStat.csv', 'w', encoding="utf-8") as f2:
-        #     lineages = ",".join(
-        #         self.included_lineages) + "," if self.included_lineages else ""
-        #     prefix = 'Species,' + lineages + \
-        #              'GeneBank accesion no.,Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew\n'
-        #     f2.write(prefix + ''.join(list_geom))
-        with open(statFilePath + os.sep + 'geneStat.csv', 'w', encoding="utf-8") as f3:
-            list_abbre = self.assignAbbre(self.list_name_gb)
-            str_taxonmy, footnote = self.geneStatPlus(list_abbre)
-            headers = 'Species,' + ','.join(list_abbre) + '\n'
-            prefix_PCG = 'Length of PCGs (bp)\n'
-            prefix_rRNA = 'Length of rRNA genes (bp)\n'
-            prefix_ini = 'Putative start codon\n'
-            prefix_ter = 'Putative terminal codon\n'
-            prefix_ATskew = 'AT skew\n'
-            prefix_GCskew = 'GC skew\n'
-            prefix_ATCont = 'AT content\n'
-            prefix_GCCont = 'GC content\n'
-            f3.write(str_taxonmy + headers + prefix_PCG + '\n'.join(list_PCGs) + '\n' +
-                     prefix_rRNA + '\n'.join(list_RNA) + '\n' +
-                     prefix_ini + '\n'.join(list_start) + '\n' +
-                     prefix_ter + '\n'.join(list_stop) + '\n' +
-                     prefix_ATskew + '\n'.join(list_ATskew) + '\n' +
-                     prefix_GCskew + '\n'.join(list_GCskew) + '\n' +
-                     prefix_ATCont + '\n'.join(list_ATCont) + '\n' +
-                     prefix_GCCont + '\n'.join(list_GCCont) + '\n' +
-                     "N/A: Not Available; tRNAs: concatenated tRNA genes; rRNAs: concatenated rRNA genes;"
-                     " +: major strand; -: minus strand\n" + footnote)
-        # skewness
-        with open(CDSpath + os.sep + 'PCGsCodonSkew.csv', 'w', encoding="utf-8") as f4:
-            f4.write(self.PCGsCodonSkew)
-
-        with open(CDSpath + os.sep + 'firstCodonSkew.csv', 'w', encoding="utf-8") as f5:
-            f5.write(self.firstCodonSkew)
-
-        with open(CDSpath + os.sep + 'secondCodonSkew.csv', 'w', encoding="utf-8") as f6:
-            f6.write(self.secondCodonSkew)
-
-        with open(CDSpath + os.sep + 'thirdCodonSkew.csv', 'w', encoding="utf-8") as f7:
-            f7.write(self.thirdCodonSkew)
-        # # 生成密码子偏倚统计
-        if self.dict_args["cal_codon_bias"]:
-            with open(CDSpath + os.sep + 'codon_bias.csv', 'w', encoding="utf-8") as f11:
-                f11.write(self.codon_bias)
-
-        with open(statFilePath + os.sep + 'gbAccNum.csv', 'w', encoding="utf-8") as f8:
-            f8.write(self.name_gb)
-        # # ncr统计
-        # self.ncr_stat_fun()
-        # with open(statFilePath + os.sep + 'ncrStat.csv', 'w', encoding="utf-8") as f9:
-        #     f9.write(self.ncrInfo)
-        allStat = self.fetchAllStatTable()
-        with open(statFilePath + os.sep + 'used_species.csv', 'w', encoding="utf-8") as f4:
-            f4.write(allStat)
-        # 生成折线图
-        with open(statFilePath + os.sep + 'geom_line.csv', 'w', encoding="utf-8") as f11:
-            f11.write(self.line_spe_stat)
-        # 删除ENC的中间文件
-        try:
-            for file in ["codonW_infile.fas", "codonW_outfile.txt", "codonW_blk.txt"]:
-                os.remove(self.exportPath + os.sep + file)
-        except: pass
-
-    def fetchAllStatTable(self):
-        allStat = "Taxon,Accession number,Size(bp),AT%,AT-Skew,GC-Skew\n"
-        list_dict_sorted = sorted(list(self.dict_all_stat.keys()))
-        lineage_count = len(self.included_lineages) + 1
-        last_lineage = [1] * lineage_count
-        for i in list_dict_sorted:
-            lineage1 = self.dict_all_stat[i][:lineage_count]
-            content = self.compareLineage(
-                lineage1, last_lineage, self.dict_all_stat[i][lineage_count:])
-            allStat += content
-            last_lineage = lineage1
-        return allStat
 
     def assignAbbre(self, abbreList):
         def abbreName(name, index):
@@ -3938,17 +4381,6 @@ class GBextract_MT(GBextract, object):
 
         return list_abbre
 
-    def geneStatPlus(self, list_abbre):
-        zip_taxonmy = list(zip(
-            *self.list_all_taxonmy))  # [('Gyrodactylidae', 'Capsalidae', 'Ancyrocephalidae', 'Chauhaneidae'), ('Gyrodactylidea', 'Capsalidea', 'Dactylogyridea', 'Mazocraeidea'), ('Monogenea', 'Monogenea', 'Monogenea', 'Monogenea')]
-        lineage = list(reversed(self.included_lineages))
-        header_taxonmy = [[lineage[num]] + list(i) for num, i in enumerate(
-            zip_taxonmy)]  # [['Family', 'Gyrodactylidae', 'Capsalidae', 'Ancyrocephalidae'], ['Superfamily', 'Gyrodactylidea', 'Capsalidea', 'Dactylogyridea'], ['Class', 'Monogenea', 'Monogenea', 'Monogenea']]
-        str_taxonmy = "\n".join([",".join(lineage) for lineage in header_taxonmy]) + "\n"
-        zip_name = list(zip(list_abbre, self.list_name_gb))
-        footnote = "\n".join([each_name[0] + ": " + " ".join(each_name[1]) for each_name in zip_name])
-        return str_taxonmy, footnote
-
     def numbered_Name(self, name, omit=False):
         list_names = list(self.dict_repeat_name_num.keys())
         # 如果这个name已经记录在字典里面了
@@ -3960,6 +4392,2993 @@ class GBextract_MT(GBextract, object):
             self.dict_repeat_name_num[name] = 2
         return numbered_name
 
+    def judge(self, name, values, seq, old_name=""):
+        if (name.upper() in ['TRNA-LEU', 'TRNA-SER', "L", "S"]) or \
+                (old_name.upper() in ['TRNA-LEU', 'TRNA-SER', "L", "S"]):
+            if re.search(
+                    r'(?<=[^1-9a-z_])(CUA|CUN|[tu]ag|L1|trnL1|Leu1)(?=[^1-9a-z_])',
+                    values,
+                    re.I):
+                name = 'tRNA-Leu1' if name == 'tRNA-Leu' else "L1"
+            elif re.search(r'(?<=[^1-9a-z_])(UUA|UUR|[tu]aa|L2|trnL2|Leu2)(?=[^1-9a-z_])', values, re.I):
+                name = 'tRNA-Leu2' if name == 'tRNA-Leu' else "L2"
+            elif re.search(r'(?<=[^1-9a-z_])(UCA|UCN|[tu]ga|S2|trnS2|Ser2)(?=[^1-9a-z_])', values, re.I):
+                name = 'tRNA-Ser2' if name == 'tRNA-Ser' else "S2"
+            elif re.search(r'(?<=[^1-9a-z_])(AGC|AGN|AGY|gc[tu]|[tu]c[tu]|S1|trnS1|Ser1)(?=[^1-9a-z_])', values, re.I):
+                name = 'tRNA-Ser1' if name == 'tRNA-Ser' else "S1"
+            else:
+                # 单独把序列生成出来
+                trnaName = self.factory.refineName(self.usedName +
+                                                   "_" + str(self.start) + "_" + str(self.end), remain_words=".-")
+                self.leu_ser.append(">%s\n%s\n" % (trnaName, seq))
+        return name
+
+    def fun_orgTable(self, new_name, size, ini, ter, seq):
+        # 生成组成表相关
+        orgSize = self.end - self.start + 1
+        orgSize = orgSize if self.orgTable[-7:
+                             ] != 'Strand\n' else int(size)
+        space = self.start - self.lastEndIndex - 1
+        if space > 0:
+            self.gap += 1
+        elif space < 0:
+            self.overlap += 1
+        overlap_start_index = abs(space) if space < 0 else 0  # 为了去掉重叠区
+        space1 = "" if space == 0 or self.orgTable[-7:] == 'Strand\n' else str(
+            space)
+        chain = "H" if self.strand == "+" else "L"
+        # 新增了添加序列功能
+        self.orgTable.append(",".join([new_name,
+                                   str(self.start),
+                                   str(self.end),
+                                   str(orgSize),
+                                   space1,
+                                   ini,
+                                   ter,
+                                   chain,
+                                   seq]) + "\n")
+        # if space > 0:
+        #     self.NCR_seq.append(self.str_seq[self.lastEndIndex:self.start-1])
+        self.lastEndIndex = self.end
+        # 编码序列，负链基因反向互补
+        if self.feature_type not in self.NCR_features:
+            if chain == "H":
+                self.plus_coding_seq.append(seq[overlap_start_index:])
+                self.plus_coding_gene_only.append(seq[overlap_start_index:])
+            # 如果space负的，就是重叠区，如果是正链的基因，就从序列头部减掉overlapping，如果是负链的基因，就从序列的尾部减去
+            else:
+                self.plus_coding_seq.append(str(Seq(seq, generic_dna).reverse_complement())[overlap_start_index:])
+        # else:
+        #     self.NCR_seq.append(seq)
+
+    def gene_is_included(self, gene_name, list_genes, macroname="PCGs"):
+        gene_name = gene_name.split("_copy")[0]  # 预防有copy的基因
+        list_genes_copy = copy.deepcopy(list_genes)
+        if macroname in list_genes:
+            return True
+        for name in ["PCGs", "tRNAs", "rRNAs", "NCR"]:
+            if name in list_genes_copy:
+                list_genes_copy.remove(name)
+        rgx_gene_name = re.sub(r"(\d+\-\d+)", "[\\1]", "|".join(list_genes_copy))
+        rgx_gene_name = "$|".join(rgx_gene_name.split("|")) + "$"
+        rgx = re.compile(rgx_gene_name, re.I)
+        if rgx.match(gene_name):
+            return True
+        return False
+
+    def get_NCR_ratio(self, list_feature_pos, total_length):
+        all_positions = list(FeatureLocation(0, total_length))
+        list_ncr = list(set(all_positions).difference(set(list_feature_pos))) # [1,2,4,6,7...]
+        # 方案一
+        # list_ncr_pos = [FeatureLocation(i, i+1, strand=+1) for i in sorted(list_ncr)]
+        # all_ncr_pos = CompoundLocation(list_ncr_pos)
+        # all_ncr_seq = str(all_ncr_pos.extract(self.seq))
+        # 方案二
+        all_ncr_seq = "".join([self.seq[i] for i in sorted(list_ncr)])
+        return len(list_ncr)/total_length, all_ncr_seq
+
+class DetermineCopyGene(object):
+    '''
+            >if duplicated genes present in joint position, randomly remove one
+            >remove genes with stop codons
+            >align with close species, remove gene with high variability
+            >compare GO with close species, retain genes with similar position
+            # 计算 kaks
+                https://www.biostars.org/p/5817/#google_vignette
+                https://github.com/a1ultima/hpcleap_dnds/blob/master/py/scripts/dnds.py
+            # 记得记录一下删除的原因啥的，给个文件
+            # 测试：
+                第一个和最后一个挨着的情况,多挨几个的情况
+            # 在存文件之前执行这个方法
+        :return:
+        TODO: judge install kaks_caculator and mafft
+             开始前清空一下路径，结束了也清空一下路径
+             判断好以后，替换一下原文件的序列？
+             要不要同一个目的都选同一个物种？
+             修改对应序列的时候，似乎统计表里面的不好修改
+             从gb文件里面删除，让用户再提取一次？
+             open给个errors
+             如果报错，定位到是哪个物种报错
+        '''
+
+    def __init__(self):
+        self.factory = Factory()
+
+    def exec_(self, result_path, work_dir, progressSig,
+                           # kaks_cal_exe=r"C:\softwares\KaKs_Calculator\KaKs_Calculator.Windows.Command\KaKs_Calculator.exe",
+                           mafft_exe=None):
+        self.factory.creat_dir(work_dir)
+        self.factory.remove_dir_directly(work_dir)
+        go_file = f"{result_path}/files/linear_order.txt"
+        taxonomy = f"{result_path}/StatFiles/taxonomy.csv"
+        def is_consecutive_list(list_):
+            list_.sort()
+            range_list_=list(range(min(list_), max(list_)+1))
+            # 如果不包含最后一个和开始的索引
+            if list_ == range_list_:
+                return True
+            return False
+
+        def is_consecutive(list_, total_list):
+            list_total_indices = list(range(len(total_list)))
+            # 如果不包含最后一个和开始的索引
+            if is_consecutive_list(list_):
+                return True
+            # 如果最后一个元素和第一个元素在里面
+            if (0 in list_) and (list_total_indices[-1] in list_):
+                list_head = []
+                list_tail = []
+                for i in list_:
+                    if list_head:
+                        if ((i - list_head[-1])==1):
+                            list_head.append(i)
+                    else:
+                        # 第一次
+                        list_head.append(i)
+                for j in reversed(list_):
+                    if list_tail:
+                        if (list_tail[-1] - j)==1:
+                            list_tail.append(j)
+                    else:
+                        # 第一次
+                        list_tail.append(j)
+                if list(sorted(list_head+list_tail)) == list_:
+                    return True
+            return False
+
+        # read gene order
+        dict_gene_order= {}
+        with open(go_file) as f2:
+            line = f2.readline()
+            while line:
+                while not line.startswith('>') and line:
+                    line = f2.readline()
+                fas_name = line.strip().replace(">", "")
+                goes = []
+                line = f2.readline()
+                while not line.startswith('>') and line:
+                    goes.extend(line.strip().split("\t"))
+                    line = f2.readline()
+                dict_gene_order[fas_name] = goes
+        progressSig.emit(5)
+        if len(dict_gene_order) == 1:
+            # 只有一条序列时返回
+            progressSig.emit(100)
+            return
+        # optimize gene order
+        result_array = [["Query species", "Reference species", "Reference selection criterion", "Gene name",
+                         "Internal stop codons", "Similarity", "Chosen gene",
+                         "Gene selection criterion"]]
+        new_dict_GO = {}
+        #转格式
+        # self.progressDialog = self.factory.myProgressDialog(
+        #     "Please Wait", "Converting format...", parent=self)
+        # self.progressDialog.show()
+        total = len(dict_gene_order)
+        for num,spe in enumerate(dict_gene_order):
+            list_goes = dict_gene_order[spe]
+            list_new_GOs = list_goes[:]
+            if "_copy" in "".join(list_goes):
+                print(spe)
+                dict_copied_go = {}
+                for go in list_goes:
+                    if "_copy" in go:
+                        go_key = go.lstrip("-").split("_copy")[0]
+                        dict_copied_go.setdefault(go_key, [go_key]).append(go)
+                # print(dict_copied_go)
+                # 判断GO
+                for go_key in dict_copied_go:
+                    original_gene_name = go_key if go_key in list_goes else f"-{go_key}"
+                    # original_gene_index = list_goes.index(original_gene_name)
+                    # list_indices = [original_gene_index] + [list_goes.index(i) for i in dict_copied_go[go_key][1:]]
+                    # if is_consecutive(list_indices, list_goes):
+                    #     # 如果copy的gene是连续的
+                    #     pass
+                    # 判断是否有内部终止密码子；以及通过选择压和比对相似度判断
+                    # 选一个没有拷贝的参考物种？
+                    # 能不能不放到这里无限循环？#######
+                    ref_spe, ref_reason = self.pick_ref_spe(spe, taxonomy,
+                                                            go_key, dict_gene_order)
+                    if not ref_spe:
+                        result_array.append([spe, "", "", "", "", "", "", "", ""])
+                        continue
+                    dict_folder_seqs = {}
+                    for copied_gene in dict_copied_go[go_key]:
+                        sub_folders = os.listdir(result_path)
+                        for sub_folder in sub_folders:
+                            if os.path.isdir(f"{result_path}/{sub_folder}"):
+                                gene_name = copied_gene.lstrip('-')
+                                # tRNA的名字可能不同
+                                gene_name2 = f"trn{gene_name}"
+                                gene_file = f"{result_path}/{sub_folder}/{gene_name}.fas"
+                                gene_file2 = f"{result_path}/{sub_folder}/{gene_name2}.fas"
+                                if os.path.exists(gene_file):
+                                    dict_folder_seqs.setdefault(sub_folder, []).append(gene_file)
+                                elif os.path.exists(gene_file2):
+                                    dict_folder_seqs.setdefault(sub_folder, []).append(gene_file2)
+                    # 确定一个subfolder，然后提取对应序列出来做分析
+                    def get_seq(file, name_):
+                        rgx_seq = re.compile(f">{name_}([^>]+)")
+                        with open(file) as f:
+                            content = f.read()
+                        return re.sub(r"\s", "", rgx_seq.search(content).group(1))
+                    is_PCG = False
+                    if "CDS_NUC" in dict_folder_seqs:
+                        # PCGs,可以用内部终止密码子、选择压力、序列相似度来判断
+                        is_PCG = True
+                        list_seq_files = dict_folder_seqs["CDS_NUC"]
+                        ref_seq = get_seq(f"{result_path}/CDS_NUC/{original_gene_name.lstrip('-')}.fas",
+                                          ref_spe)
+                    else:
+                        if not dict_folder_seqs:
+                            # 没找到任何序列的时候怎么办？
+                            list_seq_files = []
+                        # non PCGs
+                        elif (len(dict_folder_seqs) > 1):
+                            if ("gene" in dict_folder_seqs):
+                                dict_folder_seqs.pop("gene")
+                            subfolder = random.choice(list(dict_folder_seqs.keys()))
+                            list_seq_files = dict_folder_seqs[subfolder]
+                            file = f"{result_path}/{subfolder}/{original_gene_name.lstrip('-')}.fas"
+                            if subfolder == "tRNA":
+                                file1 = f"{result_path}/{subfolder}/trn{original_gene_name.lstrip('-')}.fas"
+                                if os.path.exists(file1):
+                                    file = file1
+                            ref_seq = get_seq(file, ref_spe)
+                        else:
+                            subfolder = random.choice(list(dict_folder_seqs.keys()))
+                            list_seq_files = dict_folder_seqs[subfolder]
+                            file = f"{result_path}/{subfolder}/{original_gene_name.lstrip('-')}.fas"
+                            if subfolder == "tRNA":
+                                file1 = f"{result_path}/{subfolder}/trn{original_gene_name.lstrip('-')}.fas"
+                                if os.path.exists(file1):
+                                    file = file1
+                            ref_seq = get_seq(file, ref_spe)
+                    # 提取序列，进行计算
+                    def fetch_code_table(species_table, spe):
+                        with open(species_table) as f:
+                            list_ = list(csv.reader(f, skipinitialspace=True))
+                        header = list_.pop(0)
+                        code_table_index = header.index("Code table")
+                        spe_index = header.index("Tree_Name")
+                        for line in list_:
+                            spe_ = line[spe_index]
+                            if spe_ == spe:
+                                return int(line[code_table_index])
+                        return 1
+                    # 判断哪个才是原本的基因
+                    def log(x):
+                        n = 1000.0
+                        return n * ((x ** (1/n)) - 1)
+
+                    def get_target_gene(dict_inter_stop, dict_omega, dict_similarity):
+                        if dict_inter_stop and len(set(dict_inter_stop.values()))>1:
+                            return min(dict_inter_stop, key=lambda x: dict_inter_stop[x]), "fewer interal stop codons"
+                        elif dict_similarity:
+                            if len(set(dict_similarity.values()))>1:
+                                return max(dict_similarity, key=lambda x: dict_similarity[x]), "highest similarity to the reference gene"
+                            else:
+                                return random.choice(list(dict_similarity.keys())), "randomly chosen (selection criteria were the same)"
+                        elif dict_omega and len(set(dict_omega.values()))>1:
+                            return max(dict_omega, key = lambda x: abs(log(dict_omega[x]))), "stongest selection pressure"
+                        else:
+                            return "", "No best gene"
+
+                    temp_dir = f"{work_dir}/tmp"
+                    os.makedirs(temp_dir, exist_ok=True)
+                    dict_inter_stop = {}
+                    dict_omega = {}
+                    dict_similarity = {}
+                    list_spe_array = []
+                    list_copied_gene_names = []
+                    if list_seq_files:
+                        # 比对，如果是PCG，用密码子比对
+                        for seq_file in list_seq_files:
+                            tmp_seq_file = f"{temp_dir}/{uuid.uuid1()}.fas"
+                            seq = get_seq(seq_file, spe)
+                            gene_name = os.path.splitext(os.path.basename(seq_file))[0]
+                            list_copied_gene_names.append(gene_name)
+                            with open(tmp_seq_file, "w") as f:
+                                f.write(f">{ref_spe}\n{ref_seq}\n>{spe}\n{seq}\n")
+                            if is_PCG:
+                                code_table = fetch_code_table(f"{result_path}/StatFiles/species_info.csv", spe)
+                                table = CodonTable.ambiguous_dna_by_id[code_table]
+                                # 计算内部终止密码子
+                                protein = _translate_str(seq, table)
+                                # 去除终止密码子再比较
+                                protein = protein[:-1] if protein.endswith("*") else protein
+                                inter_stop_num = protein.count("*")
+                                dict_inter_stop[gene_name] = inter_stop_num
+                                # 比对
+                                aligned_fas = self.align(mafft_exe, tmp_seq_file, work_dir,
+                                                         code_table, is_PCGs=is_PCG)
+                                if os.path.getsize(aligned_fas):
+                                    # # 计算omega
+                                    # omega = self.kaks(kaks_cal_exe, aligned_fas, code_table, work_dir)
+                                    # dict_omega[gene_name] = omega
+                                    # 计算similarity
+                                    similarity = self.similarity(aligned_fas)
+                                    dict_similarity[gene_name] = similarity
+                                    list_spe_array.append([spe, ref_spe, ref_reason, gene_name, inter_stop_num,
+                                                            similarity])
+                                else:
+                                    # 比对文件是空的
+                                    list_spe_array.append([spe, ref_spe, ref_reason, gene_name, inter_stop_num,
+                                                           ""])
+                            else:
+                                # 比对
+                                aligned_fas = self.align(mafft_exe, tmp_seq_file, work_dir,
+                                                         None, is_PCGs=is_PCG)
+                                if os.path.getsize(aligned_fas):
+                                    # 计算similarity
+                                    similarity = self.similarity(aligned_fas)
+                                    dict_similarity[gene_name] = similarity
+                                    list_spe_array.append([spe, ref_spe, ref_reason, gene_name, "", similarity])
+                                else:
+                                    list_spe_array.append([spe, ref_spe, ref_reason, gene_name, "", ""])
+                        target_gene, reason = get_target_gene(dict_inter_stop, dict_omega, dict_similarity)
+                        for i in list_spe_array:
+                            result_array.append(i + [target_gene, reason])
+                        # 修改提取的序列，以及gene order等处
+                        # 蛋白序列有好几个文件夹，要怎么删？管他三七二十一，循环读每个文件，再来删？
+                        # 再删除一下gb文件，生成新的gb文件，with duplicates删除
+                        # 加上续删功能？
+                        def to_seq_removed(list_names, origin_name, spe, folder, target_gene):
+                            dir_removed = f"{folder}/removed_seqs"
+                            self.factory.creat_dirs(dir_removed)
+                            def remove_gene(gene_name, folder, rmv_folder, spe, origin=False):
+                                # 提取序列，加入到原基因文件
+                                gene_name = gene_name if os.path.exists(f"{folder}/{gene_name}.fas") else f"trn{gene_name}"
+                                gene_file = f"{folder}/{gene_name}.fas"
+                                with open(gene_file) as f2:
+                                    content = f2.read()
+                                # 提取序列，并存到文件
+                                # print(gene_file, spe, content)
+                                rgx_seq = re.compile(f">{spe}([^>]+)")
+                                seq = re.sub(r"\s", "", rgx_seq.search(content).group(1))
+                                with open(f"{rmv_folder}/{spe}_{gene_name}_removed.fas", "w") as f:
+                                    f.write(f">{spe}\n{seq}\n")
+                                # 删除原文件的序列
+                                new_content = re.sub(f">{spe}[^>]+", "", content)
+                                if ">" not in new_content:
+                                    # 如果没有序列了，就删除文件
+                                    if not origin:
+                                        os.remove(gene_file)
+                                else:
+                                    with open(gene_file, "w") as f3:
+                                        f3.write(new_content)
+                                return gene_file, gene_name
+                            if origin_name == target_gene:
+                                # 只用删除copy_gene
+                                list_names.remove(target_gene)
+                                for gene in list_names:
+                                    remove_gene(gene, folder, dir_removed, spe)
+                            else:
+                                # 先从原文件提取基因序列出来删掉
+                                origin_gene_file, origin_name = remove_gene(origin_name, folder, dir_removed, spe, origin=True)
+                                # 再从目标基因提取序列存到原文件，其余序列删掉
+                                target_file = f"{folder}/{target_gene}.fas"
+                                with open(target_file) as f4:
+                                    target_content = f4.read()
+                                target_seq = re.sub(r"\s", "", re.search(f">{spe}([^>]+)", target_content).group(1))
+                                ## 追加方式存到原文件
+                                with open(origin_gene_file, "a") as f:
+                                    f.write(f"\n>{spe}\n{target_seq}\n")
+                                ## 删除target gene file的序列
+                                new_content = re.sub(f">{spe}[^>]+", "", target_content)
+                                if ">" not in new_content:
+                                    # 如果没有序列了，就删除文件
+                                    os.remove(target_file)
+                                else:
+                                    with open(target_file, "w") as f3:
+                                        f3.write(new_content)
+                                # 删除其余序列
+                                remain_genes = [i for i in list_names if i not in [target_gene, origin_name]]
+                                if remain_genes:
+                                    for remain_gene in remain_genes:
+                                        remove_gene(remain_gene, folder, dir_removed, spe)
+                        original_name = target_gene.lstrip("-").split("_copy")[0]
+                        sub_folders = os.listdir(result_path)
+                        for sub_folder in sub_folders:
+                            if os.path.isdir(f"{result_path}/{sub_folder}"):
+                                list_ = []
+                                for gene in list_copied_gene_names:
+                                    file = f"{result_path}/{sub_folder}/{gene}.fas"
+                                    if os.path.exists(file):
+                                        list_.append(True)
+                                    elif (sub_folder=="tRNA") and os.path.exists(f"{result_path}/{sub_folder}/trn{gene}.fas"):
+                                        list_.append(True)
+                                    else:
+                                        list_.append(False)
+                                if set(list_) == {True}:
+                                    to_seq_removed(list_copied_gene_names[:], original_name,
+                                                    spe, f"{result_path}/{sub_folder}",
+                                                    target_gene)
+                        # 删除gb文件里面的？
+                        # 删除gene order文件里面的？
+                        # 要等这个物种的序列删完？？？？
+                        list_copied_gene_names.remove(target_gene)
+                        list_new_GOs = [i for i in list_new_GOs if (i.lstrip("-") not in list_copied_gene_names) and
+                                                 (f"trn{i.lstrip('-')}" not in list_copied_gene_names)
+                            ]
+                        # print(list_copied_gene_names, list_new_GOs)
+                    else:
+                        result_array.append([spe, ref_spe, ref_reason, "", "", "", "", ""])
+            new_dict_GO[spe] = list_new_GOs
+            progressSig.emit(5 + ((num+1)/total)*90)
+        result_array.append([])
+        result_array.append(["Note that duplicated genes in the 'Gene name' column are named in the order they were "
+                             "extracted from the genome; for example, if a species has three cox1 genes, the first one "
+                             "will be named cox1, the second one cox1_copy2, and the third one cox1_copy3."])
+        self.factory.write_csv_file(f"{work_dir}/gene_copy_array.csv", result_array, silence=True)
+        # 存 GO
+        new_go_file = f"{result_path}/files/linear_order_rmv_duplicates.txt"
+        with open(new_go_file, "w") as f:
+            go_str = "\n".join([f">{spe}\n" + "\t".join(new_dict_GO[spe]) for spe in new_dict_GO])
+            go_str = re.sub("_copy\d+", "", go_str)
+            f.write(go_str)
+        progressSig.emit(100)
+        return result_array
+
+    def run_command(self, commands, popen):
+        stdout = [f"{commands}\n"]
+        while True:
+            try:
+                out_line = popen.stdout.readline().decode("utf-8", errors='ignore')
+            except UnicodeDecodeError:
+                out_line = popen.stdout.readline().decode("gbk", errors='ignore')
+            if out_line == "" and popen.poll() is not None:
+                break
+            stdout.append(out_line)
+        return "".join(stdout)
+
+    def align(self, mafft_exe, seq_file, work_dir, code_table, is_PCGs=False):
+        dict_args = {}
+        dict_args["mafft_exe"] = mafft_exe
+        dict_args["vessel"] = f"{work_dir}/mafft_vessel/{uuid.uuid1()}"
+        dict_args["exportPath"] = f"{dict_args['vessel']}/mafft_alignment"
+        self.factory.creat_dir(dict_args["exportPath"])
+        self.factory.remove_dir_directly(dict_args["exportPath"])
+        dict_args["filenames"] = [seq_file]
+        dict_args["progressSig"] = None
+        file_base = os.path.basename(seq_file)
+        if is_PCGs:
+            dict_args["codon"] = code_table
+            dict_args["vessel_aaseq"] = f"{dict_args['vessel']}/AA_sequence"
+            dict_args["vessel_aalign"] = f"{dict_args['vessel']}/AA_alignments"
+            # 翻译为氨基酸
+            self.factory.creat_dir(dict_args["vessel"])
+            self.factory.remove_dir_directly(dict_args["vessel"])
+            self.factory.creat_dir(dict_args["vessel_aaseq"])
+            self.factory.creat_dir(dict_args["vessel_aalign"])
+            # 翻译氨基酸，保存AA文件，映射
+            codonAlign = CodonAlign(**dict_args)
+            # 比对
+            align_file = os.path.join(dict_args["vessel_aaseq"], file_base)
+            commands = f'"{dict_args["mafft_exe"]}" --auto --inputorder "{align_file}" > ' \
+                       f'"{dict_args["vessel_aalign"]}/{file_base}"'
+        else:
+            commands = f'"{dict_args["mafft_exe"]}" --auto --inputorder "{seq_file}" > ' \
+                       f'"{dict_args["exportPath"]}/{file_base}"'
+        popen = self.factory.init_popen(commands)
+        self.run_command(commands, popen)
+        if is_PCGs:
+            codonAlign.back_trans()  # 生成回译的codon文件
+            split_ext = os.path.splitext(file_base)  # 为了加后缀
+            aligned_file = dict_args["exportPath"] + os.sep + "_mafft".join(split_ext)
+        else:
+            aligned_file = f'{dict_args["exportPath"]}/{file_base}'
+        return aligned_file
+
+    def kaks(self, kaks_cal_exe, alignment, code_table, work_dir, method="NG"):
+        kaks_dir = f"{work_dir}/kaks"
+        self.factory.creat_dir(kaks_dir)
+        # 转为AXT格式
+        self.convertfmt = Convertfmt(**{"export_path": kaks_dir, "files": [alignment],
+                                        "export_axt": True})
+        self.convertfmt.exec_()
+        axt = self.convertfmt.axt_file
+        # 计算kaks
+        output_file = f"{kaks_dir}/{os.path.basename(axt)}.kaks"
+        commands = f"{kaks_cal_exe} -i {axt} -o {output_file} " \
+                   f"-c {code_table} -m {method}"
+        popen = self.factory.init_popen(commands)
+        log_ = self.run_command(commands, popen)
+        # print(log_)
+        with open(output_file) as f:
+            list_lines = f.readlines()
+        headers = list_lines.pop(0).strip().split("\t")
+        kaks_index = headers.index("Ka/Ks")
+        return float(list_lines[0].strip().split("\t")[kaks_index])
+
+    def similarity(self, alignment):
+        # 序列成对，生成相似性矩阵
+        aln = AlignIO.read(open(alignment), 'fasta')
+        calculator = DistanceCalculator('identity')
+        return 1 - calculator.get_distance(aln).matrix[1][0]
+
+    def pick_ref_spe(self, query_spe, taxonomy, gene, dict_gene_order):
+        '''
+            从同一个属开始找，如果没有就同一个科，再不行就同一个目
+            参考物种不能有目标基因的重复
+            gene: 基因名字，需要是不带正负号信息以及带copy信息的基因名字
+            query_spe：需要tree name
+            taxonomy：需要提取出来的分类表
+            dict_gene_order：以tree name为键，基因顺序为列表
+        :return:
+        '''
+        tax_list = ["Genus", "Family", "Order", "Class", "Phylum"]
+        # 得到所有物种对应的分类
+        if not hasattr(self, "dict_spe_tax"):
+            with open(taxonomy) as f:
+                list_ = list(csv.reader(f, skipinitialspace=True))
+            header = list_.pop(0)
+            org_index = header.index("Organism")
+            tree_name_index = header.index("Tree name")
+            spe_list = [[i[org_index], i[tree_name_index]] for num,i in enumerate(list_)]
+            self.dict_spe_tax = {}
+            for j in spe_list:
+                organism, tree_name = j
+                taxs = self.get_lineages(organism, tax_list)
+                if not taxs:
+                    taxs = self.get_lineages(organism.split()[0], tax_list)
+                if taxs:
+                    self.dict_spe_tax[tree_name] = taxs
+
+        def count_tax(tax, dict_spe_tax):
+            list_ = []
+            for spe in dict_spe_tax:
+                if tax in dict_spe_tax[spe]:
+                    list_.append(spe)
+            return list_
+        if query_spe in self.dict_spe_tax:
+            query_spe_tax = self.dict_spe_tax[query_spe]
+            for num,tax in enumerate(query_spe_tax):
+                tax_name = tax_list[num]
+                list_tax_spe = count_tax(tax, self.dict_spe_tax)
+                list_tax_spe.remove(query_spe)
+                # print(tax_name, list_tax_spe)
+                if list_tax_spe:
+                    # 判断选出来的物种里面有没有目标基因
+                    while list_tax_spe:
+                        random_spe = random.choice(list_tax_spe)
+                        gos = dict_gene_order[random_spe]
+                        if (gene not in gos) and (f"-{gene}" not in gos):
+                            list_tax_spe.remove(random_spe)
+                        elif gene + "_copy" in "".join(gos):
+                            # 有拷贝基因也不行
+                            list_tax_spe.remove(random_spe)
+                        else:
+                            return [random_spe, f"the same {tax_name}"]
+            return None, None
+        else:
+            # 如果query_spe都没有分类
+            return None, None
+
+    def get_lineages(self, name, tax_list):
+        ncbi = NCBITaxa()
+        query_id = ncbi.get_name_translator([name])
+        if query_id:
+            query_id = query_id[name][0]
+            lineage_ids = ncbi.get_lineage(query_id)
+            dict_id_rank = ncbi.get_rank(lineage_ids)
+            dict_id_name = ncbi.get_taxid_translator(lineage_ids)
+            dict_rank_name = {dict_id_rank[id].upper():dict_id_name[id] for id in dict_id_name}
+            taxs = []
+            for tax in tax_list:
+                if tax.upper() in dict_rank_name:
+                    taxs.append(dict_rank_name[tax.upper()])
+                else:
+                    taxs.append("")
+            return taxs
+        else:
+            return False
+
+class DetermineCopyGeneParallel(object):
+    '''
+            >if duplicated genes present in joint position, randomly remove one
+            >remove genes with stop codons
+            >align with close species, remove gene with high variability
+            >compare GO with close species, retain genes with similar position
+            # 计算 kaks
+                https://www.biostars.org/p/5817/#google_vignette
+                https://github.com/a1ultima/hpcleap_dnds/blob/master/py/scripts/dnds.py
+            # 记得记录一下删除的原因啥的，给个文件
+            # 测试：
+                第一个和最后一个挨着的情况,多挨几个的情况
+            # 在存文件之前执行这个方法
+        :return:
+        TODO: judge install kaks_caculator and mafft
+             开始前清空一下路径，结束了也清空一下路径
+             判断好以后，替换一下原文件的序列？
+             要不要同一个目的都选同一个物种？
+             修改对应序列的时候，似乎统计表里面的不好修改
+             从gb文件里面删除，让用户再提取一次？
+             open给个errors
+             如果报错，定位到是哪个物种报错
+        '''
+
+    def __init__(self):
+        pass
+
+    def exec_(self, result_path, work_dir, # progressSig,
+              # kaks_cal_exe=r"C:\softwares\KaKs_Calculator\KaKs_Calculator.Windows.Command\KaKs_Calculator.exe",
+              mafft_exe=r"E:\F\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\plugins\mafft-win\mafft.bat",
+              threads=8):
+        '''
+        obseleted!!!
+
+        Parameters
+        ----------
+        result_path
+        work_dir
+        mafft_exe
+        threads
+
+        Returns
+        -------
+
+        '''
+        factory = Factory()
+        factory.creat_dir(work_dir)
+        factory.remove_dir_directly(work_dir)
+        go_file = f"{result_path}/files/linear_order.txt"
+        taxonomy = f"{result_path}/StatFiles/taxonomy.csv"
+        def is_consecutive_list(list_):
+            list_.sort()
+            range_list_=list(range(min(list_), max(list_)+1))
+            # 如果不包含最后一个和开始的索引
+            if list_ == range_list_:
+                return True
+            return False
+
+        def is_consecutive(list_, total_list):
+            list_total_indices = list(range(len(total_list)))
+            # 如果不包含最后一个和开始的索引
+            if is_consecutive_list(list_):
+                return True
+            # 如果最后一个元素和第一个元素在里面
+            if (0 in list_) and (list_total_indices[-1] in list_):
+                list_head = []
+                list_tail = []
+                for i in list_:
+                    if list_head:
+                        if ((i - list_head[-1])==1):
+                            list_head.append(i)
+                    else:
+                        # 第一次
+                        list_head.append(i)
+                for j in reversed(list_):
+                    if list_tail:
+                        if (list_tail[-1] - j)==1:
+                            list_tail.append(j)
+                    else:
+                        # 第一次
+                        list_tail.append(j)
+                if list(sorted(list_head+list_tail)) == list_:
+                    return True
+            return False
+
+        # read gene order
+        dict_gene_order= {}
+        with open(go_file) as f2:
+            line = f2.readline()
+            while line:
+                while not line.startswith('>') and line:
+                    line = f2.readline()
+                fas_name = line.strip().replace(">", "")
+                goes = []
+                line = f2.readline()
+                while not line.startswith('>') and line:
+                    goes.extend(line.strip().split("\t"))
+                    line = f2.readline()
+                dict_gene_order[fas_name] = goes
+        # progressSig.emit(5)
+        if len(dict_gene_order) == 1:
+            # 只有一条序列时返回
+            # progressSig.emit(100)
+            return
+        # optimize gene order
+        result_array = [["Query species", "Reference species", "Reference selection criterion", "Gene name",
+                         "Internal stop codons", "Similarity", "Chosen gene",
+                         "Gene selection criterion"]]
+        new_dict_GO = {}
+        #转格式
+        # self.progressDialog = factory.myProgressDialog(
+        #     "Please Wait", "Converting format...", parent=self)
+        # self.progressDialog.show()
+        total = len(dict_gene_order)
+        pool = Pool(processes=threads)
+        try:
+            r = [pool.apply_async(self.run_slot, (spe, dict_gene_order, taxonomy,
+                                                  result_path, work_dir, mafft_exe)) for spe in dict_gene_order]
+            pool.close()
+            for num,item in enumerate(r):
+                item.wait(timeout=9999)  # Without a timeout, you can't interrupt this.
+                list_array, list_new_GOs, spe = item.get()
+                new_dict_GO[spe] = list_new_GOs
+                result_array.extend(list_array)
+                # progressSig.emit(5 + ((num+1)/total)*90)
+        except KeyboardInterrupt:
+            pool.terminate()
+        finally:
+            pool.join()
+
+        result_array.append([])
+        result_array.append(["Note that duplicated genes in the 'Gene name' column are named in the order they were "
+                             "extracted from the genome; for example, if a species has three cox1 genes, the first one "
+                             "will be named cox1, the second one cox1_copy2, and the third one cox1_copy3."])
+        factory.write_csv_file(f"{work_dir}/duplicates_resolving_details.csv", result_array, silence=True)
+        # 存 GO
+        new_go_file = f"{result_path}/files/linear_order_rmv_duplicates.txt"
+        with open(new_go_file, "w") as f:
+            go_str = "\n".join([f">{spe}\n" + "\t".join(new_dict_GO[spe]) for spe in new_dict_GO])
+            go_str = re.sub("_copy\d+", "", go_str)
+            f.write(go_str)
+        # progressSig.emit(100)
+        return result_array
+
+    def run_slot(self, spe, dict_gene_order, taxonomy, result_path, work_dir, mafft_exe):
+        '''
+
+        obseleted!!!
+
+        Parameters
+        ----------
+        spe
+        dict_gene_order
+        taxonomy
+        result_path
+        work_dir
+        mafft_exe
+
+        Returns
+        -------
+
+        '''
+        factory = Factory()
+        list_goes = dict_gene_order[spe]
+        list_new_GOs = list_goes[:]
+        list_array = []
+        if "_copy" in "".join(list_goes):
+            print(spe)
+            dict_copied_go = {}
+            for go in list_goes:
+                if "_copy" in go:
+                    go_key = go.lstrip("-").split("_copy")[0]
+                    dict_copied_go.setdefault(go_key, [go_key]).append(go)
+            # print(dict_copied_go)
+            # 判断GO
+            for go_key in dict_copied_go:
+                original_gene_name = go_key if go_key in list_goes else f"-{go_key}"
+                # original_gene_index = list_goes.index(original_gene_name)
+                # list_indices = [original_gene_index] + [list_goes.index(i) for i in dict_copied_go[go_key][1:]]
+                # if is_consecutive(list_indices, list_goes):
+                #     # 如果copy的gene是连续的
+                #     pass
+                # 判断是否有内部终止密码子；以及通过选择压和比对相似度判断
+                # 选一个没有拷贝的参考物种？
+                # 能不能不放到这里无限循环？#######
+                ref_spe, ref_reason = self.pick_ref_spe(spe, taxonomy,
+                    go_key, dict_gene_order)
+                if not ref_spe:
+                    continue
+                dict_folder_seqs = {}
+                for copied_gene in dict_copied_go[go_key]:
+                    sub_folders = os.listdir(result_path)
+                    for sub_folder in sub_folders:
+                        if os.path.isdir(f"{result_path}/{sub_folder}"):
+                            gene_name = copied_gene.lstrip('-')
+                            # tRNA的名字可能不同
+                            gene_name2 = f"trn{gene_name}"
+                            gene_file = f"{result_path}/{sub_folder}/{gene_name}.fas"
+                            gene_file2 = f"{result_path}/{sub_folder}/{gene_name2}.fas"
+                            if os.path.exists(gene_file):
+                                dict_folder_seqs.setdefault(sub_folder, []).append(gene_file)
+                            elif os.path.exists(gene_file2):
+                                dict_folder_seqs.setdefault(sub_folder, []).append(gene_file2)
+                # 确定一个subfolder，然后提取对应序列出来做分析
+                def get_seq(file, name_):
+                    rgx_seq = re.compile(f">{name_}([^>]+)")
+                    with open(file) as f:
+                        content = f.read()
+                    return re.sub(r"\s", "", rgx_seq.search(content).group(1))
+                is_PCG = False
+                if "CDS_NUC" in dict_folder_seqs:
+                    # PCGs,可以用内部终止密码子、选择压力、序列相似度来判断
+                    is_PCG = True
+                    list_seq_files = dict_folder_seqs["CDS_NUC"]
+                    ref_seq = get_seq(f"{result_path}/CDS_NUC/{original_gene_name.lstrip('-')}.fas",
+                        ref_spe)
+                else:
+                    if not dict_folder_seqs:
+                        # 没找到任何序列的时候怎么办？
+                        list_seq_files = []
+                    # non PCGs
+                    elif (len(dict_folder_seqs) > 1):
+                        if ("gene" in dict_folder_seqs):
+                            dict_folder_seqs.pop("gene")
+                        subfolder = random.choice(list(dict_folder_seqs.keys()))
+                        list_seq_files = dict_folder_seqs[subfolder]
+                        file = f"{result_path}/{subfolder}/{original_gene_name.lstrip('-')}.fas"
+                        if subfolder == "tRNA":
+                            file1 = f"{result_path}/{subfolder}/trn{original_gene_name.lstrip('-')}.fas"
+                            if os.path.exists(file1):
+                                file = file1
+                        ref_seq = get_seq(file, ref_spe)
+                    else:
+                        subfolder = random.choice(list(dict_folder_seqs.keys()))
+                        list_seq_files = dict_folder_seqs[subfolder]
+                        file = f"{result_path}/{subfolder}/{original_gene_name.lstrip('-')}.fas"
+                        if subfolder == "tRNA":
+                            file1 = f"{result_path}/{subfolder}/trn{original_gene_name.lstrip('-')}.fas"
+                            if os.path.exists(file1):
+                                file = file1
+                        ref_seq = get_seq(file, ref_spe)
+                # 提取序列，进行计算
+                def fetch_code_table(species_table, spe):
+                    with open(species_table) as f:
+                        list_ = list(csv.reader(f, skipinitialspace=True))
+                    header = list_.pop(0)
+                    code_table_index = header.index("Code table")
+                    spe_index = header.index("Tree_Name")
+                    for line in list_:
+                        spe_ = line[spe_index]
+                        if spe_ == spe:
+                            return int(line[code_table_index])
+                    return 1
+                # 判断哪个才是原本的基因
+                def log(x):
+                    n = 1000.0
+                    return n * ((x ** (1/n)) - 1)
+
+                def get_target_gene(dict_inter_stop, dict_omega, dict_similarity):
+                    if dict_inter_stop and len(set(dict_inter_stop.values()))>1:
+                        return min(dict_inter_stop, key=lambda x: dict_inter_stop[x]), "fewer interal stop codons"
+                    elif dict_similarity:
+                        if len(set(dict_similarity.values()))>1:
+                            return max(dict_similarity, key=lambda x: dict_similarity[x]), "highest similarity to the reference gene"
+                        else:
+                            return random.choice(list(dict_similarity.keys())), "randomly chosen (selection criteria were the same)"
+                    elif dict_omega and len(set(dict_omega.values()))>1:
+                        return max(dict_omega, key = lambda x: abs(log(dict_omega[x]))), "strongest selection pressure"
+                    else:
+                        return "", "No best gene"
+
+                temp_dir = f"{work_dir}/tmp"
+                os.makedirs(temp_dir, exist_ok=True)
+                dict_inter_stop = {}
+                dict_omega = {}
+                dict_similarity = {}
+                list_spe_array = []
+                list_copied_gene_names = []
+                if list_seq_files:
+                    # 比对，如果是PCG，用密码子比对
+                    for seq_file in list_seq_files:
+                        tmp_seq_file = f"{temp_dir}/{uuid.uuid1()}.fas"
+                        seq = get_seq(seq_file, spe)
+                        gene_name = os.path.splitext(os.path.basename(seq_file))[0]
+                        list_copied_gene_names.append(gene_name)
+                        with open(tmp_seq_file, "w") as f:
+                            f.write(f">{ref_spe}\n{ref_seq}\n>{spe}\n{seq}\n")
+                        if is_PCG:
+                            code_table = fetch_code_table(f"{result_path}/StatFiles/species_info.csv", spe)
+                            table = CodonTable.ambiguous_dna_by_id[code_table]
+                            # 计算内部终止密码子
+                            protein = _translate_str(seq, table)
+                            # 去除终止密码子再比较
+                            protein = protein[:-1] if protein.endswith("*") else protein
+                            inter_stop_num = protein.count("*")
+                            dict_inter_stop[gene_name] = inter_stop_num
+                            # 比对
+                            aligned_fas = self.align(mafft_exe, tmp_seq_file, work_dir,
+                                code_table, is_PCGs=is_PCG)
+                            if os.path.getsize(aligned_fas):
+                                # # 计算omega
+                                # omega = self.kaks(kaks_cal_exe, aligned_fas, code_table, work_dir)
+                                # dict_omega[gene_name] = omega
+                                # 计算similarity
+                                similarity = self.similarity(aligned_fas)
+                                dict_similarity[gene_name] = similarity
+                                list_spe_array.append([spe, ref_spe, ref_reason, gene_name, inter_stop_num,
+                                                       similarity])
+                            else:
+                                # 比对文件是空的
+                                list_spe_array.append([spe, ref_spe, ref_reason, gene_name, inter_stop_num,
+                                                       ""])
+                        else:
+                            # 比对
+                            aligned_fas = self.align(mafft_exe, tmp_seq_file, work_dir,
+                                None, is_PCGs=is_PCG)
+                            if os.path.getsize(aligned_fas):
+                                # 计算similarity
+                                similarity = self.similarity(aligned_fas)
+                                dict_similarity[gene_name] = similarity
+                                list_spe_array.append([spe, ref_spe, ref_reason, gene_name, "", similarity])
+                            else:
+                                list_spe_array.append([spe, ref_spe, ref_reason, gene_name, "", ""])
+                    target_gene, reason = get_target_gene(dict_inter_stop, dict_omega, dict_similarity)
+                    for i in list_spe_array:
+                        list_array.append(i + [target_gene, reason])
+                    # 修改提取的序列，以及gene order等处
+                    # 蛋白序列有好几个文件夹，要怎么删？管他三七二十一，循环读每个文件，再来删？
+                    # 再删除一下gb文件，生成新的gb文件，with duplicates删除
+                    # 加上续删功能？
+                    def to_seq_removed(list_names, origin_name, spe, folder, target_gene):
+                        dir_removed = f"{folder}/removed_seqs"
+                        factory.creat_dirs(dir_removed)
+                        def remove_gene(gene_name, folder, rmv_folder, spe, origin=False):
+                            # 提取序列，加入到原基因文件
+                            gene_name = gene_name if os.path.exists(f"{folder}/{gene_name}.fas") else f"trn{gene_name}"
+                            gene_file = f"{folder}/{gene_name}.fas"
+                            with open(gene_file) as f2:
+                                content = f2.read()
+                            # 提取序列，并存到文件
+                            # print(gene_file, spe, content)
+                            rgx_seq = re.compile(f">{spe}([^>]+)")
+                            seq = re.sub(r"\s", "", rgx_seq.search(content).group(1))
+                            with open(f"{rmv_folder}/{spe}_{gene_name}_removed.fas", "w") as f:
+                                f.write(f">{spe}\n{seq}\n")
+                            # 删除原文件的序列
+                            new_content = re.sub(f">{spe}[^>]+", "", content)
+                            if ">" not in new_content:
+                                # 如果没有序列了，就删除文件
+                                if not origin:
+                                    os.remove(gene_file)
+                            else:
+                                with open(gene_file, "w") as f3:
+                                    f3.write(new_content)
+                            return gene_file, gene_name
+                        if origin_name == target_gene:
+                            # 只用删除copy_gene
+                            list_names.remove(target_gene)
+                            for gene in list_names:
+                                remove_gene(gene, folder, dir_removed, spe)
+                        else:
+                            # 先从原文件提取基因序列出来删掉
+                            origin_gene_file, origin_name = remove_gene(origin_name, folder, dir_removed, spe, origin=True)
+                            # 再从目标基因提取序列存到原文件，其余序列删掉
+                            target_file = f"{folder}/{target_gene}.fas"
+                            with open(target_file) as f4:
+                                target_content = f4.read()
+                            target_seq = re.sub(r"\s", "", re.search(f">{spe}([^>]+)", target_content).group(1))
+                            ## 追加方式存到原文件
+                            with open(origin_gene_file, "a") as f:
+                                f.write(f"\n>{spe}\n{target_seq}\n")
+                            ## 删除target gene file的序列
+                            new_content = re.sub(f">{spe}[^>]+", "", target_content)
+                            if ">" not in new_content:
+                                # 如果没有序列了，就删除文件
+                                os.remove(target_file)
+                            else:
+                                with open(target_file, "w") as f3:
+                                    f3.write(new_content)
+                            # 删除其余序列
+                            remain_genes = [i for i in list_names if i not in [target_gene, origin_name]]
+                            if remain_genes:
+                                for remain_gene in remain_genes:
+                                    remove_gene(remain_gene, folder, dir_removed, spe)
+                    original_name = target_gene.lstrip("-").split("_copy")[0]
+                    sub_folders = os.listdir(result_path)
+                    for sub_folder in sub_folders:
+                        if os.path.isdir(f"{result_path}/{sub_folder}"):
+                            list_ = []
+                            for gene in list_copied_gene_names:
+                                file = f"{result_path}/{sub_folder}/{gene}.fas"
+                                if os.path.exists(file):
+                                    list_.append(True)
+                                elif (sub_folder=="tRNA") and os.path.exists(f"{result_path}/{sub_folder}/trn{gene}.fas"):
+                                    list_.append(True)
+                                else:
+                                    list_.append(False)
+                            if set(list_) == {True}:
+                                to_seq_removed(list_copied_gene_names[:], original_name,
+                                    spe, f"{result_path}/{sub_folder}",
+                                    target_gene)
+                    # 删除gb文件里面的？
+                    # 删除gene order文件里面的？
+                    # 要等这个物种的序列删完？？？？
+                    list_copied_gene_names.remove(target_gene)
+                    list_new_GOs = [i for i in list_new_GOs if (i.lstrip("-") not in list_copied_gene_names) and
+                                    (f"trn{i.lstrip('-')}" not in list_copied_gene_names)
+                                    ]
+                else:
+                    list_array.append([spe, ref_spe, ref_reason, "", "", "", "", ""])
+            return list_array, list_new_GOs, spe
+        return [], list_new_GOs, spe
+
+
+    def exec2_(self, result_path, work_dir,
+               queue,
+              # kaks_cal_exe=r"C:\softwares\KaKs_Calculator\KaKs_Calculator.Windows.Command\KaKs_Calculator.exe",
+              mafft_exe=r"E:\F\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\plugins\mafft-win\mafft.bat",
+              threads=8,
+              exception_signal=None):
+        '''
+        修改文件里面的基因拷贝在多进程外面进行
+        :param result_path:
+        :param work_dir:
+        :param mafft_exe:
+        :param threads:
+        :return:
+        '''
+        self.last_num = 0
+        factory = Factory()
+        factory.creat_dir(work_dir)
+        # factory.remove_dir_directly(work_dir)
+        go_file = f"{result_path}/files/linear_order.txt"
+        taxonomy = f"{result_path}/StatFiles/taxonomy.csv"
+        def is_consecutive_list(list_):
+            list_.sort()
+            range_list_=list(range(min(list_), max(list_)+1))
+            # 如果不包含最后一个和开始的索引
+            if list_ == range_list_:
+                return True
+            return False
+
+        def is_consecutive(list_, total_list):
+            list_total_indices = list(range(len(total_list)))
+            # 如果不包含最后一个和开始的索引
+            if is_consecutive_list(list_):
+                return True
+            # 如果最后一个元素和第一个元素在里面
+            if (0 in list_) and (list_total_indices[-1] in list_):
+                list_head = []
+                list_tail = []
+                for i in list_:
+                    if list_head:
+                        if ((i - list_head[-1])==1):
+                            list_head.append(i)
+                    else:
+                        # 第一次
+                        list_head.append(i)
+                for j in reversed(list_):
+                    if list_tail:
+                        if (list_tail[-1] - j)==1:
+                            list_tail.append(j)
+                    else:
+                        # 第一次
+                        list_tail.append(j)
+                if list(sorted(list_head+list_tail)) == list_:
+                    return True
+            return False
+
+        # read gene order
+        dict_gene_order= {}
+        with open(go_file) as f2:
+            line = f2.readline()
+            while line:
+                while not line.startswith('>') and line:
+                    line = f2.readline()
+                fas_name = line.strip().replace(">", "")
+                goes = []
+                line = f2.readline()
+                while not line.startswith('>') and line:
+                    goes.extend(line.strip().split("\t"))
+                    line = f2.readline()
+                dict_gene_order[fas_name] = goes
+        # if progressSig:
+        #     progressSig.emit(5)
+        if len(dict_gene_order) == 1:
+            # 只有一条序列时返回
+            # if progressSig:
+            #     progressSig.emit(100)
+            return
+        # optimize gene order
+        # result_array = [["Query species", "Reference species", "Reference selection criterion", "Gene name",
+        #                  "Internal stop codons", "Similarity", "Chosen gene",
+        #                  "Gene selection criterion"]]
+        # dict_spe_copied_genes_file = f"{work_dir}/tmp/dict_spe_copied_genes.pkl"
+        # if (not os.path.exists(dict_spe_copied_genes_file)) or (not os.path.getsize(dict_spe_copied_genes_file)):
+        # new_dict_GO = {}
+        dict_spe_copied_genes = {}
+        #转格式
+        # timer = QTimer()
+        total = len(dict_gene_order)
+        # self.queue = Queue()
+
+        pool = get_context("spawn").Pool(processes=threads) # \
+            # if platform.system().lower() == "windows" else Pool(processes=threads)
+        # pool = Pool(processes=threads)
+        try:
+            r = [pool.apply_async(self.run_slot_2, (spe, dict_gene_order, taxonomy,
+                                                  result_path, work_dir, mafft_exe,
+                                                    total, queue)) for spe in dict_gene_order]
+            pool.close()
+            # count = 0
+            for item in r:
+                item.wait(timeout=9999)  # Without a timeout, you can't interrupt this.
+                spe, spe_copied_genes = item.get()
+                # new_dict_GO[spe] = list_new_GOs
+                dict_spe_copied_genes[spe] = spe_copied_genes
+                # result_array += list_array
+                # count += 1
+                # if progressSig:
+                #     if timer.elapsed()>500: # 必须过一段时间再发送，不然报错
+                #         progressSig.emit(5 + (count/total)*90)
+                #         timer.restart()
+                # print(f"{spe}, {count}/{total} finished !")
+        except:
+            exceptionInfo = ''.join(
+                traceback.format_exception(
+                    *sys.exc_info()))
+            self.save2log(f"{work_dir}/log.txt", exceptionInfo)
+            if exception_signal:
+                exception_signal.emit(exceptionInfo)
+            pool.terminate()
+        finally:
+            pool.join()
+        # timer.stop()
+        # result_array.append([])
+        # result_array.append(["Note that duplicated genes in the 'Gene name' column are named in the order they were "
+        #                      "extracted from the genome; for example, if a species has three cox1 genes, the first one "
+        #                      "will be named cox1, the second one cox1_copy2, and the third one cox1_copy3."])
+        # factory.write_csv_file(f"{work_dir}/duplicates_resolving_details.csv", result_array, silence=True)
+        list_csvs = glob.glob(f"{work_dir}/tmp/csv/*.csv")
+        csv_body = []
+        for csv in list_csvs:
+            with open(csv) as f:
+                csv_content = f.read()
+            csv_body.append(csv_content)
+        with open(f"{work_dir}/duplicates_resolving_details.csv", "w") as f2:
+            header = ",".join(["Query species", "Reference species", "Reference selection criterion", "Gene name",
+                               "Internal stop codons", "Similarity", "Chosen gene",
+                               "Gene selection criterion"])
+            foot = "\"Note that duplicated genes in the 'Gene name' column are named in the order they were " \
+                    "extracted from the genome; for example, if a species has three cox1 genes, the first one " \
+                    "will be named cox1, the second one cox1_copy2, and the third one cox1_copy3.\""
+            f2.write(f"{header}\n{''.join(csv_body)}\n{foot}")
+        # 存 GO
+        new_go_file = f"{result_path}/files/linear_order_rmv_duplicates.txt"
+        list_go_files = glob.glob(f"{work_dir}/tmp/csv/*.go")
+        go_str = []
+        for go_file in list_go_files:
+            with open(go_file) as f:
+                go_content = f.read()
+                go_str.append(go_content)
+        with open(new_go_file, "w") as f:
+            f.write("".join(go_str))
+        # # 存本地
+        # with open(dict_spe_copied_genes_file, "wb") as f:
+        #     pickle.dump(dict_spe_copied_genes)
+        # else:
+        #     with open(dict_spe_copied_genes_file, 'rb') as handle:
+        #         dict_spe_copied_genes = pickle.load(handle)
+        # 修改文件
+        # if progressSig:
+        #     # if timer.elapsed()>100:
+        #     progressSig.emit(95)
+        self.rmv_duplicates_in_files(dict_spe_copied_genes, result_path)
+        # 删除tmp文件夹
+        factory.remove_dir_directly(f"{work_dir}/tmp", removeRoot=True)
+        factory.remove_dir_directly(f"{work_dir}/mafft_vessel", removeRoot=True)
+        # if progressSig:
+        #     progressSig.emit(100)
+        # # return result_array
+
+    def save2log(self, file, text):
+        # print(text)
+        with open(file, "a") as f:
+            f.write(f"{text}\n")
+
+    def run_slot_2(self, spe, dict_gene_order, taxonomy, result_path, work_dir, mafft_exe, total, queue):
+        '''
+        修改文件里面的基因拷贝在多进程外面进行
+        :param spe:
+        :param dict_gene_order:
+        :param taxonomy:
+        :param result_path:
+        :param work_dir:
+        :param mafft_exe:
+        :return:
+        TODO: 当有一个注释叫misc_feature的时候，里面如果有很多基因与其它注释（如CDS）的基因相同，如CDS有cox1，misc_feature也有cox1，
+              会导致生成的linear order文件有多个cox1，类似cox1	cox1	cox1_copy2	cox1_copy3；但是实际上CDS只有1个cox1，
+              这种情况下，如果有第三个物种有多的cox1基因，那么就会有cox1_copy2这个文件，而这个文件里面是没有前面那个物种的，这样就会导致
+              出现BUG，即在基因文件里面找不到对应的物种
+              新增功能，用这个功能的时候，不能打开misc_feature，或者直接强制性只保留CDS、tRNA等注释？
+        '''
+        try:
+            factory = Factory()
+            list_goes = dict_gene_order[spe]
+            list_new_GOs = list_goes[:]
+            list_array = []
+            spe_copied_genes = [] # [[gene1, gene1_copy2], [gene2, gene2_copy2]]
+            temp_dir = f"{work_dir}/tmp"
+            os.makedirs(temp_dir, exist_ok=True)
+            csv_dir = f"{temp_dir}/csv"
+            factory.creat_dirs(csv_dir)
+            go_file = f"{csv_dir}/{spe}.go"
+            log = f"{work_dir}/log.txt"
+            if os.path.exists(go_file) and os.path.getsize(go_file):
+                self.save2log(log, f"{spe} already finished")
+                self.send_progress(work_dir, total, queue)
+                return spe, spe_copied_genes
+
+            # 提取序列，进行计算
+            def fetch_code_table(species_table, spe):
+                with open(species_table) as f:
+                    list_ = list(csv.reader(f, skipinitialspace=True))
+                header = list_.pop(0)
+                code_table_index = header.index("Code table")
+                spe_index = header.index("Tree_Name")
+                for line in list_:
+                    spe_ = line[spe_index]
+                    if spe_ == spe:
+                        return int(line[code_table_index])
+                return 1
+            # 判断哪个才是原本的基因
+            def log(x):
+                n = 1000.0
+                return n * ((x ** (1/n)) - 1)
+
+            def get_target_gene(dict_inter_stop, dict_omega, dict_similarity):
+                if dict_inter_stop and len(set(dict_inter_stop.values()))>1:
+                    return min(dict_inter_stop, key=lambda x: dict_inter_stop[x]), "fewer interal stop codons"
+                elif dict_similarity:
+                    if len(set(dict_similarity.values()))>1:
+                        return max(dict_similarity, key=lambda x: dict_similarity[x]), "highest similarity to the reference gene"
+                    else:
+                        return random.choice(list(dict_similarity.keys())), "randomly chosen (selection criteria were the same)"
+                elif dict_omega and len(set(dict_omega.values()))>1:
+                    return max(dict_omega, key = lambda x: abs(log(dict_omega[x]))), "strongest selection pressure"
+                else:
+                    return "", "No best gene"
+
+            def get_seq(file, name_):
+                # print(file, name_)
+                rgx_seq = re.compile(f">{name_}([^>]+)")
+                with open(file) as f:
+                    content = f.read()
+                if rgx_seq.search(content):
+                    return re.sub(r"\s", "", rgx_seq.search(content).group(1))
+                else:
+                    print(f"{name_} was not found in {file}!")
+                    return
+
+            def spe_in_fas(spe, file):
+                rgx_seq = re.compile(f">{spe}([^>]+)")
+                with open(file) as f:
+                    content = f.read()
+                return rgx_seq.search(content)
+
+            def pad_seq(sequence):
+                """ Pad sequence to multiple of 3 with N """
+
+                remainder = len(sequence) % 3
+
+                return sequence if remainder == 0 else sequence + Seq('N' * (3 - remainder))
+
+            if "_copy" in "".join(list_goes):
+                # print(spe)
+                dict_copied_go = {} # {cox1: [cox1, cox1_copy1]}
+                for go in list_goes:
+                    if "_copy" in go:
+                        go_key = go.lstrip("-").split("_copy")[0]
+                        dict_copied_go.setdefault(go_key, [go_key]).append(go)
+                # print(dict_copied_go)
+                # 判断GO
+                for go_key in dict_copied_go:
+                    original_gene_name = go_key if go_key in list_goes else f"-{go_key}"
+                    # original_gene_index = list_goes.index(original_gene_name)
+                    # list_indices = [original_gene_index] + [list_goes.index(i) for i in dict_copied_go[go_key][1:]]
+                    # if is_consecutive(list_indices, list_goes):
+                    #     # 如果copy的gene是连续的
+                    #     pass
+                    # 判断是否有内部终止密码子；以及通过选择压和比对相似度判断
+                    # 选一个没有拷贝的参考物种？
+                    # 能不能不放到这里无限循环？#######
+                    ref_spe, ref_reason = self.pick_ref_spe(spe, taxonomy,
+                        go_key, dict_gene_order)
+                    if not ref_spe:
+                        continue
+
+                    dict_folder_seqs = {} # {CDS_NUC: ["xx/cox1.fas", "xx/cox1_copy1.fas"]}
+                    for copied_gene in dict_copied_go[go_key]:
+                        sub_folders = os.listdir(result_path)
+                        for sub_folder in sub_folders:
+                            if os.path.isdir(f"{result_path}/{sub_folder}"):
+                                gene_name = copied_gene.lstrip('-')
+                                # tRNA的名字可能不同
+                                gene_name2 = f"trn{gene_name}"
+                                gene_file = f"{result_path}/{sub_folder}/{gene_name}.fas"
+                                gene_file2 = f"{result_path}/{sub_folder}/{gene_name2}.fas"
+                                if os.path.exists(gene_file) and spe_in_fas(spe, gene_file):
+                                    dict_folder_seqs.setdefault(sub_folder, []).append(gene_file)
+                                elif os.path.exists(gene_file2) and spe_in_fas(spe, gene_file2):
+                                    dict_folder_seqs.setdefault(sub_folder, []).append(gene_file2)
+                    # 确定一个subfolder，然后提取对应序列出来做分析
+                    is_PCG = False
+                    if "CDS_NUC" in dict_folder_seqs:
+                        # PCGs,可以用内部终止密码子、选择压力、序列相似度来判断
+                        is_PCG = True
+                        list_seq_files = dict_folder_seqs["CDS_NUC"]
+                        ref_seq = get_seq(f"{result_path}/CDS_NUC/{original_gene_name.lstrip('-')}.fas",
+                            ref_spe)
+                    else:
+                        if not dict_folder_seqs:
+                            # 没找到任何序列的时候怎么办？
+                            list_seq_files = []
+                        # non PCGs
+                        elif (len(dict_folder_seqs) > 1):
+                            if ("gene" in dict_folder_seqs):
+                                dict_folder_seqs.pop("gene")
+                            subfolder = random.choice(list(dict_folder_seqs.keys()))
+                            list_seq_files = dict_folder_seqs[subfolder]
+                            file = f"{result_path}/{subfolder}/{original_gene_name.lstrip('-')}.fas"
+                            if subfolder == "tRNA":
+                                file1 = f"{result_path}/{subfolder}/trn{original_gene_name.lstrip('-')}.fas"
+                                if os.path.exists(file1):
+                                    file = file1
+                            ref_seq = get_seq(file, ref_spe)
+                        else:
+                            subfolder = random.choice(list(dict_folder_seqs.keys()))
+                            list_seq_files = dict_folder_seqs[subfolder]
+                            file = f"{result_path}/{subfolder}/{original_gene_name.lstrip('-')}.fas"
+                            if subfolder == "tRNA":
+                                file1 = f"{result_path}/{subfolder}/trn{original_gene_name.lstrip('-')}.fas"
+                                if os.path.exists(file1):
+                                    file = file1
+                            ref_seq = get_seq(file, ref_spe)
+
+                    dict_inter_stop = {}
+                    dict_omega = {}
+                    dict_similarity = {}
+                    list_spe_array = []
+                    list_copied_gene_names = []
+                    if list_seq_files:
+                        # 比对，如果是PCG，用密码子比对
+                        for seq_file in list_seq_files:
+                            tmp_seq_file = f"{temp_dir}/{uuid.uuid1()}.fas"
+                            seq = get_seq(seq_file, spe)
+                            if not seq:
+                                continue
+                            gene_name = os.path.splitext(os.path.basename(seq_file))[0]
+                            list_copied_gene_names.append(gene_name)
+                            with open(tmp_seq_file, "w") as f:
+                                f.write(f">{ref_spe}\n{ref_seq}\n>{spe}\n{seq}\n")
+                            if is_PCG:
+                                code_table = fetch_code_table(f"{result_path}/StatFiles/species_info.csv", spe)
+                                table = CodonTable.ambiguous_dna_by_id[code_table]
+                                # 计算内部终止密码子
+                                protein = _translate_str(pad_seq(seq), table)
+                                # 去除终止密码子再比较
+                                protein = protein[:-1] if protein.endswith("*") else protein
+                                inter_stop_num = protein.count("*")
+                                dict_inter_stop[gene_name] = inter_stop_num
+                                # 比对
+                                aligned_fas = self.align(mafft_exe, tmp_seq_file, work_dir,
+                                    code_table, is_PCGs=is_PCG)
+                                if os.path.getsize(aligned_fas):
+                                    # # 计算omega
+                                    # omega = self.kaks(kaks_cal_exe, aligned_fas, code_table, work_dir)
+                                    # dict_omega[gene_name] = omega
+                                    # 计算similarity
+                                    similarity = self.similarity(aligned_fas)
+                                    dict_similarity[gene_name] = similarity
+                                    list_spe_array.append([spe, ref_spe, ref_reason, gene_name, inter_stop_num,
+                                                           similarity])
+                                else:
+                                    # 比对文件是空的
+                                    list_spe_array.append([spe, ref_spe, ref_reason, gene_name, inter_stop_num,
+                                                           ""])
+                            else:
+                                # 比对
+                                aligned_fas = self.align(mafft_exe, tmp_seq_file, work_dir,
+                                    None, is_PCGs=is_PCG)
+                                if os.path.getsize(aligned_fas):
+                                    # 计算similarity
+                                    similarity = self.similarity(aligned_fas)
+                                    dict_similarity[gene_name] = similarity
+                                    list_spe_array.append([spe, ref_spe, ref_reason, gene_name, "", similarity])
+                                else:
+                                    list_spe_array.append([spe, ref_spe, ref_reason, gene_name, "", ""])
+                        target_gene, reason = get_target_gene(dict_inter_stop, dict_omega, dict_similarity)
+                        for i in list_spe_array:
+                            list_array.append(i + [target_gene, reason])
+                        # 删除gene order文件里面的？
+                        # 要等这个物种的序列删完？？？？
+                        list_copied_gene_names.remove(target_gene)
+                        list_new_GOs = [i for i in list_new_GOs if (i.lstrip("-") not in list_copied_gene_names) and
+                                        (f"trn{i.lstrip('-')}" not in list_copied_gene_names)
+                                        ]
+                        rep_name = target_gene.replace("trn", "")
+                        target_name = rep_name if rep_name in list_new_GOs else f"-{rep_name}"
+                        # print(list_new_GOs, target_name, target_gene)
+                        target_gene_index = list_new_GOs.index(target_name)
+                        list_new_GOs[target_gene_index] = list_new_GOs[target_gene_index].split("_copy")[0]
+                        list_copied_genes = [target_gene] + list_copied_gene_names
+                        spe_copied_genes.append(list_copied_genes)
+                    else:
+                        list_array.append([spe, ref_spe, ref_reason, "", "", "", "", ""])
+                # 存CSV
+                factory.write_csv_file(f"{csv_dir}/{spe}.csv", list_array, silence=True)
+                # 存GO
+                with open(go_file, "w") as f:
+                    go_str = '\t'.join(list_new_GOs)
+                    f.write(f">{spe}\n{go_str}\n")
+                self.send_progress(work_dir, total, queue)
+                return spe, spe_copied_genes
+            # 存GO
+            with open(go_file, "w") as f:
+                go_str = '\t'.join(list_new_GOs)
+                f.write(f">{spe}\n{go_str}\n")
+            self.send_progress(work_dir, total, queue)
+            return spe, spe_copied_genes
+        except:
+            exceptionInfo = ''.join(
+                traceback.format_exception(
+                    *sys.exc_info()))
+            self.save2log(f"{work_dir}/log.txt", exceptionInfo)
+
+    def send_progress(self, work_dir, total, queue):
+        if queue:
+            queue.put((total,))
+        # go_num = len(glob.glob(f"{work_dir}/tmp/csv/*.go"))
+        # if go_num > self.last_num:
+        #     self.save2log(f"{work_dir}/log.txt", f'finished {go_num}/{total}!')
+        #     self.last_num = go_num
+        # return 5 + (go_num/total)*85
+
+    def rmv_duplicates_in_files(self, dict_spe_copied_genes, result_path):
+        # 修改提取的序列，以及gene order等处
+        # 蛋白序列有好几个文件夹，要怎么删？管他三七二十一，循环读每个文件，再来删？
+        # 再删除一下gb文件，生成新的gb文件，with duplicates删除
+        # 加上续删功能？
+        factory = Factory()
+        for spe in dict_spe_copied_genes:
+            for list_copied_genes in dict_spe_copied_genes[spe]:
+                target_gene = list_copied_genes[0]
+
+                def to_seq_removed(list_names, origin_name, spe, folder, target_gene):
+                    dir_removed = f"{folder}/removed_seqs"
+                    factory.creat_dirs(dir_removed)
+                    def remove_gene(gene_name, folder, rmv_folder, spe, origin=False):
+                        # 提取序列，加入到原基因文件
+                        gene_name = gene_name if os.path.exists(f"{folder}/{gene_name}.fas") else f"trn{gene_name}"
+                        gene_file = f"{folder}/{gene_name}.fas"
+                        with open(gene_file) as f2:
+                            content = f2.read()
+                        # 提取序列，并存到文件
+                        # print(gene_file, spe, content)
+                        rgx_seq = re.compile(f">{spe}([^>]+)")
+                        seq = re.sub(r"\s", "", rgx_seq.search(content).group(1))
+                        with open(f"{rmv_folder}/{spe}_{gene_name}_removed.fas", "w") as f:
+                            f.write(f">{spe}\n{seq}\n")
+                        # 删除原文件的序列
+                        new_content = re.sub(f">{spe}[^>]+", "", content)
+                        if ">" not in new_content:
+                            # 如果没有序列了，就删除文件
+                            if not origin:
+                                os.remove(gene_file)
+                        else:
+                            with open(gene_file, "w") as f3:
+                                f3.write(new_content)
+                        return gene_file, gene_name
+
+                    if origin_name == target_gene:
+                        # 只用删除copy_gene
+                        list_names.remove(target_gene)
+                        for gene in list_names:
+                            remove_gene(gene, folder, dir_removed, spe)
+                    else:
+                        # 先从原文件提取基因序列出来删掉
+                        origin_gene_file, origin_name = remove_gene(origin_name, folder, dir_removed, spe, origin=True)
+                        # 再从目标基因提取序列存到原文件，其余序列删掉
+                        target_file = f"{folder}/{target_gene}.fas"
+                        with open(target_file) as f4:
+                            target_content = f4.read()
+                        target_seq = re.sub(r"\s", "", re.search(f">{spe}([^>]+)", target_content).group(1))
+                        ## 追加方式存到原文件
+                        with open(origin_gene_file, "a") as f:
+                            f.write(f"\n>{spe}\n{target_seq}\n")
+                        ## 删除target gene file的序列
+                        new_content = re.sub(f">{spe}[^>]+", "", target_content)
+                        if ">" not in new_content:
+                            # 如果没有序列了，就删除文件
+                            os.remove(target_file)
+                        else:
+                            with open(target_file, "w") as f3:
+                                f3.write(new_content)
+                        # 删除其余序列
+                        remain_genes = [i for i in list_names if i not in [target_gene, origin_name]]
+                        if remain_genes:
+                            for remain_gene in remain_genes:
+                                remove_gene(remain_gene, folder, dir_removed, spe)
+                original_name = target_gene.lstrip("-").split("_copy")[0]
+                sub_folders = os.listdir(result_path)
+                for sub_folder in sub_folders:
+                    if os.path.isdir(f"{result_path}/{sub_folder}"):
+                        list_ = []
+                        for gene in list_copied_genes:
+                            file = f"{result_path}/{sub_folder}/{gene}.fas"
+                            if os.path.exists(file):
+                                list_.append(True)
+                            elif (sub_folder=="tRNA") and os.path.exists(f"{result_path}/{sub_folder}/trn{gene}.fas"):
+                                list_.append(True)
+                            else:
+                                list_.append(False)
+                        if set(list_) == {True}:
+                            to_seq_removed(list_copied_genes[:], original_name,
+                                spe, f"{result_path}/{sub_folder}",
+                                target_gene)
+                # 删除gb文件里面的？
+
+    def run_command(self, commands, popen):
+        stdout = [f"{commands}\n"]
+        while True:
+            try:
+                out_line = popen.stdout.readline().decode("utf-8", errors='ignore')
+            except UnicodeDecodeError:
+                out_line = popen.stdout.readline().decode("gbk", errors='ignore')
+            if out_line == "" and popen.poll() is not None:
+                break
+            stdout.append(out_line)
+        return "".join(stdout)
+
+    def align(self, mafft_exe, seq_file, work_dir, code_table, is_PCGs=False):
+        factory = Factory()
+        dict_args = {}
+        dict_args["mafft_exe"] = mafft_exe
+        dict_args["vessel"] = f"{work_dir}/mafft_vessel/{uuid.uuid1()}"
+        factory.creat_dir(dict_args["vessel"])
+        factory.remove_dir_directly(dict_args["vessel"])
+        dict_args["exportPath"] = f"{dict_args['vessel']}/mafft_alignment"
+        factory.creat_dir(dict_args["exportPath"])
+        factory.remove_dir_directly(dict_args["exportPath"])
+        dict_args["filenames"] = [seq_file]
+        dict_args["progressSig"] = None
+        file_base = os.path.basename(seq_file)
+        flag = True
+        if is_PCGs:
+            try:
+                dict_args["codon"] = code_table
+                dict_args["vessel_aaseq"] = f"{dict_args['vessel']}/AA_sequence"
+                dict_args["vessel_aalign"] = f"{dict_args['vessel']}/AA_alignments"
+                # 翻译为氨基酸
+                factory.creat_dir(dict_args["vessel_aaseq"])
+                factory.creat_dir(dict_args["vessel_aalign"])
+                # 翻译氨基酸，保存AA文件，映射
+                codonAlign = CodonAlign(**dict_args)
+                # 比对
+                align_file = os.path.join(dict_args["vessel_aaseq"], file_base)
+                commands = f'"{dict_args["mafft_exe"]}" --auto --inputorder "{align_file}" > ' \
+                           f'"{dict_args["vessel_aalign"]}/{file_base}"'
+            except:
+                # 如果翻译报错，就用普通方法比对
+                self.save2log(f"{work_dir}/log.txt", f"{seq_file} translation error")
+                commands = f'"{dict_args["mafft_exe"]}" --auto --inputorder "{seq_file}" > ' \
+                           f'"{dict_args["exportPath"]}/{file_base}"'
+                flag = False
+        else:
+            commands = f'"{dict_args["mafft_exe"]}" --auto --inputorder "{seq_file}" > ' \
+                       f'"{dict_args["exportPath"]}/{file_base}"'
+        popen = factory.init_popen(commands)
+        self.run_command(commands, popen)
+        if is_PCGs and flag:
+            codonAlign.back_trans()  # 生成回译的codon文件
+            split_ext = os.path.splitext(file_base)  # 为了加后缀
+            aligned_file = dict_args["exportPath"] + os.sep + "_mafft".join(split_ext)
+        else:
+            aligned_file = f'{dict_args["exportPath"]}/{file_base}'
+        return aligned_file
+
+    def kaks(self, kaks_cal_exe, alignment, code_table, work_dir, method="NG"):
+        factory = Factory()
+        kaks_dir = f"{work_dir}/kaks"
+        factory.creat_dir(kaks_dir)
+        # 转为AXT格式
+        self.convertfmt = Convertfmt(**{"export_path": kaks_dir, "files": [alignment],
+                                        "export_axt": True})
+        self.convertfmt.exec_()
+        axt = self.convertfmt.axt_file
+        # 计算kaks
+        output_file = f"{kaks_dir}/{os.path.basename(axt)}.kaks"
+        commands = f"{kaks_cal_exe} -i {axt} -o {output_file} " \
+                   f"-c {code_table} -m {method}"
+        popen = factory.init_popen(commands)
+        log_ = self.run_command(commands, popen)
+        # print(log_)
+        with open(output_file) as f:
+            list_lines = f.readlines()
+        headers = list_lines.pop(0).strip().split("\t")
+        kaks_index = headers.index("Ka/Ks")
+        return float(list_lines[0].strip().split("\t")[kaks_index])
+
+    def similarity(self, alignment):
+        # 序列成对，生成相似性矩阵
+        aln = AlignIO.read(open(alignment), 'fasta')
+        calculator = DistanceCalculator('identity')
+        return 1 - calculator.get_distance(aln).matrix[1][0]
+
+    def pick_ref_spe(self, query_spe, taxonomy, gene, dict_gene_order):
+        '''
+            从同一个属开始找，如果没有就同一个科，再不行就同一个目
+            参考物种不能有目标基因的重复
+            gene: 基因名字，需要是不带正负号信息以及带copy信息的基因名字
+            query_spe：需要tree name
+            taxonomy：需要提取出来的分类表
+            dict_gene_order：以tree name为键，基因顺序为列表
+        :return:
+        '''
+        tax_list = ["Genus", "Family", "Order", "Class", "Phylum"]
+        # 得到所有物种对应的分类
+        if not hasattr(self, "dict_spe_tax"):
+            with open(taxonomy) as f:
+                list_ = list(csv.reader(f, skipinitialspace=True))
+            header = list_.pop(0)
+            org_index = header.index("Organism")
+            tree_name_index = header.index("Tree name")
+            spe_list = [[i[org_index], i[tree_name_index], i[org_index+1:]] for num,i in enumerate(list_)]
+            self.dict_spe_tax = {}
+            for j in spe_list:
+                organism, tree_name, list_spe_tax = j
+                taxs = self.get_lineages(organism, tax_list, list_spe_tax)
+                if not taxs:
+                    taxs = self.get_lineages(organism.split()[0], tax_list, list_spe_tax)
+                if taxs:
+                    self.dict_spe_tax[tree_name] = taxs
+
+        def count_tax(tax, dict_spe_tax):
+            list_ = []
+            for spe in dict_spe_tax:
+                if tax in dict_spe_tax[spe]:
+                    list_.append(spe)
+            return list_
+        if query_spe in self.dict_spe_tax:
+            query_spe_tax = self.dict_spe_tax[query_spe]
+            for num,tax in enumerate(query_spe_tax):
+                tax_name = tax_list[num]
+                list_tax_spe = count_tax(tax, self.dict_spe_tax)
+                list_tax_spe.remove(query_spe)
+                # print(tax_name, list_tax_spe)
+                if list_tax_spe:
+                    # 判断选出来的物种里面有没有目标基因
+                    while list_tax_spe:
+                        random_spe = random.choice(list_tax_spe)
+                        gos = dict_gene_order[random_spe]
+                        if (gene not in gos) and (f"-{gene}" not in gos):
+                            list_tax_spe.remove(random_spe)
+                        elif gene + "_copy" in "".join(gos):
+                            # 有拷贝基因也不行
+                            list_tax_spe.remove(random_spe)
+                        else:
+                            return [random_spe, f"the same {tax_name}"]
+            return None, None
+        else:
+            # 如果query_spe都没有分类
+            return None, None
+
+    def get_lineages_by_ID(self, query_id):
+        ncbi = NCBITaxa()
+        # query_id = ncbi.get_name_translator([tax_])[tax_][0]
+        lineage_ids = ncbi.get_lineage(query_id)
+        dict_id_rank = ncbi.get_rank(lineage_ids)
+        dict_id_name = ncbi.get_taxid_translator(lineage_ids)
+        # print(dict_id_rank)
+        # print({dict_id_name[id]: dict_id_rank[id] for id in dict_id_name})
+        return list(dict_id_name.values())
+
+    def get_lineages(self, name, tax_list, record_tax):
+        ncbi = NCBITaxa()
+        query_id = ncbi.get_name_translator([name])
+        if query_id:
+            if len(query_id[name]) == 1:
+                id__ = query_id[name][0]
+            else:
+                # 分类名对应了多个id的情况，如{'Brachycladium': [570638, 630351]}
+                dict_id_lineages = {}
+                for id_ in query_id[name]:
+                    dict_id_lineages[id_] = self.get_lineages_by_ID(id_)
+                # 哪个lineage和物种本身的lineage交集多，就用哪个id
+                max_inter = 0
+                for temp_id in dict_id_lineages:
+                    inter_num = len(list(set(record_tax).intersection(dict_id_lineages[temp_id])))
+                    # print(temp_id, inter_num)
+                    if inter_num >= max_inter:
+                        max_inter = inter_num
+                        id__ = temp_id
+            lineage_ids = ncbi.get_lineage(id__)
+            dict_id_rank = ncbi.get_rank(lineage_ids)
+            dict_id_name = ncbi.get_taxid_translator(lineage_ids)
+            dict_rank_name = {dict_id_rank[id].upper():dict_id_name[id] for id in dict_id_name}
+            taxs = []
+            for tax in tax_list:
+                if tax.upper() in dict_rank_name:
+                    taxs.append(dict_rank_name[tax.upper()])
+                else:
+                    taxs.append("")
+            return taxs
+        else:
+            return False
+
+
+# class GBextract_MT(GBextract, object):
+#     def __init__(self, **dict_args):
+#         super(GBextract_MT, self).__init__(**dict_args)
+#
+#     def init_args_all(self):
+#         super(GBextract_MT, self).init_args_all()
+#         self.dict_pro = {}
+#         self.dict_AA = OrderedDict()
+#         self.dict_rRNA = {}
+#         self.dict_tRNA = {}
+#         self.dict_name = {}
+#         self.dict_gb = {}
+#         self.dict_start = {}
+#         self.dict_stop = {}
+#         self.dict_PCG = {}
+#         self.dict_RNA = {}
+#         # self.dict_geom = {}
+#         self.dict_spe_stat = {}
+#         self.list_name_gb = []
+#         self.linear_order = ''
+#         self.complete_seq = ''
+#         self.list_PCGs = [
+#             'cox1',
+#             'cox2',
+#             'nad6',
+#             'nad5',
+#             'cox3',
+#             'cytb',
+#             'nad4L',
+#             'nad4',
+#             'atp6',
+#             'nad2',
+#             'nad1',
+#             'nad3',
+#             'atp8',
+#             'rrnS',
+#             'rrnL']
+#         self.dict_unify_mtname = {
+#             'COX1': 'cox1',
+#             'COX2': 'cox2',
+#             'NAD6': 'nad6',
+#             'NAD5': 'nad5',
+#             'COX3': 'cox3',
+#             'CYTB': 'cytb',
+#             'NAD4L': 'nad4L',
+#             'NAD4': 'nad4',
+#             'ATP6': 'atp6',
+#             'NAD2': 'nad2',
+#             'NAD1': 'nad1',
+#             'NAD3': 'nad3',
+#             'ATP8': 'atp8',
+#             'RRNS': 'rrnS',
+#             'RRNL': 'rrnL'
+#         }
+#         self.dict_geom_seq = {}
+#         self.name_gb = "Species name,Accession number\n"  # 名字和gb num对照表
+#         # 有物种没有解析成功，保存在这里
+#         # self.dict_igs = OrderedDict()  # 存放基因间隔区的序列
+#         # self.ncr_stat = OrderedDict()
+#         # 保存没有注释好的L和S
+#         self.leu_ser = ""
+#         #         skewness
+#         self.PCGsCodonSkew = "Tree_name,species,Strand,AT skew,GC skew," + \
+#                              ",".join(self.included_lineages) + "\n"
+#         self.firstCodonSkew = "Tree_name,species,Strand,AT skew,GC skew," + \
+#                               ",".join(self.included_lineages) + "\n"
+#         self.secondCodonSkew = "Tree_name,species,Strand,AT skew,GC skew," + \
+#                                ",".join(self.included_lineages) + "\n"
+#         self.thirdCodonSkew = "Tree_name,species,Strand,AT skew,GC skew," + \
+#                               ",".join(self.included_lineages) + "\n"
+#         self.firstSecondCodonSkew = "Tree_name,species,Strand,AT skew,GC skew," + \
+#                               ",".join(self.included_lineages) + "\n"
+#         #         统计图
+#         self.dict_all_stat = OrderedDict()
+#         #         PCG的串联序列
+#         self.PCG_seq = ""
+#         self.tRNA_seqs = ""
+#         self.rRNA_seqs = ""
+#         #         新增统计物种组成表功能
+#         self.dict_orgTable = OrderedDict()
+#         # 新增RSCU相关
+#         self.dict_RSCU = OrderedDict()  # RSCU table
+#         self.dict_RSCU_stack = OrderedDict()
+#         self.dict_AAusage = OrderedDict()
+#         self.dict_all_spe_RSCU = OrderedDict()
+#         self.dict_all_spe_RSCU["title"] = "codon,"
+#         self.dict_all_codon_COUNT = OrderedDict()
+#         self.dict_all_codon_COUNT["title"] = "codon,"
+#         self.dict_all_AA_RATIO = OrderedDict()
+#         self.dict_all_AA_RATIO["title"] = "AA,"
+#         self.dict_all_AA_COUNT = OrderedDict()
+#         self.dict_all_AA_COUNT["title"] = "AA,"
+#         self.dict_AA_stack = OrderedDict()
+#         self.dict_AA_stack["title"] = "species,aa,ratio"
+#         self.species_info = '="ID",Organism,Tree_Name,{},Full length (bp),Coding region length (exclude NCR),A (%) (+),T (%) (+),C (%) (+),G (%) (+),A+T (%) (+),' \
+#                             'G+C (%) (+),AT skew (+),GC skew (+),AT skew (-),GC skew (-),GC skew (plus strand coding),' \
+#                             'GC skew (plus strand genes only),GC skew (fourfold degenerate sites),' \
+#                             'GC skew (fourfold degenerate sites on plus strand),GC skew (all NCR),NCR ratio\n'.format(
+#                             ",".join(self.included_lineages))
+#         # 新增折线图的绘制
+#         self.line_spe_stat = "Regions,Strand,Size (bp),T(U),C,A,G,AT(%),GC(%),GT(%),AT skewness,GC skewness,ID,Species," + ",".join(
+#             list(reversed(self.included_lineages))) + "\n"
+#         # 密码子偏倚分析
+#         self.codon_bias = "Tree_name,Genes,GC1,GC2,GC12,GC3,CAI,CBI,Fop,ENC,L_sym,L_aa,Gravy,Aromo,Species," + ",".join(
+#             list(reversed(self.included_lineages))) + "\n"
+#         # self.all_taxonmy = "Species," + \
+#         #                    ",".join(list(reversed(self.included_lineages))) + "\n"
+#         self.list_all_taxonmy = []  # [[genus1, family1], [genus2, family2]]
+#         # {NC_029245:Hymenolepis nana}
+#         self.dict_gb_latin = OrderedDict()
+#         self.dict_gene_ATskews = {}
+#         self.dict_gene_GCskews = {}
+#         self.dict_gene_ATCont = {}
+#         self.dict_gene_GCCont = {}
+#         # map ID and tree name
+#         self.dict_ID_treeName = {}
+#
+#     def init_args_each(self):
+#         # self.PCGs = ''
+#         self.PCGs_strim = '' #去除不标准的终止密码子的
+#         self.PCGs_strim_plus = ""
+#         self.PCGs_strim_minus = ""
+#         self.tRNAs = ''
+#         self.tRNAs_plus = ""
+#         self.tRNAs_minus = ""
+#         self.rRNAs = ""
+#         self.rRNAs_plus = ""
+#         self.rRNAs_minus = ""
+#         self.NCR_seq = ""
+#         self.dict_genes = {}
+#         self.dict_geom_seq[self.ID] = self.str_seq
+#         self.list_name_gb.append((self.organism, self.ID))
+#         self.name_gb += self.organism + "," + self.ID + "\n"
+#         # self.igs = ""
+#         # self.NCR = ''
+#         # 刷新这个table
+#         self.orgTable = '''Gene,Position,,Size,Intergenic nucleotides,Codon,,\n,From,To,,,Start,Stop,Strand,Sequence\n'''
+#         self.lastEndIndex = 0
+#         self.overlap, self.gap = 0, 0
+#         self.dict_repeat_name_num = OrderedDict()
+#
+#     def parseSource(self):
+#         super(GBextract_MT, self).parseSource()
+#         list_taxonmy = list(reversed(self.list_lineages))
+#         self.list_all_taxonmy.append(list_taxonmy)
+#         self.taxonmy = ",".join(
+#             [self.organism] + list_taxonmy)
+#         # self.all_taxonmy += self.taxonmy + "\n"
+#         self.gene_order = '>' + self.usedName + '\n'
+#         self.complete_seq += '>' + self.usedName + '\n' + self.str_seq + '\n'
+#
+#     def parseFeature(self):
+#         new_name = self.fetchGeneName()
+#         if not new_name:
+#             return
+#         seq = str(self.feature.extract(self.seq))
+#         feature_name = "CDS_NUC" if self.feature_type.upper() == "CDS" else self.feature_type
+#         self.dict_feature_fas.setdefault(feature_name, OrderedDict())[new_name + '>' + self.organism + '_' +
+#                                                  self.name] = '>' + self.usedName + '\n' + seq + '\n'
+#         self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
+#         if "translation" in self.qualifiers:
+#             aa_seq = self.qualifiers["translation"][0]
+#             self.dict_feature_fas.setdefault("CDS_AA", OrderedDict())[new_name + '>' + self.organism + '_' +
+#                                                  self.name] = '>' + self.usedName + '\n' + aa_seq + '\n'
+#         self.fun_orgTable(new_name, len(seq), "", "", seq)
+#         if new_name.upper().startswith("NCR") and self.dict_args["NCRchecked"]:
+#             self.gene_order += self.omit_strand + 'NCR '
+#         ##间隔区提取
+#         self.refresh_pairwise_feature(new_name)
+#
+#     def stat_PCG_sub(self, seq, strand):
+#         seqStat = SeqGrab(seq)
+#         PCGs_stat = ",".join(['PCGs',
+#                                strand,
+#                                seqStat.size,
+#                                seqStat.T_percent,
+#                                seqStat.C_percent,
+#                                seqStat.A_percent,
+#                                seqStat.G_percent,
+#                                seqStat.AT_percent,
+#                                seqStat.GC_percent,
+#                                seqStat.GT_percent,
+#                                seqStat.AT_skew,
+#                                seqStat.GC_skew]) + "\n"
+#         self.PCGsCodonSkew += ",".join([self.usedName,
+#                                         self.organism,
+#                                         strand,
+#                                         seqStat.AT_skew,
+#                                         seqStat.GC_skew] + self.list_lineages) + "\n"
+#         first, second, third = seqStat.splitCodon()
+#         seq = first
+#         seqStat = SeqGrab(seq)
+#         first_stat = ",".join(['1st codon position',
+#                                strand,
+#                                seqStat.size,
+#                                seqStat.T_percent,
+#                                seqStat.C_percent,
+#                                seqStat.A_percent,
+#                                seqStat.G_percent,
+#                                seqStat.AT_percent,
+#                                seqStat.GC_percent,
+#                                seqStat.GT_percent,
+#                                seqStat.AT_skew,
+#                                seqStat.GC_skew]) + "\n"
+#
+#         self.firstCodonSkew += ",".join([self.usedName,
+#                                          self.organism,
+#                                          strand,
+#                                          seqStat.AT_skew,
+#                                          seqStat.GC_skew] + self.list_lineages) + "\n"
+#
+#         seq = second
+#         seqStat = SeqGrab(seq)
+#         second_stat = ",".join(['2nd codon position',
+#                                 strand,
+#                                 seqStat.size,
+#                                 seqStat.T_percent,
+#                                 seqStat.C_percent,
+#                                 seqStat.A_percent,
+#                                 seqStat.G_percent,
+#                                 seqStat.AT_percent,
+#                                 seqStat.GC_percent,
+#                                 seqStat.GT_percent,
+#                                 seqStat.AT_skew,
+#                                 seqStat.GC_skew]) + "\n"
+#
+#         self.secondCodonSkew += ",".join([self.usedName,
+#                                           self.organism,
+#                                           strand,
+#                                           seqStat.AT_skew,
+#                                           seqStat.GC_skew] + self.list_lineages) + "\n"
+#
+#         seq = third
+#         seqStat = SeqGrab(seq)
+#         third_stat = ",".join(['3rd codon position',
+#                                strand,
+#                                seqStat.size,
+#                                seqStat.T_percent,
+#                                seqStat.C_percent,
+#                                seqStat.A_percent,
+#                                seqStat.G_percent,
+#                                seqStat.AT_percent,
+#                                seqStat.GC_percent,
+#                                seqStat.GT_percent,
+#                                seqStat.AT_skew,
+#                                seqStat.GC_skew]) + "\n"
+#
+#         self.thirdCodonSkew += ",".join([self.usedName,
+#                                          self.organism,
+#                                          strand,
+#                                          seqStat.AT_skew,
+#                                          seqStat.GC_skew] + self.list_lineages) + "\n"
+#         seq = first + second
+#         seqStat = SeqGrab(seq)
+#         firstSecond_stat = ",".join(['1st+2nd codon position',
+#                                strand,
+#                                seqStat.size,
+#                                seqStat.T_percent,
+#                                seqStat.C_percent,
+#                                seqStat.A_percent,
+#                                seqStat.G_percent,
+#                                seqStat.AT_percent,
+#                                seqStat.GC_percent,
+#                                seqStat.GT_percent,
+#                                seqStat.AT_skew,
+#                                seqStat.GC_skew]) + "\n"
+#
+#         self.firstSecondCodonSkew += ",".join([self.usedName,
+#                                          self.organism,
+#                                          strand,
+#                                          seqStat.AT_skew,
+#                                          seqStat.GC_skew] + self.list_lineages) + "\n"
+#         return [PCGs_stat, first_stat, second_stat, third_stat]
+#
+#     def geneStat_sub(self, name, seqStat):
+#         if seqStat == "N/A":
+#             if name in self.dict_gene_ATskews:
+#                 self.dict_gene_ATskews[name] += ",N/A"
+#                 self.dict_gene_ATCont[name] += ",N/A"
+#                 self.dict_gene_GCskews[name] += ",N/A"
+#                 self.dict_gene_GCCont[name] += ",N/A"
+#             else:
+#                 self.dict_gene_ATskews[name] = name + ",N/A"
+#                 self.dict_gene_ATCont[name] = name + ",N/A"
+#                 self.dict_gene_GCskews[name] = name + ",N/A"
+#                 self.dict_gene_GCCont[name] = name + ",N/A"
+#         else:
+#             if name in self.dict_gene_ATskews:
+#                 self.dict_gene_ATskews[name] += "," + seqStat.AT_skew
+#                 self.dict_gene_ATCont[name] += "," + seqStat.AT_percent
+#                 self.dict_gene_GCskews[name] += "," + seqStat.GC_skew
+#                 self.dict_gene_GCCont[name] += "," + seqStat.GC_percent
+#             else:
+#                 self.dict_gene_ATskews[name] = name + "," + seqStat.AT_skew
+#                 self.dict_gene_ATCont[name] = name + "," + seqStat.AT_percent
+#                 self.dict_gene_GCskews[name] = name + "," + seqStat.GC_skew
+#                 self.dict_gene_GCCont[name] = name + "," + seqStat.GC_percent
+#
+#     def stat_other_sub(self, seq, strand, flag):
+#         seqStat = SeqGrab(seq)
+#         stat_ = ",".join([flag,
+#                           strand,
+#                           seqStat.size,
+#                           seqStat.T_percent,
+#                           seqStat.C_percent,
+#                           seqStat.A_percent,
+#                           seqStat.G_percent,
+#                           seqStat.AT_percent,
+#                           seqStat.GC_percent,
+#                           seqStat.GT_percent,
+#                           seqStat.AT_skew,
+#                           seqStat.GC_skew]) + "\n"
+#         name = "%s(%s)"%(flag, strand)
+#         self.geneStat_sub(name, seqStat)
+#         return stat_
+#
+#     def gb_record_stat(self):
+#         # 统计单个物种
+#         list_genes = [
+#             value for (key, value) in sorted(self.dict_genes.items())]
+#         #         whole genome
+#         seq = self.str_seq.upper()
+#         seqStat = SeqGrab(seq)
+#         geom_stat = ",".join(['Full genome',
+#                               "+",
+#                               seqStat.size,
+#                               seqStat.T_percent,
+#                               seqStat.C_percent,
+#                               seqStat.A_percent,
+#                               seqStat.G_percent,
+#                               seqStat.AT_percent,
+#                               seqStat.GC_percent,
+#                               seqStat.GT_percent,
+#                               seqStat.AT_skew,
+#                               seqStat.GC_skew]) + "\n"
+#         # 物种的大统计表
+#         self.list_spe_stat = self.list_lineages + [
+#             self.organism,
+#             self.ID,
+#             seqStat.size,
+#             seqStat.AT_percent,
+#             seqStat.AT_skew,
+#             seqStat.GC_skew]
+#         ###species_info###
+#         # ID",Organism,%s,Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew
+#         rvscmp_seq = self.rvscmp_seq.upper()
+#         seqStat_rvscmp = SeqGrab(rvscmp_seq)
+#         seqCoding = SeqGrab(self.plus_coding_seq)
+#         seqCodingOnly = SeqGrab(self.plus_coding_gene_only)
+#         ffds = SeqGrab(self.PCGs_strim).extract_ffds(self.code_table) # extract fourfold degenerate sites
+#         ffds_seq = SeqGrab(ffds)
+#         ffds_plus = SeqGrab(self.PCGs_strim_plus).extract_ffds(self.code_table)  # extract fourfold degenerate sites only for PCGs on plus strand
+#         ffds_seq_plus = SeqGrab(ffds_plus)
+#         NCR_seq = SeqGrab(self.NCR_seq)
+#         NCR_ratio = str(NCR_seq.length/len(self.str_seq))
+#         list_species_info = [self.ID, self.organism, self.usedName] + self.list_lineages + \
+#                             [str(len(self.str_seq)), str(seqCoding.length), seqStat.A_percent, seqStat.T_percent,
+#                              seqStat.C_percent, seqStat.G_percent, seqStat.AT_percent,
+#                              seqStat.GC_percent, seqStat.AT_skew, seqStat.GC_skew,
+#                              seqStat_rvscmp.AT_skew, seqStat_rvscmp.GC_skew, seqCoding.GC_skew,
+#                              seqCodingOnly.GC_skew, ffds_seq.GC_skew, ffds_seq_plus.GC_skew,
+#                              NCR_seq.GC_skew, NCR_ratio]
+#                              # seqStat_rvscmp.A_percent, seqStat_rvscmp.T_percent,
+#                              # seqStat_rvscmp.C_percent, seqStat_rvscmp.G_percent, seqStat_rvscmp.AT_percent,
+#                              # seqStat_rvscmp.GC_percent, seqStat_rvscmp.AT_skew, seqStat_rvscmp.GC_skew]
+#         self.species_info += ",".join(list_species_info) + "\n"
+#         self.taxonomy_infos += ",".join([self.usedName, self.ID, self.organism] + self.list_lineages) + "\n"
+#
+#         #         PCG
+#         PCGs_stat_plus, first_stat_plus, second_stat_plus, third_stat_plus = self.stat_PCG_sub(self.PCGs_strim_plus, "+") \
+#                                                                  if self.PCGs_strim_plus else ["", "", "", ""]
+#         PCGs_stat_minus, first_stat_minus, second_stat_minus, third_stat_minus = self.stat_PCG_sub(self.PCGs_strim_minus, "-") \
+#                                                                     if self.PCGs_strim_minus else ["", "", "", ""]
+#         PCGs_stat, first_stat, second_stat, third_stat = self.stat_PCG_sub(
+#                                                                     self.PCGs_strim, "all") \
+#                                                                     if self.PCGs_strim else ["", "", "", ""]
+#         #         rRNA
+#         rRNA_stat = self.stat_other_sub(self.rRNAs, "all", "rRNAs") if self.rRNAs else ""
+#         if not self.rRNAs: self.geneStat_sub("rRNAs(all)", "N/A")  ##要补个NA
+#         rRNA_stat_plus = self.stat_other_sub(self.rRNAs_plus, "+", "rRNAs") if self.rRNAs_plus else ""
+#         if not self.rRNAs_plus: self.geneStat_sub("rRNAs(+)", "N/A") ##要补个NA
+#         rRNA_stat_minus = self.stat_other_sub(self.rRNAs_minus, "-", "rRNAs") if self.rRNAs_minus else ""
+#         if not self.rRNAs_minus: self.geneStat_sub("rRNAs(-)", "N/A")  ##要补个NA
+#         #         tRNA
+#         tRNA_stat = self.stat_other_sub(self.tRNAs, "all", "tRNAs") if self.tRNAs else ""
+#         if not self.tRNAs: self.geneStat_sub("tRNAs(all)", "N/A")  ##要补个NA
+#         tRNA_stat_plus = self.stat_other_sub(self.tRNAs_plus, "+", "tRNAs") if self.tRNAs_plus else ""
+#         if not self.tRNAs_plus: self.geneStat_sub("tRNAs(+)", "N/A")  ##要补个NA
+#         tRNA_stat_minus = self.stat_other_sub(self.tRNAs_minus, "-", "tRNAs") if self.tRNAs_minus else ""
+#         if not self.tRNAs_minus: self.geneStat_sub("tRNAs(-)", "N/A")  ##要补个NA
+#         stat = 'Regions,Strand,Size (bp),T(U),C,A,G,AT(%),GC(%),GT(%),AT skew,GC skew\n' + PCGs_stat + PCGs_stat_plus + \
+#                PCGs_stat_minus + first_stat + first_stat_plus + first_stat_minus + second_stat + second_stat_plus + second_stat_minus +\
+#                third_stat + third_stat_plus + third_stat_minus + ''.join(list_genes) + \
+#                rRNA_stat + rRNA_stat_plus + rRNA_stat_minus + tRNA_stat + tRNA_stat_plus + tRNA_stat_minus + geom_stat
+#         self.dict_spe_stat[self.ID] = stat + "PCGs: protein-coding genes; +: major strand; -: minus strand\n"
+#         # 生成折线图分类信息
+#         list_genes_line = [
+#             value for (
+#                 key, value) in sorted(
+#                 self.dict_genes.items()) if not key.startswith("zNCR")]
+#         p_spe = PCGs_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if PCGs_stat else ""
+#         p_spe_plus = PCGs_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if PCGs_stat_plus else ""
+#         p_spe_minus = PCGs_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if PCGs_stat_minus else ""
+#         t_spe = tRNA_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if tRNA_stat else ""
+#         t_spe_plus = tRNA_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if tRNA_stat_plus else ""
+#         t_spe_minus = tRNA_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if tRNA_stat_minus else ""
+#         r_spe = rRNA_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if rRNA_stat else ""
+#         r_spe_plus = rRNA_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if rRNA_stat_plus else ""
+#         r_spe_minus = rRNA_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if rRNA_stat_minus else ""
+#         fst_spe = first_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if first_stat else ""
+#         fst_spe_plus = first_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if first_stat_plus else ""
+#         fst_spe_minus = first_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if first_stat_minus else ""
+#         scd_spe = second_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if second_stat else ""
+#         scd_spe_plus = second_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if second_stat_plus else ""
+#         scd_spe_minus = second_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if second_stat_minus else ""
+#         trd_spe = third_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if third_stat else ""
+#         trd_spe_plus = third_stat_plus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if third_stat_plus else ""
+#         trd_spe_minus = third_stat_minus.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" if third_stat_minus else ""
+#         self.line_spe_stat += geom_stat.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" + p_spe + p_spe_plus + p_spe_minus + \
+#                               t_spe + t_spe_plus + t_spe_minus + r_spe + r_spe_plus + r_spe_minus + fst_spe + fst_spe_plus + fst_spe_minus + \
+#                               scd_spe + scd_spe_plus + scd_spe_minus + trd_spe + trd_spe_plus + trd_spe_minus + \
+#                               "".join([i.strip("\n") + "," + self.ID + "," + self.taxonmy + "\n" for i in list_genes_line])
+#         rscu_sum = RSCUsum(self.organism_1, self.PCGs_strim, str(self.code_table))
+#         rscu_table = rscu_sum.table
+#         self.dict_RSCU[self.ID] = rscu_table
+#         self.dict_all_spe_RSCU["title"] += self.organism + ","
+#         self.dict_all_codon_COUNT["title"] += self.organism + ","
+#         self.dict_all_AA_COUNT["title"] += self.organism + ","
+#         self.dict_all_AA_RATIO["title"] += self.organism + ","
+#         rscu_stack = RSCUstack(
+#             rscu_table,
+#             self.dict_all_spe_RSCU,
+#             self.dict_all_codon_COUNT,
+#             self.dict_all_AA_COUNT,
+#             self.dict_all_AA_RATIO,
+#             self.numbered_Name(
+#                 self.organism,
+#                 omit=True))
+#         self.dict_all_spe_RSCU = rscu_stack.dict_all_rscu
+#         self.dict_all_codon_COUNT = rscu_stack.dict_all_codon_count
+#         self.dict_all_AA_COUNT = rscu_stack.dict_all_AA_count
+#         self.dict_all_AA_RATIO = rscu_stack.dict_all_AA_ratio
+#         self.dict_AAusage[self.ID] = rscu_stack.stat
+#         self.dict_RSCU_stack[self.ID] = rscu_stack.stack
+#         self.dict_AA_stack[self.ID] = rscu_stack.aaStack
+#         # 存放基因间隔区序列
+#         # self.dict_igs[self.ID] = self.igs
+#         # self.list_spe_stat.append(self.reference_)
+#         self.dict_all_stat["_".join(
+#             self.list_lineages + [self.organism + "_" + self.ID])] = self.list_spe_stat
+#         #         生成PCG串联序列
+#         self.PCG_seq += '>' + self.usedName + '\n' + self.PCGs_strim + '\n'
+#         self.tRNA_seqs += '>' + self.usedName + '\n' + self.tRNAs + '\n'
+#         self.rRNA_seqs += '>' + self.usedName + '\n' + self.rRNAs + '\n'
+#         #         组成表
+#         self.orgTable += "Overlap:," + \
+#                          str(self.overlap) + "," + "gap:," + str(self.gap)
+#         self.dict_orgTable[self.ID] = self.orgTable
+#         self.linear_order += self.gene_order + '\n'
+#         # 密码子偏倚分析
+#         if self.dict_args["cal_codon_bias"]:
+#             codonBias = CodonBias(self.PCGs_strim,
+#                                   codeTable=self.code_table,
+#                                   codonW=self.dict_args["CodonW_exe"],
+#                                   path=self.exportPath)
+#             list_cBias = codonBias.getCodonBias()
+#             self.codon_bias += ",".join([self.usedName, "PCGs"] + list_cBias) + "," + self.taxonmy + "\n"
+#         # map ID to tree name
+#         self.dict_ID_treeName[self.ID] = self.usedName
+#
+#     def check_Absence(self):
+#         if len(self.list_pro) != 0:  # 有些物种缺失部分基因
+#             for i in self.list_pro:
+#                 if i in ["rrnS", "rrnL"]:
+#                     if i in list(self.dict_RNA.keys()):  # 如果字典已经有这个键
+#                         self.dict_RNA[i] += ',N/A'
+#                         self.dict_gene_ATskews[i] += ',N/A'
+#                         self.dict_gene_GCskews[i] += ',N/A'
+#                         self.dict_gene_ATCont[i] += ',N/A'
+#                         self.dict_gene_GCCont[i] += ',N/A'
+#                     else:
+#                         self.dict_RNA[i] = i + ',N/A'
+#                         self.dict_gene_ATskews[i] = i + ',N/A'
+#                         self.dict_gene_GCskews[i] = i + ',N/A'
+#                         self.dict_gene_ATCont[i] = i + ',N/A'
+#                         self.dict_gene_GCCont[i] = i + ',N/A'
+#                 else:
+#                     if i in list(self.dict_PCG.keys()):
+#                         self.dict_PCG[i] += ',N/A'
+#                         self.dict_start[i] += ',N/A'
+#                         self.dict_stop[i] += ',N/A'
+#                         self.dict_gene_ATskews[i] += ',N/A'
+#                         self.dict_gene_GCskews[i] += ',N/A'
+#                         self.dict_gene_ATCont[i] += ',N/A'
+#                         self.dict_gene_GCCont[i] += ',N/A'
+#                     else:
+#                         self.dict_PCG[i] = i + ',N/A'
+#                         self.dict_start[i] = i + ',N/A'
+#                         self.dict_stop[i] = i + ',N/A'
+#                         self.dict_gene_ATskews[i] = i + ',N/A'
+#                         self.dict_gene_GCskews[i] = i + ',N/A'
+#                         self.dict_gene_ATCont[i] = i + ',N/A'
+#                         self.dict_gene_GCCont[i] = i + ',N/A'
+#
+#     def fun_orgTable(self, new_name, size, ini, ter, seq):
+#         # 生成组成表相关
+#         orgSize = self.end - self.start + 1
+#         orgSize = orgSize if self.orgTable[-7:
+#                              ] != 'Strand\n' else int(size)
+#         space = self.start - self.lastEndIndex - 1
+#         if space > 0:
+#             self.gap += 1
+#         elif space < 0:
+#             self.overlap += 1
+#         overlap_start_index = abs(space) if space < 0 else 0  # 为了去掉重叠区
+#         space1 = "" if space == 0 or self.orgTable[-7:] == 'Strand\n' else str(
+#             space)
+#         chain = "H" if self.strand == "+" else "L"
+#         # 新增了添加序列功能
+#         self.orgTable += ",".join([new_name,
+#                                    str(self.start),
+#                                    str(self.end),
+#                                    str(orgSize),
+#                                    space1,
+#                                    ini,
+#                                    ter,
+#                                    chain,
+#                                    seq]) + "\n"
+#         if space > 0:
+#             self.NCR_seq += self.str_seq[self.lastEndIndex:self.start-1]
+#         self.lastEndIndex = self.end
+#         # 编码序列，负链基因反向互补
+#         if self.feature_type not in ["intergenic_regions", "misc_feature",
+#                                  "overlapping_regions", "rep_origin",
+#                                  "repeat_region", "stem_loop", "D-loop"]:
+#             if chain == "H":
+#                 self.plus_coding_seq += seq[overlap_start_index:]
+#                 self.plus_coding_gene_only += seq[overlap_start_index:]
+#             # 如果space负的，就是重叠区，如果是正链的基因，就从序列头部减掉overlapping，如果是负链的基因，就从序列的尾部减去
+#             else:
+#                 self.plus_coding_seq += str(Seq(seq, generic_dna).reverse_complement())[overlap_start_index:]
+#         else:
+#             self.NCR_seq += seq
+#
+#     def judge(self, name, values, seq):
+#         if name == 'tRNA-Leu' or name == 'tRNA-Ser' or name == "L" or name == "S":
+#             if re.search(
+#                     r'(?<=[^1-9a-z_])(CUA|CUN|[tu]ag|L1|trnL1|Leu1)(?=[^1-9a-z_])',
+#                     values,
+#                     re.I):
+#                 name = 'tRNA-Leu1' if name == 'tRNA-Leu' else "L1"
+#             elif re.search(r'(?<=[^1-9a-z_])(UUA|UUR|[tu]aa|L2|trnL2|Leu2)(?=[^1-9a-z_])', values, re.I):
+#                 name = 'tRNA-Leu2' if name == 'tRNA-Leu' else "L2"
+#             elif re.search(r'(?<=[^1-9a-z_])(UCA|UCN|[tu]ga|S2|trnS2|Ser2)(?=[^1-9a-z_])', values, re.I):
+#                 name = 'tRNA-Ser2' if name == 'tRNA-Ser' else "S2"
+#             elif re.search(r'(?<=[^1-9a-z_])(AGC|AGN|AGY|gc[tu]|[tu]c[tu]|S1|trnS1|Ser1)(?=[^1-9a-z_])', values, re.I):
+#                 name = 'tRNA-Ser1' if name == 'tRNA-Ser' else "S1"
+#             else:
+#                 # 单独把序列生成出来
+#                 trnaName = self.factory.refineName(self.usedName +
+#                                                    "_" + str(self.start) + "_" + str(self.end), remain_words=".-")
+#                 self.leu_ser += ">%s\n%s\n" % (trnaName, seq)
+#         else:
+#             name = name
+#         return name
+#
+#     def trim_ter(self, raw_sequence):
+#         size = len(raw_sequence)
+#         if size % 3 == 0:
+#             if raw_sequence[-3:].upper() in self.stopCodon:
+#                 trim_sequence = raw_sequence[:-3]
+#             else:
+#                 trim_sequence = raw_sequence
+#         elif size % 3 == 1:
+#             trim_sequence = raw_sequence[:-1]
+#         elif size % 3 == 2:
+#             trim_sequence = raw_sequence[:-2]
+#         else:
+#             trim_sequence = raw_sequence
+#         return trim_sequence
+#
+#     def CDS_(self):
+#         seq = str(self.feature.extract(self.seq))
+#         codon_start = self.qualifiers['codon_start'][0] if "codon_start" in self.qualifiers else "1"
+#         seq = seq[int(codon_start)-1:] if codon_start != "1" else seq
+#         def codon(seq):
+#             seq = seq.upper()
+#             size = len(seq)
+#             ini = seq[0:3]
+#             if size % 3 == 0:
+#                 if seq[-3:].upper() in self.stopCodon:
+#                     trim_sequence = seq[:-3]
+#                     ter = seq[-3:]
+#                 else:
+#                     ter = "---"
+#                     trim_sequence = seq
+#                 # 计算RSCU用的，保留终止密码子，但是不保留不完整的终止密码子
+#                 RSCU_seq = seq
+#             elif size % 3 == 1:
+#                 ter = seq[-1]
+#                 trim_sequence = seq[:-1]
+#                 RSCU_seq = seq[:-1]
+#             elif size % 3 == 2:
+#                 ter = seq[-2:]
+#                 trim_sequence = seq[:-2]
+#                 RSCU_seq = seq[:-2]
+#             return ini, ter, size, seq, trim_sequence, RSCU_seq
+#
+#         # trim_sequence是删除终止子以后的
+#         ini, ter, size, seq, trim_sequence, RSCU_seq = codon(seq)
+#         new_name = self.fetchGeneName()
+#         if not new_name:
+#             return
+#         if new_name.upper() in self.dict_unify_mtname:
+#             # 换成标准的名字
+#             new_name = self.dict_unify_mtname[new_name.upper()]
+#         if new_name in self.list_pro:
+#             self.list_pro.remove(new_name)
+#         self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
+#         self.dict_pro[new_name + '>' + self.organism_1 + '_' + self.ID] = '>' + \
+#                                                                           self.usedName + '\n' + seq + \
+#                                                                           '\n'  # 这里不能用seq代替，因为要用大小写区分正负链
+#         translation = self.qualifiers['translation'][0] if 'translation' in self.qualifiers else ""  # 有时候没有translation
+#         self.dict_AA[new_name + '>' + self.organism_1 + '_' +
+#                      self.ID] = '>' + self.usedName + '\n' + translation + "\n"
+#         self.gene_order += self.omit_strand + new_name + ' '
+#         seqStat = SeqGrab(seq)
+#         self.dict_genes[new_name] = ",".join(
+#             [
+#                 new_name,
+#                 self.strand,
+#                 seqStat.size,
+#                 seqStat.T_percent,
+#                 seqStat.C_percent,
+#                 seqStat.A_percent,
+#                 seqStat.G_percent,
+#                 seqStat.AT_percent,
+#                 seqStat.GC_percent,
+#                 seqStat.GT_percent,
+#                 seqStat.AT_skew,
+#                 seqStat.GC_skew]) + "\n"
+#         if new_name in self.list_PCGs:  # 确保是属于那14或者15个基因
+#             if new_name in self.dict_PCG:  # 看字典是否已经有这个键
+#                 self.dict_PCG[new_name] += ',' + str(size)
+#                 self.dict_start[new_name] += ',' + ini
+#                 self.dict_stop[new_name] += ',' + ter
+#                 self.dict_gene_ATskews[new_name] += ',' + seqStat.AT_skew
+#                 self.dict_gene_GCskews[new_name] += ',' + seqStat.GC_skew
+#                 self.dict_gene_ATCont[new_name] += ',' + seqStat.AT_percent
+#                 self.dict_gene_GCCont[new_name] += ',' + seqStat.GC_percent
+#             else:
+#                 self.dict_PCG[new_name] = new_name + ',' + str(size)
+#                 self.dict_start[new_name] = new_name + ',' + ini
+#                 self.dict_stop[new_name] = new_name + ',' + ter
+#                 self.dict_gene_ATskews[new_name] = new_name + ',' + seqStat.AT_skew
+#                 self.dict_gene_GCskews[new_name] = new_name + ',' + seqStat.GC_skew
+#                 self.dict_gene_ATCont[new_name] = new_name + ',' + seqStat.AT_percent
+#                 self.dict_gene_GCCont[new_name] = new_name + ',' + seqStat.GC_percent
+#         self.PCGs_strim += RSCU_seq
+#         if self.strand == "+":
+#             self.PCGs_strim_plus += RSCU_seq
+#         else:
+#             self.PCGs_strim_minus += RSCU_seq
+#         # self.PCGs += seq
+#         # 生成组成表相关
+#         self.fun_orgTable(new_name, size, ini, ter, seq)
+#         ##间隔区提取
+#         self.refresh_pairwise_feature(new_name)
+#         ##密码子偏倚分析
+#         if self.dict_args["cal_codon_bias"]:
+#             codonBias = CodonBias(RSCU_seq,
+#                                   codeTable=self.code_table,
+#                                   codonW=self.dict_args["CodonW_exe"],
+#                                   path=self.exportPath)
+#             list_cBias = codonBias.getCodonBias()
+#             self.codon_bias += ",".join([self.usedName, new_name] + list_cBias) + "," + self.taxonmy + "\n"
+#
+#     def rRNA_(self):
+#         new_name = self.fetchGeneName()
+#         if not new_name:
+#             return
+#         seq = str(self.feature.extract(self.seq))
+#         if new_name.upper() in self.dict_unify_mtname:
+#             # 换成标准的名字
+#             new_name = self.dict_unify_mtname[new_name.upper()]
+#         if new_name in self.list_pro:
+#             self.list_pro.remove(new_name)
+#         self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
+#         self.dict_rRNA[new_name + '>' + self.organism_1 + '_' +
+#                        self.ID] = '>' + self.usedName + '\n' + seq + '\n'
+#         if self.dict_args["rRNAchecked"]:
+#             self.gene_order += self.omit_strand + new_name + ' '
+#         seqStat = SeqGrab(seq.upper())
+#         self.dict_genes[new_name] = ",".join([new_name,
+#                                               self.strand,
+#                                               seqStat.size,
+#                                               seqStat.T_percent,
+#                                               seqStat.C_percent,
+#                                               seqStat.A_percent,
+#                                               seqStat.G_percent,
+#                                               seqStat.AT_percent,
+#                                               seqStat.GC_percent,
+#                                               seqStat.GT_percent,
+#                                               seqStat.AT_skew,
+#                                               seqStat.GC_skew]) + "\n"
+#         if new_name in self.dict_RNA:  # 如果字典已经有这个键
+#             self.dict_RNA[new_name] += ',' + str(len(seq))
+#             self.dict_gene_ATskews[new_name] += ',' + seqStat.AT_skew
+#             self.dict_gene_GCskews[new_name] += ',' + seqStat.GC_skew
+#             self.dict_gene_ATCont[new_name] += ',' + seqStat.AT_percent
+#             self.dict_gene_GCCont[new_name] += ',' + seqStat.GC_percent
+#         else:
+#             self.dict_RNA[new_name] = new_name + \
+#                                       ',' + str(len(seq))
+#             self.dict_gene_ATskews[new_name] = new_name + ',' + seqStat.AT_skew
+#             self.dict_gene_GCskews[new_name] = new_name + ',' + seqStat.GC_skew
+#             self.dict_gene_ATCont[new_name] = new_name + ',' + seqStat.AT_percent
+#             self.dict_gene_GCCont[new_name] = new_name + ',' + seqStat.GC_percent
+#         self.rRNAs += seq
+#         if self.strand == "+":
+#             self.rRNAs_plus += seq
+#         else:
+#             self.rRNAs_minus += seq
+#         # 生成组成表相关
+#         self.fun_orgTable(new_name, seqStat.length, "", "", seq)
+#         ##间隔区提取
+#         self.refresh_pairwise_feature(new_name)
+#
+#     def tRNA_(self):
+#         replace_name = self.fetchGeneName()
+#         if not replace_name:
+#             return
+#         seq = str(self.feature.extract(self.seq))
+#         values = ':' + ':'.join([i[0] for i in self.qualifiers.values()]) + ':'
+#         name = self.judge(replace_name, values, seq)
+#         list_tRNA = [
+#             "T",
+#             "C",
+#             "E",
+#             "Y",
+#             "R",
+#             "G",
+#             "H",
+#             "L1",
+#             "L2",
+#             "S1",
+#             "S2",
+#             "Q",
+#             "F",
+#             "M",
+#             "V",
+#             "A",
+#             "D",
+#             "N",
+#             "P",
+#             "I",
+#             "K",
+#             "W",
+#             "S",
+#             "L"]
+#         new_name = "trn" + name if name in list_tRNA else name
+#         self.dict_gene_names.setdefault(new_name, []).append(self.usedName)
+#         self.dict_tRNA[new_name + '>' + self.organism_1 + '_' +
+#                        self.ID] = '>' + self.usedName + '\n' + seq + '\n'
+#         if self.dict_args["tRNAchecked"]:
+#             self.gene_order += self.omit_strand + name + ' '
+#         self.tRNAs += seq.upper()
+#         if self.strand == "+":
+#             self.tRNAs_plus += seq.upper()
+#         else:
+#             self.tRNAs_minus += seq.upper()
+#         # 生成组成表相关
+#         self.fun_orgTable(new_name, len(seq), "", "", seq)
+#         ##间隔区提取
+#         self.refresh_pairwise_feature(new_name)
+#
+#     def extract(self):
+#         # gb_records = SeqIO.parse(self.gbContentIO, "genbank")
+#         self.init_args_all()
+#         # 专门用于判断
+#         included_features = [i.upper() for i in self.included_features]
+#         for num, gb_file in enumerate(self.gb_files):
+#             try:
+#                 gb = SeqIO.parse(gb_file, "genbank")
+#                 gb_record = next(gb)
+#                 self.name = gb_record.name
+#                 self.list_pro = self.list_PCGs[:]
+#                 features = gb_record.features
+#                 annotations = gb_record.annotations
+#                 self.organism = annotations["organism"]
+#                 self.organism_1 = self.organism.replace(" ", "_")
+#                 self.description = gb_record.description
+#                 self.date = annotations["date"]
+#                 self.ID = gb_record.id
+#                 self.seq = gb_record.seq
+#                 self.str_seq = str(self.seq)
+#                 self.rvscmp_seq = str(Seq(self.str_seq, generic_dna).reverse_complement())
+#                 self.dict_type_genes = OrderedDict()
+#                 self.init_args_each()
+#                 self.plus_coding_seq = ""  # 正链编码的序列，负链编码基因的序列会被反向互补并与这个一起
+#                 self.plus_coding_gene_only = "" # 仅在正链编码基因的序列
+#                 ok = self.check_records(features)
+#                 if not ok: continue
+#                 has_feature = False
+#                 has_source = False
+#                 source_parsed = False
+#                 for self.feature in features:
+#                     self.qualifiers = self.feature.qualifiers
+#                     self.start = int(self.feature.location.start) + 1
+#                     self.end = int(self.feature.location.end)
+#                     self.strand = "+" if self.feature.location.strand == 1 else "-"
+#                     self.omit_strand = "" if self.strand == "+" else "-"
+#                     # # 用于生成organization表
+#                     # self.positionFrom, self.positionTo = list1[0], list1[-1]
+#                     self.feature_type = self.feature.type
+#                     if self.feature_type not in (self.list_features + ["source"]):
+#                         self.list_features.append(self.feature_type)
+#                     if (self.feature.type == "source") and (not source_parsed):
+#                         self.parseSource()
+#                         has_source = True
+#                         source_parsed = True
+#                     elif self.feature_type == 'CDS':
+#                         self.code_table = int(self.qualifiers["transl_table"][0]) if ("transl_table" in self.qualifiers) \
+#                             and self.qualifiers["transl_table"][0].isnumeric() else self.selected_code_table
+#                         self.fetchTerCodon() #得到终止密码子
+#                         self.CDS_()
+#                         self.getNCR()
+#                         has_feature = True
+#                     elif self.feature_type == 'rRNA':
+#                         self.rRNA_()
+#                         self.getNCR()
+#                         has_feature = True
+#                     elif self.feature_type == 'tRNA':
+#                         self.tRNA_()
+#                         self.getNCR()
+#                         has_feature = True
+#                     elif self.included_features == "All" or self.feature_type.upper() in included_features:
+#                         # 剩下的按照常规的来提取
+#                         self.parseFeature()
+#                         self.getNCR()
+#                         has_feature = True
+#                 if not has_feature:
+#                     ##ID里面没有找到任何对应的feature的情况
+#                     name = self.usedName if has_source else self.ID
+#                     self.list_none_feature_IDs.append(name)
+#                 self.gb_record_stat()
+#                 self.check_Absence()
+#                 self.getNCR(mode="end")  ##判断最后的间隔区
+#                 self.input_file.write(gb_record.format("genbank"))
+#             except:
+#                 self.Error_ID += self.name + ":\n" + \
+#                                  ''.join(
+#                                      traceback.format_exception(*sys.exc_info())) + "\n"
+#             num += 1
+#             self.progressSig.emit(num * 70 / self.totleID)
+#         self.input_file.close()
+#
+#     def sort_CDS(self):
+#         list_pro = sorted(list(self.dict_pro.keys()))
+#         previous = ''
+#         seq_pro = ''
+#         trans_pro = ''
+#         seq_aa = ""  # 存放读取的translation里面的AA序列
+#         # 避免报错
+#         gene = ""
+#         it = iter(list_pro)
+#         table = CodonTable.ambiguous_dna_by_id[self.code_table]
+#         while True:
+#             try:
+#                 i = next(it)
+#                 gene = re.match('^[^>]+', i).group()
+#                 if gene == previous or previous == '':
+#                     seq_pro += self.dict_pro[i]
+#                     seq_aa += self.dict_AA[i]
+#                     raw_sequence = self.dict_pro[i].split('\n')[1]
+#                     trim_sequence = self.trim_ter(raw_sequence)
+#                     try:
+#                         protein = _translate_str(trim_sequence, table)
+#                     except:
+#                         protein = ""
+#                     trans_pro += self.dict_pro[
+#                         i].replace(raw_sequence, protein)
+#                     previous = gene
+#                 if gene != previous:
+#                     self.save2file(seq_pro, previous, self.CDS_nuc_path)
+#                     self.save2file(seq_aa, previous, self.CDS_aa_path)
+#                     self.save2file(trans_pro, previous, self.CDS_TrsAA_path)
+#                     seq_pro = ''
+#                     trans_pro = ''
+#                     seq_aa = ""  # 存放读取的translation里面的AA序列
+#                     seq_pro += self.dict_pro[i]
+#                     seq_aa += self.dict_AA[i]
+#                     raw_sequence = self.dict_pro[i].split('\n')[1]
+#                     trim_sequence = self.trim_ter(raw_sequence)
+#                     try:
+#                         protein = _translate_str(trim_sequence, table)
+#                     except:
+#                         protein = ""
+#                     trans_pro += self.dict_pro[
+#                         i].replace(raw_sequence, protein)
+#                     previous = gene
+#             except StopIteration:
+#                 self.save2file(seq_pro, previous, self.CDS_nuc_path)
+#                 self.save2file(seq_aa, previous, self.CDS_aa_path)
+#                 self.save2file(trans_pro, previous, self.CDS_TrsAA_path)
+#                 break
+#
+#     def sort_rRNA(self):
+#         list_rRNA = sorted(list(self.dict_rRNA.keys()))
+#         previous = ''
+#         seq_rRNA = ''
+#         # 避免报错
+#         gene = ""
+#         it = iter(list_rRNA)
+#         while True:
+#             try:
+#                 i = next(it)
+#                 gene = re.match('^[^>]+', i).group()
+#                 if gene == previous or previous == '':
+#                     seq_rRNA += self.dict_rRNA[i]
+#                     previous = gene
+#                 if gene != previous:
+#                     self.save2file(seq_rRNA, previous, self.rRNA_path)
+#                     seq_rRNA = ''
+#                     seq_rRNA += self.dict_rRNA[i]
+#                     previous = re.match('^[^>]+', i).group()
+#             except StopIteration:
+#                 self.save2file(seq_rRNA, previous, self.rRNA_path)
+#                 break
+#
+#     def sort_tRNA(self):
+#         list_tRNA = sorted(list(self.dict_tRNA.keys()))
+#         previous = ''
+#         seq_tRNA = ''
+#         # 避免报错
+#         gene = ""
+#         it = iter(list_tRNA)
+#         while True:
+#             try:
+#                 i = next(it)
+#                 gene = re.match('^[^>]+', i).group()
+#                 if gene == previous or previous == '':
+#                     seq_tRNA += self.dict_tRNA[i]
+#                     previous = gene
+#                 if gene != previous:
+#                     self.save2file(seq_tRNA, previous, self.tRNA_path)
+#                     seq_tRNA = ''
+#                     seq_tRNA += self.dict_tRNA[i]
+#                     previous = re.match('^[^>]+', i).group()
+#             except StopIteration:
+#                 self.save2file(seq_tRNA, previous, self.tRNA_path)
+#                 break
+#
+#     def gene_sort_save(self):
+#         self.CDS_nuc_path = self.factory.creat_dirs(self.exportPath + os.sep + "CDS_NUC")
+#         self.CDS_aa_path = self.factory.creat_dirs(self.exportPath + os.sep + "CDS_AA")
+#         self.CDS_TrsAA_path = self.factory.creat_dirs(self.exportPath + os.sep + "self-translated_AA")
+#         self.sort_CDS()
+#         self.progressSig.emit(82)
+#         self.rRNA_path = self.factory.creat_dirs(self.exportPath + os.sep + "rRNA")
+#         self.sort_rRNA()
+#         self.progressSig.emit(87)
+#         self.tRNA_path = self.factory.creat_dirs(self.exportPath + os.sep + "tRNA")
+#         self.sort_tRNA()
+#         self.progressSig.emit(92)
+#         keys = list(self.dict_feature_fas.keys())
+#         #只保留有效值
+#         for i in keys:
+#             if not self.dict_feature_fas[i]:
+#                 del self.dict_feature_fas[i]
+#         total = len(self.dict_feature_fas)
+#         if not total:
+#             self.progressSig.emit(95)
+#             return
+#         base = 92
+#         proportion = 3 / total
+#         for feature in self.dict_feature_fas:
+#             feature_fas = self.dict_feature_fas[feature]
+#             if not feature_fas:
+#                 ##如果没有提取到任何东西就返回
+#                 continue
+#             featurePath = self.factory.creat_dirs(self.exportPath + os.sep + feature)
+#             base = self.save_each_feature(feature_fas, featurePath, base, proportion)
+#
+#     def saveGeneralFile(self):
+#         super(GBextract_MT, self).saveGeneralFile()
+#         filesPath = self.factory.creat_dirs(self.exportPath + os.sep + 'files')
+#         with open(filesPath + os.sep + 'linear_order.txt', 'w', encoding="utf-8") as f:
+#             f.write(self.linear_order)
+#         with open(filesPath + os.sep + 'complete_seq.fas', 'w', encoding="utf-8") as f:
+#             f.write(self.complete_seq)
+#         with open(filesPath + os.sep + 'PCG_seqs.fas', 'w', encoding="utf-8") as f6:
+#             f6.write(self.PCG_seq)
+#         with open(filesPath + os.sep + 'tRNA_seqs.fas', 'w', encoding="utf-8") as f7:
+#             f7.write(self.tRNA_seqs)
+#         with open(filesPath + os.sep + 'rRNA_seqs.fas', 'w', encoding="utf-8") as f8:
+#             f8.write(self.rRNA_seqs)
+#         # super(GBextract_MT, self).saveGeneralFile()
+#
+#     def saveItolFiles(self):
+#         itolPath = self.factory.creat_dirs(self.exportPath + os.sep + 'itolFiles')
+#         itol_domain = "DATASET_DOMAINS\nSEPARATOR COMMA\nDATASET_LABEL,Mito gene order\nCOLOR,#ff00aa\nWIDTH,1250\nBACKBONE_COLOR,black\nHEIGHT_FACTOR,0.8\nLEGEND_TITLE,Regions\nLEGEND_SHAPES,%s,%s,%s,%s,%s,%s,%s\nLEGEND_COLORS,%s,%s,%s,%s,%s,%s,%s\nLEGEND_LABELS,atp6|atp8,nad1-6|nad4L,cytb,cox1-3,rRNA,tRNA,NCR\n#SHOW_INTERNAL,0\nSHOW_DOMAIN_LABELS,1\nLABELS_ON_TOP,1\nDATA\n" % (
+#             self.dict_args["atpshape"], self.dict_args["nadshape"], self.dict_args["cytbshape"],
+#             self.dict_args["coxshape"], self.dict_args["rRNAshape"], self.dict_args["tRNAshape"],
+#             self.dict_args["NCRshape"], self.dict_args["atpcolour"], self.dict_args["nadcolour"],
+#             self.dict_args["cytbcolour"], self.dict_args["coxcolour"], self.dict_args["rRNAcolour"],
+#             self.dict_args["tRNAcolour"], self.dict_args["NCRcolour"])
+#         order2itol = Order2itol(self.linear_order, self.dict_args)
+#         itol_domain += order2itol.itol_domain
+#         super(GBextract_MT, self).saveItolFiles()
+#         with open(itolPath + os.sep + 'itol_gene_order.txt', 'w', encoding="utf-8") as f1:
+#             f1.write(itol_domain)
+#
+#     def saveStatFile(self):
+#         super(GBextract_MT, self).saveStatFile()
+#         statFilePath = self.factory.creat_dirs(self.exportPath + os.sep + 'StatFiles')
+#         # 生成speciesStat文件夹
+#         speciesStatPath = self.factory.creat_dirs(statFilePath + os.sep + 'speciesStat')
+#         # 生成RSCU文件夹
+#         RSCUpath = self.factory.creat_dirs(statFilePath + os.sep + 'RSCU')
+#         # 生成CDS文件夹
+#         CDSpath = self.factory.creat_dirs(statFilePath + os.sep + 'CDS')
+#         # RSCU  PCA# 生成PCA用的统计表
+#         title_rscu = self.dict_all_spe_RSCU.pop("title").strip(",") + "\n"
+#         for j in list(self.dict_all_spe_RSCU.keys()):
+#             title_rscu += j + "," + \
+#                           ",".join(self.dict_all_spe_RSCU[j]) + "\n"
+#         # 生成文件
+#         with open(RSCUpath + os.sep + "all_rscu_stat.csv", "w", encoding="utf-8") as f:
+#             f.write(title_rscu)
+#         # COUNT codon PCA# 生成PCA用的统计表
+#         title_codon_count = self.dict_all_codon_COUNT.pop(
+#             "title").strip(",") + "\n"
+#         for j in list(self.dict_all_codon_COUNT.keys()):
+#             title_codon_count += j + "," + \
+#                                  ",".join(self.dict_all_codon_COUNT[j]) + "\n"
+#         # 生成文件
+#         with open(RSCUpath + os.sep + "all_codon_count_stat.csv", "w", encoding="utf-8") as f:
+#             f.write(title_codon_count)
+#         # COUNT aa PCA# 生成PCA用的统计表
+#         title_AA_count = self.dict_all_AA_COUNT.pop(
+#             "title").strip(",") + "\n"
+#         for j in list(self.dict_all_AA_COUNT.keys()):
+#             title_AA_count += j + "," + \
+#                               ",".join(self.dict_all_AA_COUNT[j]) + "\n"
+#         # 生成文件
+#         with open(RSCUpath + os.sep + "all_AA_count_stat.csv", "w", encoding="utf-8") as f:
+#             f.write(title_AA_count)
+#         # ratio aa PCA# 生成PCA用的统计表
+#         title_AA_ratio = self.dict_all_AA_RATIO.pop(
+#             "title").strip(",") + "\n"
+#         for j in list(self.dict_all_AA_RATIO.keys()):
+#             title_AA_ratio += j + "," + \
+#                               ",".join(self.dict_all_AA_RATIO[j]) + "\n"
+#         # 生成文件
+#         with open(RSCUpath + os.sep + "all_AA_ratio_stat.csv", "w", encoding="utf-8") as f:
+#             f.write(title_AA_ratio)
+#         # 生成AA stack的文件
+#         title_aa_stack = self.dict_AA_stack.pop(
+#             "title") + "\n"
+#         for k in self.dict_AA_stack:
+#             title_aa_stack += self.dict_AA_stack[k]
+#         with open(RSCUpath + os.sep + "all_AA_stack.csv", "w", encoding="utf-8") as f:
+#             f.write(title_aa_stack)
+#         # 统计单个物种
+#         for j in self.dict_spe_stat:
+#             file_name = self.dict_ID_treeName.get(j, j)
+#             if j in self.dict_spe_stat:
+#                 with open(speciesStatPath + os.sep + file_name + '.csv', 'w', encoding="utf-8") as f:
+#                     f.write(self.dict_spe_stat[j])
+#             if j in self.dict_orgTable:
+#                 with open(speciesStatPath + os.sep + file_name + '_org.csv', 'w', encoding="utf-8") as f:
+#                     f.write(self.dict_orgTable[j])
+#             if j in self.dict_AAusage:
+#                 with open(RSCUpath + os.sep + file_name + '_AA_usage.csv', 'w', encoding="utf-8") as f:
+#                     f.write(self.dict_AAusage[j])
+#             if j in self.dict_RSCU:
+#                 with open(RSCUpath + os.sep + file_name + '_RSCU.csv', 'w', encoding="utf-8") as f:
+#                     f.write(self.dict_RSCU[j])
+#             if j in self.dict_RSCU_stack:
+#                 with open(RSCUpath + os.sep + file_name + '_RSCU_stack.csv', 'w', encoding="utf-8") as f:
+#                     f.write(self.dict_RSCU_stack[j])
+#         # with open(statFilePath + os.sep + 'taxonomy.csv', 'w', encoding="utf-8") as f1:
+#         #     f1.write(self.all_taxonmy)
+#         # list_geom = list(sorted(self.dict_geom.values()))
+#         list_start = list(sorted(self.dict_start.values()))
+#         list_stop = list(sorted(self.dict_stop.values()))
+#         list_PCGs = list(sorted(self.dict_PCG.values()))
+#         list_RNA = list(sorted(self.dict_RNA.values()))
+#         list_ATskew = list(sorted(self.dict_gene_ATskews.values()))
+#         list_GCskew = list(sorted(self.dict_gene_GCskews.values()))
+#         list_ATCont = list(sorted(self.dict_gene_ATCont.values()))
+#         list_GCCont = list(sorted(self.dict_gene_GCCont.values()))
+#         # with open(statFilePath + os.sep + 'genomeStat.csv', 'w', encoding="utf-8") as f2:
+#         #     lineages = ",".join(
+#         #         self.included_lineages) + "," if self.included_lineages else ""
+#         #     prefix = 'Species,' + lineages + \
+#         #              'GeneBank accesion no.,Full length (bp),A (%),T (%),C (%),G (%),A+T (%),G+C (%),AT skew,GC skew\n'
+#         #     f2.write(prefix + ''.join(list_geom))
+#         with open(statFilePath + os.sep + 'geneStat.csv', 'w', encoding="utf-8") as f3:
+#             list_abbre = self.assignAbbre(self.list_name_gb)
+#             str_taxonmy, footnote = self.geneStatSlot(list_abbre)
+#             headers = 'Species,' + ','.join(list_abbre) + '\n'
+#             prefix_PCG = 'Length of PCGs (bp)\n'
+#             prefix_rRNA = 'Length of rRNA genes (bp)\n'
+#             prefix_ini = 'Putative start codon\n'
+#             prefix_ter = 'Putative terminal codon\n'
+#             prefix_ATskew = 'AT skew\n'
+#             prefix_GCskew = 'GC skew\n'
+#             prefix_ATCont = 'AT content\n'
+#             prefix_GCCont = 'GC content\n'
+#             f3.write(str_taxonmy + headers + prefix_PCG + '\n'.join(list_PCGs) + '\n' +
+#                      prefix_rRNA + '\n'.join(list_RNA) + '\n' +
+#                      prefix_ini + '\n'.join(list_start) + '\n' +
+#                      prefix_ter + '\n'.join(list_stop) + '\n' +
+#                      prefix_ATskew + '\n'.join(list_ATskew) + '\n' +
+#                      prefix_GCskew + '\n'.join(list_GCskew) + '\n' +
+#                      prefix_ATCont + '\n'.join(list_ATCont) + '\n' +
+#                      prefix_GCCont + '\n'.join(list_GCCont) + '\n' +
+#                      "N/A: Not Available; tRNAs: concatenated tRNA genes; rRNAs: concatenated rRNA genes;"
+#                      " +: major strand; -: minus strand\n" + footnote)
+#         # skewness
+#         with open(CDSpath + os.sep + 'PCGsCodonSkew.csv', 'w', encoding="utf-8") as f4:
+#             f4.write(self.PCGsCodonSkew)
+#
+#         with open(CDSpath + os.sep + 'firstCodonSkew.csv', 'w', encoding="utf-8") as f5:
+#             f5.write(self.firstCodonSkew)
+#
+#         with open(CDSpath + os.sep + 'secondCodonSkew.csv', 'w', encoding="utf-8") as f6:
+#             f6.write(self.secondCodonSkew)
+#
+#         with open(CDSpath + os.sep + 'thirdCodonSkew.csv', 'w', encoding="utf-8") as f7:
+#             f7.write(self.thirdCodonSkew)
+#
+#         with open(CDSpath + os.sep + 'firstSecondCodonSkew.csv', 'w', encoding="utf-8") as f8:
+#             f8.write(self.firstSecondCodonSkew)
+#
+#         # # 生成密码子偏倚统计
+#         if self.dict_args["cal_codon_bias"]:
+#             with open(CDSpath + os.sep + 'codon_bias.csv', 'w', encoding="utf-8") as f11:
+#                 f11.write(self.codon_bias)
+#
+#         with open(statFilePath + os.sep + 'gbAccNum.csv', 'w', encoding="utf-8") as f8:
+#             f8.write(self.name_gb)
+#         # # ncr统计
+#         # self.ncr_stat_fun()
+#         # with open(statFilePath + os.sep + 'ncrStat.csv', 'w', encoding="utf-8") as f9:
+#         #     f9.write(self.ncrInfo)
+#         allStat = self.fetchAllStatTable()
+#         with open(statFilePath + os.sep + 'used_species.csv', 'w', encoding="utf-8") as f4:
+#             f4.write(allStat)
+#         # 生成画图所需原始数据
+#         with open(statFilePath + os.sep + 'data_for_plot.csv', 'w', encoding="utf-8") as f11:
+#             f11.write(self.line_spe_stat)
+#         # 删除ENC的中间文件
+#         try:
+#             for file in ["codonW_infile.fas", "codonW_outfile.txt", "codonW_blk.txt"]:
+#                 os.remove(self.exportPath + os.sep + file)
+#         except: pass
+#
+#     def fetchAllStatTable(self):
+#         allStat = "Taxon,Accession number,Size(bp),AT%,AT-Skew,GC-Skew\n"
+#         list_dict_sorted = sorted(list(self.dict_all_stat.keys()))
+#         lineage_count = len(self.included_lineages) + 1
+#         last_lineage = [1] * lineage_count
+#         for i in list_dict_sorted:
+#             lineage1 = self.dict_all_stat[i][:lineage_count]
+#             content = self.compareLineage(
+#                 lineage1, last_lineage, self.dict_all_stat[i][lineage_count:])
+#             allStat += content
+#             last_lineage = lineage1
+#         return allStat
+#
+#     def assignAbbre(self, abbreList):
+#         def abbreName(name, index):
+#             return name.split(' ')[0][0] + '_' + name.split(' ')[1][0:index] if " " in name else name[0]
+#
+#         # 挑选可迭代对象里面相同的项
+#         def pickRepeate(list_):
+#             count_list_ = Counter(list_)
+#             # 挑选出不止出现一次的缩写
+#             return [key for key, value in count_list_.items() if value > 1]
+#
+#         def assgn_abbre(list_repeate):
+#             # 种名
+#             list_name = []
+#             for i in list_repeate:
+#                 list_org = i.split(" ")
+#                 if len(list_org) <= 1:
+#                     list_name.append("name")
+#                 else:
+#                     list_name.append(list_org[1])
+#             list_lenth = [len(l) for l in list_name]
+#             minLenth = min(list_lenth)
+#             # 如果2个物种属名不同，种名一样，那么就保持false
+#             flag = False
+#             for j in range(minLenth):
+#                 if j > 0:
+#                     list_part = [k[0:j + 1] for k in list_name]
+#                     if len(set(list_part)) > 1:
+#                         flag = j + 1
+#                         break
+#             return flag
+#
+#         list_abbre = []
+#         dict_list = OrderedDict()
+#
+#         for num, i in enumerate(abbreList):
+#             # 先生成1的abbrevition，以筛选出一部分
+#             list_abbre.append(abbreName(i[0], 1))
+#             dict_list[num] = i
+#         # 挑选有重复的项
+#         repeate_keys = pickRepeate(list_abbre)
+#         if repeate_keys != []:
+#             for j in repeate_keys:
+#                 list_repeate = []
+#                 list_index = []
+#                 for num, k in enumerate(list_abbre):
+#                     if j == k:
+#                         list_repeate.append(dict_list[num][0])
+#                         list_index.append(num)
+#                 # 存在3个名字，其中2个拉丁名完全相同  Margarya monodi，Margarya monodi，Margarya
+#                 # melanioides
+#                 repeateNames = pickRepeate(list_repeate)
+#                 # 如果没有完全一样的拉丁名
+#                 if repeateNames == []:
+#                     # 找出缩写多少位比较合适
+#                     flag = assgn_abbre(list_repeate)
+#                     if flag:
+#                         # 替换缩写
+#                         for eachIndex in list_index:
+#                             list_abbre[eachIndex] = abbreName(
+#                                 dict_list[eachIndex][0], flag)
+#                     # 如果2个物种属名不同，种名一样，那么就保持false
+#                     else:
+#                         for eachIndex in list_index:
+#                             list_abbre[eachIndex] += "_" + \
+#                                                      dict_list[eachIndex][1]
+#                 # 2个或多个物种拉丁名完全相同的情况,附带上gb number
+#                 else:
+#                     for eachIndex in list_index:
+#                         list_abbre[eachIndex] += "_" + dict_list[eachIndex][1]
+#
+#         return list_abbre
+#
+#     def geneStatSlot(self, list_abbre):
+#         zip_taxonmy = list(zip(
+#             *self.list_all_taxonmy))  # [('Gyrodactylidae', 'Capsalidae', 'Ancyrocephalidae', 'Chauhaneidae'), ('Gyrodactylidea', 'Capsalidea', 'Dactylogyridea', 'Mazocraeidea'), ('Monogenea', 'Monogenea', 'Monogenea', 'Monogenea')]
+#         lineage = list(reversed(self.included_lineages))
+#         header_taxonmy = [[lineage[num]] + list(i) for num, i in enumerate(
+#             zip_taxonmy)]  # [['Family', 'Gyrodactylidae', 'Capsalidae', 'Ancyrocephalidae'], ['Superfamily', 'Gyrodactylidea', 'Capsalidea', 'Dactylogyridea'], ['Class', 'Monogenea', 'Monogenea', 'Monogenea']]
+#         str_taxonmy = "\n".join([",".join(lineage) for lineage in header_taxonmy]) + "\n"
+#         zip_name = list(zip(list_abbre, self.list_name_gb))
+#         footnote = "\n".join([each_name[0] + ": " + " ".join(each_name[1]) for each_name in zip_name])
+#         return str_taxonmy, footnote
+#
+#     def numbered_Name(self, name, omit=False):
+#         list_names = list(self.dict_repeat_name_num.keys())
+#         # 如果这个name已经记录在字典里面了
+#         if name in list_names:
+#             numbered_name = name + str(self.dict_repeat_name_num[name])
+#             self.dict_repeat_name_num[name] += 1
+#         else:
+#             numbered_name = name + "1" if not omit else name
+#             self.dict_repeat_name_num[name] = 2
+#         return numbered_name
+#
 
 class GBnormalize(object):
     def __init__(self, **dict_args):

@@ -13,7 +13,7 @@ from PyQt5.QtGui import QPixmap, QFont, QIcon
 thisPath = os.path.abspath(os.path.dirname(sys.argv[0]))
 thisPath = os.path.abspath(os.path.dirname(__file__)) if not os.path.exists(thisPath + os.sep + "style.qss") else thisPath
 sys.path.append(thisPath)
-from PyQt5.QtCore import QSettings, Qt
+from PyQt5.QtCore import QSettings, Qt, QCoreApplication
 from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox, QSplashScreen
 from src.Launcher import Launcher
 from src.factory import QSingleApplication, Factory
@@ -27,7 +27,8 @@ def start():
         QPixmap(":/picture/resourses/start.jpg"))
     with open(thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
         qss_file = f.read()
-    if platform.system().lower() == "darwin": splash.setWindowFlags(Qt.Window)
+    if platform.system().lower() == "darwin":
+        splash.setWindowFlags(Qt.Window)
     font_size = 13 if platform.system().lower() == "windows" else 15
     splash.setFont(QFont('Arial', font_size))
     splash.setStyleSheet(qss_file)
@@ -111,6 +112,7 @@ def start():
         sys.exit(app.exec_())
     else:
         launcher = Launcher()
+        launcher.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
         if launcher.exec_() == QDialog.Accepted:
             splash.showMessage("Starting PhyloSuite...", Qt.AlignBottom, Qt.black)
             workPlace = launcher.WorkPlace
@@ -121,4 +123,14 @@ def start():
             sys.exit(app.exec_())
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
+    from multiprocessing import set_start_method
+    set_start_method("spawn", force=True)
+    # MAC用spawn会导致无限重启
+    # if platform.system().lower() == "windows":
+    #     # linux下面有时候会一直执行子进程不结束，通过调用下面的方法来解决
+    #     # https://pythonspeed.com/articles/python-multiprocessing/
+    #     set_start_method("spawn")
+    # else:
+    #     set_start_method("fork")
     start()

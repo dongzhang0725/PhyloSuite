@@ -193,13 +193,14 @@ class MrBayes(QDialog, Ui_MrBayes, object):
             parent=None):
         super(MrBayes, self).__init__(parent)
         self.parent = parent
+        self.function_name = "MrBayes"
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         self.workPath = workPath
         self.focusSig = focusSig if focusSig else pyqtSignal(
             str)  # 为了方便workflow
         self.workflow = workflow
-        self.MB_exe = '"' + MB_exe + '"'
+        self.MB_exe = MB_exe
         self.autoMSA = autoMSA[0] if type(autoMSA) == list else autoMSA
         self.input_model = input_model
         self.setupUi(self)
@@ -226,6 +227,13 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         self.checkBox_4.toggled.connect(self.judgeMPI)
         # 恢复用户的设置
         self.guiRestore()
+        # 判断程序的版本
+        self.version = ""
+        version_worker = WorkThread(
+            lambda : self.factory.get_version("MrBayes", self),
+            parent=self)
+        version_worker.start()
+        #
         # 必须放到恢复界面过后执行
         if self.autoMSA:
             self.input_nex(self.autoMSA)
@@ -361,16 +369,16 @@ class MrBayes(QDialog, Ui_MrBayes, object):
                 model_des = self.model4des
             else:
                 model_des = "N/A"
-        self.description = '''Bayesian Inference phylogenies were inferred using MrBayes 3.2.6 (Ronquist et al., 2012) under %s model (%s parallel runs, %s generations), in which the initial %s sampled data were discarded as burn-in.''' % (
-            model_des, runs, generations, burnin)
+        self.description = '''Bayesian Inference phylogenies were inferred using MrBayes v%s (Ronquist et al., 2012) under %s model (%s parallel runs, %s generations), in which the initial %s sampled data were discarded as burn-in.''' % (
+            self.version, model_des, runs, generations, burnin)
         self.reference = "Ronquist, F., Teslenko, M., van der Mark, P., Ayres, D.L., Darling, A., Höhna, S., Larget, B., Liu, L., Suchard, M.A., Huelsenbeck, J.P., 2012. MrBayes 3.2: efficient Bayesian phylogenetic inference and model choice across a large model space. Syst. Biol. 61, 539-542."
         if self.checkBox_4.isEnabled() and self.checkBox_4.isChecked():
             ##MPI方式运行
             MPIpath = self.factory.programIsValid("mpi", mode="tool")
             threads = self.comboBox_10.currentText()
-            self.commands = "\"%s\" -n %s %s \"%s\""%(MPIpath, threads, self.MB_exe, nex_name)
+            self.commands = "\"%s\" -n %s \"%s\" \"%s\""%(MPIpath, threads, self.MB_exe, nex_name)
         else:
-            self.commands = self.MB_exe + " \"" + nex_name + "\""
+            self.commands = f"\"{self.MB_exe}\" \"{nex_name}\""
         self.mb_popen = self.factory.init_popen(self.commands)
         self.factory.emitCommands(self.logGuiSig, "cd %s\n%s"%(self.exportPath, self.commands))
         self.worker = WorkThread(self.run_command, parent=self)
@@ -503,6 +511,7 @@ class MrBayes(QDialog, Ui_MrBayes, object):
                     self.mb_popen = None
                     self.interrupt = True
                 except:
+                    # print("stop failed")
                     self.mb_popen = None
                     self.interrupt = True
             if not silence and reply == QMessageBox.Yes:
@@ -869,15 +878,60 @@ class MrBayes(QDialog, Ui_MrBayes, object):
             self.spinBox_10.setEnabled(True)
             self.doubleSpinBox_2.setEnabled(False)
 
+    def getOutgroups(self, file):
+        # outgroup
+        command = f"\"{self.MB_exe}\" \"{file}\""
+        popen = self.factory.init_popen(command)
+        # 自己读序列，读到标志性的位置就退出
+        self.outgroups = []
+        try:
+            while True:
+                try:
+                    out_line = popen.stdout.readline().decode("utf-8", errors="ignore")
+                except UnicodeDecodeError:
+                    out_line = popen.stdout.readline().decode("gbk", errors="ignore")
+                rgx = re.compile(r"Taxon\s+\d+\s+->\s+([^\n]+)\n")
+                if rgx.search(out_line.rstrip()):
+                    self.outgroups.append(rgx.search(out_line.rstrip()).group(1))
+                if out_line == "" and popen.poll() is not None:
+                    break
+        except:
+            pass
+        if not self.outgroups:
+            # print("read from alignment")
+            parseFmt = Parsefmt()
+            parseFmt.readfile(file)
+            dict_taxon = parseFmt.dict_taxon
+            self.outgroups = sorted(dict_taxon)
+
+    def changeOutgroup(self):
+        model = self.comboBox_5.model()
+        for num, i in enumerate(self.outgroups):
+            item = QStandardItem(i)
+            item.setCheckState(Qt.Unchecked)
+            # 背景颜色
+            if num % 2 == 0:
+                item.setBackground(QColor(255, 255, 255))
+            else:
+                item.setBackground(QColor(237, 243, 254))
+            item.setToolTip(i)
+            model.appendRow(item)
+        self.comboBox_5.setTopText()
+
     def input_nex(self, file):
         base = os.path.basename(file)
         self.lineEdit.setText(base)
         self.lineEdit.setToolTip(file)
-        # outgroup
-        parseFmt = Parsefmt()
-        parseFmt.readfile(file)
-        dict_taxon = parseFmt.dict_taxon
-        self.nex_content = parseFmt.content
+        with open(file, encoding="utf-8", errors="ignore") as f:
+            self.nex_content = f.read()
+
+        # outgroups
+        outgroup_worker = WorkThread(
+            lambda : self.getOutgroups(file),
+            parent=self)
+        outgroup_worker.finished.connect(self.changeOutgroup)
+        outgroup_worker.start()
+
         if re.search(r"(?si)begin mrbayes;(.+)end;", self.nex_content):
             reply = QMessageBox.information(
                 self,
@@ -894,22 +948,10 @@ class MrBayes(QDialog, Ui_MrBayes, object):
             else:
                 self.nex_content = re.sub(
                     r"(?si)begin mrbayes;(.+)end;", "", self.nex_content)
-        list_taxa = sorted(dict_taxon)
-        model = self.comboBox_5.model()
-        for num, i in enumerate(list_taxa):
-            item = QStandardItem(i)
-            item.setCheckState(Qt.Unchecked)
-            # 背景颜色
-            if num % 2 == 0:
-                item.setBackground(QColor(255, 255, 255))
-            else:
-                item.setBackground(QColor(237, 243, 254))
-            item.setToolTip(i)
-            model.appendRow(item)
-        self.comboBox_5.setTopText()
+
         # Model
         self.seq_type = re.search(
-            r"datatype=(\w+)", parseFmt.content, re.I).group(1)
+            r"datatype=(\w+)", self.nex_content, re.I).group(1)
         list_nuc_models = ["JC", "F81", "K80 (K2P)", "HKY", "TrNef", "TrN", "K81", "K81uf", "TIMef", "TIM", "TVMef", "TVM",
                            "SYM", "GTR", "TPM2", "TPM2uf", "TPM3", "TPM3uf", "TIM2ef", "TIM2", "TIM3ef", "TIM3"]
         list_aa_models = ["Blosum62", "Blosum", "Cprev", "Dayhoff", "Equalin", "GTR", "Jones", "Jones (JTT)", "Mixed", "Mtmam", "Mtrev", "Poisson",
@@ -948,6 +990,9 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         elif self.input_model:
             # ModelFinder finder结果
             self.input_model = re.sub(r"^modelfinder ", "", self.input_model)
+            # print(self.input_model)
+            # if "+ASC" in self.input_model:
+            #     self.input_model = self.input_model.replace("+ASC", "")
             if ":" in self.input_model:
                 # partition
                 # re.search(r"(?s)begin sets;(.+)charpartition", self.input_model).group(1).strip()
@@ -1542,15 +1587,17 @@ class MrBayes(QDialog, Ui_MrBayes, object):
             "Please Wait", "reading trees...", busy=True, parent=self)
         self.progressDialog.show()
         QApplication.processEvents()
-        self.viewworker = WorkThread(
+        self.worker = WorkThread(
             self.viewResultsEarly_workFun, parent=self)
-        self.viewworker.finished.connect(lambda:
+        self.worker.finished.connect(lambda:
                                          [self.progressDialog.close(), self.stop_early_message(),
-                                          self.focusSig.emit(self.exportPath)])
-        self.viewworker.start()
+                                          self.focusSig.emit(self.exportPath),
+                                          self.on_pushButton_2_clicked(silence=True)])
+        self.worker.start()
 
     def viewResultsEarly_workFun(self):
         run_t_files = glob.glob("./*.t")
+        print(run_t_files)
         # 添加end给树文件
         if run_t_files:
             for i in run_t_files:
@@ -1563,36 +1610,70 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         # 复制一份nex文件
         with open(self.nex_file_name, encoding="utf-8", errors='ignore') as f1:
             nex_content = f1.read()
-        rgx_sumt = re.compile(r"(?is)sumt(.+?;)")
-        rgx_sump = re.compile(r"(?is)sump(.+?;)")
+        # rgx_outgroup = re.compile(r"(?ism)^(outgroup.+?;)")
+        # rgx_charset = re.compile(r"(?ism)^(charset[^;]+?;)")
+        # rgx_partition = re.compile(r"(?ism)^(partition[^;]+?;)")
+        # rgx_set = re.compile(r"(?ism)^(set\s+partition=.+?;)")
+        # rgx_lset = re.compile(r"(?ism)^(lset[^;]+?;)")
+        # rgx_prset = re.compile(r"(?ism)^(prset[^;]+?;)")
+        # rgx_unlink = re.compile(r"(?ism)^(unlink[^;]+?;)")
+        # rgx_sumt = re.compile(r"(?ism)\s*sumt(.+?;)")
+        # rgx_sump = re.compile(r"(?ism)\s*sump(.+?;)")
+        # rgx_mb_block = re.compile(r"(?is)[^\n]*begin mrbayes.+?end;")
+        # outgroups = rgx_outgroup.findall(nex_content) if rgx_outgroup.search(nex_content) else []
+        # charsets = rgx_charset.findall(nex_content) if rgx_charset.search(nex_content) else []
+        # partitions = rgx_partition.findall(nex_content) if rgx_partition.search(nex_content) else []
+        # sets = rgx_set.findall(nex_content) if rgx_set.search(nex_content) else []
+        # sumt = rgx_sumt.search(nex_content).group(1)
+        # sump = rgx_sump.search(nex_content).group(1)
+        # nex_content = [rgx_mb_block.sub("", nex_content)]
+        # nex_content.append("begin mrbayes;\nlog start filename = log_stop.txt;")
+        # if outgroups:
+        #     nex_content.extend(outgroups)
+        # if charsets:
+        #     nex_content.extend(charsets)
+        # if partitions:
+        #     nex_content.extend(partitions)
+        # if sets:
+        #     nex_content.extend(sets)
+        # nex_content.append("sumt filename=%s" % self.nex_file_name + sumt)
+        # nex_content.append("sump filename=%s" % self.nex_file_name + sump)
+        # nex_content.append("end;\n")
+        rgx_mcmc = re.compile(r"(?ism)(mcmc[^p;]*?;)\n")
         rgx_mb_block = re.compile(r"(?is)[^\n]*begin mrbayes.+?end;")
-        sumt = rgx_sumt.search(nex_content).group(1)
-        sump = rgx_sump.search(nex_content).group(1)
-        nex_content = rgx_mb_block.sub("", nex_content)
-        nex_content += "begin mrbayes;\nlog start filename = log_stop.txt;\n"
-        nex_content += "sumt filename=%s" % self.nex_file_name + sumt + "\n"
-        nex_content += "sump filename=%s" % self.nex_file_name + sump + "\n"
-        nex_content += "end;\n"
+        rgx_sumt = re.compile(r"(?ism)(sumt)(.+?;)")
+        rgx_sump = re.compile(r"(?ism)(sump)(.+?;)")
+        rgx_log = re.compile(r"(?ism)(log start filename = )(.+?);")
+        if rgx_mb_block.search(nex_content):
+            mb_block = rgx_mb_block.search(nex_content).group()
+            mb_block = rgx_log.sub(r"\1log_stop.txt;", mb_block)
+            mb_block = rgx_mcmc.sub("\n", mb_block)
+            mb_block = rgx_sumt.sub(r"\1 filename=%s\2"%self.nex_file_name, mb_block)
+            mb_block = rgx_sump.sub(r"\1 filename=%s\2"%self.nex_file_name, mb_block)
+        else:
+            return
+        nex_content = f"{rgx_mb_block.sub('', nex_content)}\n{mb_block}\n"
         with open("stop_run.nex", "w") as f2:
             f2.write(nex_content)
-        sum_commands = self.MB_exe + " stop_run.nex"
+        sum_commands = f"\"{self.MB_exe}\" stop_run.nex"
 #         self.stop_run_progress(5)
         # 执行
-        self.stop_run_popen = self.factory.init_popen(sum_commands)
-        self.stop_run_popen.stdout.read()
+        self.interrupt = False
+        self.mb_popen = self.factory.init_popen(sum_commands)
+        self.mb_popen.stdout.read()
 #         rgx_tree_reading = re.compile(r"(?ms)^( +?)v.+?^\1\*+")
 #         rgx_mb_end = re.compile(r"(?s)Reached end of file")
 #         text = ""
 #         while True:
 #             QApplication.processEvents()
-#             if self.stop_run_popen:
+#             if self.mb_popen:
 #                 try:
-#                     out_line = self.stop_run_popen.stdout.readline().decode(
+#                     out_line = self.mb_popen.stdout.readline().decode(
 #                         "utf-8", errors="ignore")
 #                 except UnicodeDecodeError:
-#                     out_line = self.stop_run_popen.stdout.readline().decode(
+#                     out_line = self.mb_popen.stdout.readline().decode(
 #                         "gbk", errors="ignore")
-#                 if out_line == "" and self.stop_run_popen.poll() is not None:
+#                 if out_line == "" and self.mb_popen.poll() is not None:
 #                     break
 #                 if "*" in out_line:
 #                     print(out_line)
@@ -1714,12 +1795,30 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         run_p_files = glob.glob("./*.p")
         ckp_files = glob.glob("./*.ckp") + glob.glob("./*.ckp~")
         if run_t_files or run_p_files:
-            with open(run_t_files[0], encoding="utf-8", errors='ignore') as f2:
-                run_t_content = f2.read()
-            with open(run_p_files[0], encoding="utf-8", errors='ignore') as f3:
-                run_p_content = f3.read()
-            with open(ckp_files[0], encoding="utf-8", errors='ignore') as f4:
-                ckp_content = f4.read()
+            # 避免memory error，只读取部分文本
+            try:
+                with open(run_t_files[0], 'rb') as f2:
+                    b_size = os.path.getsize(run_t_files[0])
+                    seek_size = -30240 if b_size >= 30240 else -b_size
+                    f2.seek(seek_size, os.SEEK_END)
+                    run_t_content = str(f2.read(), "utf-8")
+            except:
+                run_t_content = ""
+            try:
+                with open(run_p_files[0], 'rb') as f3:
+                    b_size = os.path.getsize(run_p_files[0])
+                    seek_size = -30240 if b_size >= 30240 else -b_size
+                    f3.seek(seek_size, os.SEEK_END) # 实现从末尾向前读
+                    run_p_content = str(f3.read(), "utf-8")
+            except:
+                run_p_content = ""
+            try:
+                with open(ckp_files[0], encoding="utf-8", errors='ignore') as f4:
+                    b_size = os.path.getsize(ckp_files[0])
+                    read_size = 10240 if b_size >= 10240 else b_size
+                    ckp_content = f4.read(read_size)
+            except:
+                ckp_content = ""
             if re.search(r"tree gen.(\d+?) = \[\&U\]", run_t_content):
                 generation = re.findall(
                     r"tree gen.(\d+?) = \[\&U\]", run_t_content)[-1]
@@ -1734,9 +1833,9 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         else:
             self.description = self.description.replace(
                 "xxxx generations", " generations")
-        with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
+        with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
             f.write(self.description +
-                    "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                    "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                     "If you use MrBayes, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
 
     def judgeFinish(self):

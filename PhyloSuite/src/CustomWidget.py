@@ -794,12 +794,20 @@ class MyPartEditorTableModel(QAbstractTableModel):
             if index.column() == 0:
                 try:
                     start = int(self.arraydata[index.row()][2])
-                    stop = int(self.arraydata[index.row()][4].replace("\\3", ""))
+                    stop = int(self.arraydata[index.row()][4].replace("\\3", "").replace("\\2", ""))
                     if "\\3" in self.arraydata[index.row()][4]:
                         if (stop - start + 1)%3 == 0: return QIcon(":/picture/resourses/1.png")
                         elif (stop - start + 1)%3 == 2: return QIcon(":/picture/resourses/2.png")
                         elif (stop - start + 1)%3 == 1: return QIcon(":/picture/resourses/3.png")
-                    elif (stop - start + 1)%3 == 0: return QIcon(":/picture/resourses/3.png")
+                    elif "\\2" in self.arraydata[index.row()][4]:
+                        if (stop - start + 1)%2 == 1: return QIcon(":/picture/resourses/2.png")
+                        elif (stop - start + 1)%2 == 0: return QIcon(":/picture/resourses/1.png")
+                    elif ((stop - start + 1) % 3 == 0) and ((stop - start + 1) % 2 == 0):
+                        return QIcon(":/picture/resourses/2_3.png")
+                    elif (stop - start + 1)%3 == 0:
+                        return QIcon(":/picture/resourses/3.png")
+                    elif (stop - start + 1) % 2 == 0:
+                        return QIcon(":/picture/resourses/2.png")
                 except: pass
         elif not (role == Qt.DisplayRole or role == Qt.EditRole):
             return None
@@ -840,7 +848,10 @@ class MyPartEditorTableModel(QAbstractTableModel):
         """sort table by given column number col"""
         if col == 2:
             self.layoutAboutToBeChanged.emit()
-            self.arraydata = sorted(self.arraydata, key=lambda list_: int(list_[2]))#operator.itemgetter(col))
+            try:
+                self.arraydata = sorted(self.arraydata, key=lambda list_:
+                                            int(list_[2]) if list_[2].isnumeric() else float("inf"))
+            except: pass
             if order == Qt.DescendingOrder:
                 self.arraydata.reverse()
             self.layoutChanged.emit()
@@ -937,6 +948,89 @@ class MyOtherFileTableModel(QAbstractTableModel):
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable
         else:
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
+class MyColorsetsTableModel(QAbstractTableModel):
+
+    def __init__(self, datain, headerdata, parent=None):
+        """
+        Args:
+            datain: a list of lists\n
+            headerdata: a list of strings
+        """
+        QAbstractTableModel.__init__(self, parent)
+        self.arraydata = datain
+        self.header = headerdata
+        self.parent = parent
+        self.parent.horizontalHeader().setVisible(False)
+        self.parent.doubleClicked.connect(self.handle_itemclicked)
+        self.parent.verticalHeader().sectionDoubleClicked.connect(self.changeHorizontalHeader)
+
+    def changeHorizontalHeader(self, index):
+        oldHeader = self.headerData(index, Qt.Vertical, role=Qt.DisplayRole)
+        newHeader, ok = QInputDialog.getText(self.parent,
+            'Change header label for row %d' % index,
+            'Header:',
+            QLineEdit.Normal,
+            oldHeader)
+        if ok and (newHeader != oldHeader):
+            if newHeader in self.header:
+                QMessageBox.information(
+                    self.parent,
+                    "Color editor",
+                    "<p style='line-height:25px; height:25px'>The name exists, please set a new name! </p>")
+                return
+            self.header[index] = newHeader
+            self.setHeaderData(index, Qt.Vertical, newHeader, role=Qt.EditRole)
+
+    def handle_itemclicked(self, index):
+        tableview = self.sender()
+        model = tableview.model()
+        text = index.data(Qt.DisplayRole)
+        text = text if text else "#ffffff"
+        color = QColorDialog.getColor(QColor(text), self.parent)
+        if color.isValid():
+            model.setData(index, color.name(), Qt.BackgroundRole)
+
+    def rowCount(self, parent):
+        return len(self.arraydata)
+
+    def columnCount(self, parent):
+        return len(self.arraydata[0])
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        value = self.arraydata[index.row()][index.column()]
+        if role in [Qt.EditRole, Qt.DisplayRole]:
+            return value
+        elif role == Qt.BackgroundRole:
+            if value:
+                return QColor(value)
+        elif role == Qt.ToolTipRole:
+            return value
+        elif role == Qt.TextAlignmentRole:
+            return Qt.AlignCenter
+        elif not (role == Qt.DisplayRole or role == Qt.EditRole):
+            return None
+
+    def headerData(self, number, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return str(number + 1)
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return self.header[number]
+        return None
+
+    def setData(self, index, value, role):
+        if not index.isValid():
+            return False
+        if role in [Qt.EditRole, Qt.DisplayRole, Qt.BackgroundRole]:
+            self.arraydata[index.row()][index.column()] = value
+            self.dataChanged.emit(index, index)
+            return True
+
+    def flags(self, index):
+        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
 
 class MySeqTable(QAbstractTableModel):
 
@@ -1517,6 +1611,7 @@ class SingeleWidget(QWidget):
             height = table.rowCount() * (height_ + 15)
             table.parent().setMinimumHeight(height)
             table.parent().setMaximumHeight(height)
+            table.resizeColumnsToContents()
             self.DropDownMenu.show()
 
         # 表明显示了弹窗
@@ -1683,6 +1778,9 @@ class MenuTable(QDialog, BaseMenuWidget):
         self.tableWidget.horizontalHeader().setVisible(False)
         self.tableWidget.verticalHeader().setVisible(False)
         self.tableWidget.verticalHeader().setHighlightSections(True)
+        # 自动根据文本大小调整
+        self.tableWidget.setSizeAdjustPolicy(
+                        QAbstractScrollArea.AdjustToContents)
         self.verticalLayout.addWidget(self.tableWidget)
         # 无边框，隐藏任务栏；
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool | Qt.Widget)
@@ -1696,14 +1794,16 @@ class MenuTable(QDialog, BaseMenuWidget):
         item.setIcon(icon)
         self.tableWidget.insertRow(rows)
         self.tableWidget.setItem(rows, 0, item)
+        # self.tableWidget.resizeColumnsToContents()
 
 class ComboBoxWidget(QWidget):
     itemOpSignal = pyqtSignal(QListWidgetItem)
     viewAlnSigal = pyqtSignal(QListWidgetItem)
 
-    def __init__(self, text, listwidgetItem, parent=None):
+    def __init__(self, text, listwidgetItem, parent=None, is_cat=False):
         super(ComboBoxWidget, self).__init__(parent)
         self.text = text
+        self.is_cat = is_cat
         self.listwidgetItem = listwidgetItem
         self.initUi()
 
@@ -1740,8 +1840,12 @@ class ComboBoxWidget(QWidget):
         self.bt_view.setCursor(Qt.PointingHandCursor)
         self.bt_view.setToolTip("View")
         self.bt_view.clicked.connect(lambda: self.viewAlnSigal.emit(self.listwidgetItem))
+        if self.is_cat:
+            self.PCGs = QCheckBox("PCG  ", self)
         self.horizontalLayout.addWidget(self.bt_close)
         self.horizontalLayout.addWidget(self.bt_view)
+        if self.is_cat:
+            self.horizontalLayout.addWidget(self.PCGs)
         self.horizontalLayout.addWidget(self.file_label)
         self.horizontalLayout.addStretch()
 
@@ -1851,6 +1955,7 @@ class ListQCombobox(QComboBox):
         self.setView(self.listw)
         self.activated.connect(self.setTopText)
         self.isPopup = False
+        self.concatenate = False
         LE = QcomboLineEdit(self)
         LE.clicked.connect(self.switchPopup)
         LE.deleteFile.clicked.connect(lambda : self.removeCombo(self.view().item(0)))
@@ -1864,6 +1969,7 @@ class ListQCombobox(QComboBox):
                     background: #BDD7FD;
                 }'''
         self.setStyleSheet(qss)
+        self.installEventFilter(self)
         self.refreshIsCalling = False
 
     def switchPopup(self):
@@ -1939,7 +2045,8 @@ class ListQCombobox(QComboBox):
                continue
             listwitem = QListWidgetItem(self.listw)
             listwitem.setToolTip(path)
-            itemWidget = ComboBoxWidget(os.path.basename(path), listwitem, self)
+            itemWidget = ComboBoxWidget(os.path.basename(path), listwitem, self,
+                                        is_cat=self.concatenate)
             itemWidget.itemOpSignal.connect(self.removeCombo)
             itemWidget.viewAlnSigal.connect(self.viewFile)
             # 背景颜色
@@ -1997,6 +2104,14 @@ class ListQCombobox(QComboBox):
     def fetchListNames(self):
         return [self.view().itemWidget(self.view().item(row)).text for row in range(self.view().count())]
 
+    def switch_PCGs(self, bool_):
+        [self.view().itemWidget(self.view().item(row)).PCGs.setChecked(bool_) for row in range(self.view().count())]
+
+    def fetchPCGs(self):
+        return {os.path.splitext(os.path.basename(self.view().item(row).toolTip()))[0]:
+                    self.view().itemWidget(self.view().item(row)).PCGs.isChecked()
+                for row in range(self.view().count())}
+
     def fetchCurrentText(self):
         if self.view().count():
             return self.view().item(0).toolTip()
@@ -2046,6 +2161,16 @@ class ListQCombobox(QComboBox):
             if done_int == 100:
                 self.progressDialog.close()
 
+    def eventFilter(self, obj, event):
+        # modifiers = QApplication.keyboardModifiers()
+        if event.type() == QEvent.MouseButtonRelease:
+            if isinstance(obj, QLineEdit):
+                event.accept()
+                super(ListQCombobox, self).showPopup()
+            if (obj != self.view()) and (obj!=self.view().window()):
+                event.accept()
+                super(ListQCombobox, self).hidePopup()
+        return super(ListQCombobox, self).eventFilter(obj, event)
 
 class InputQLineEdit(QLineEdit):
     autoDetectSig = pyqtSignal()
@@ -3441,6 +3566,559 @@ class DblClickTexedit(QTextEdit):
         self.dblclicked.emit()
         return QTextEdit().mouseDoubleClickEvent(e)
 
+class ListItemsOption(QDialog, object):
+
+    def __init__(self, message1, message2, text, icon, singleBtn=False, parent=None):
+        super(ListItemsOption, self).__init__(parent)
+        self.gridLayout = QGridLayout(self)
+        self.verticalLayout = QVBoxLayout()
+        self.label = QLabel(self)
+        self.label.resize(52, 52)
+        self.label.setText("")
+        self.label.setPixmap(QPixmap(icon).scaled(50, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.verticalLayout.addWidget(self.label)
+        spacerItem = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.verticalLayout.addItem(spacerItem)
+        self.gridLayout.addLayout(self.verticalLayout, 0, 0, 2, 1)
+        self.label_2 = QLabel("<p style='line-height:25px; height:25px'>" + message1 + "</p>", self)
+        self.label_2.setWordWrap(True)
+        self.gridLayout.addWidget(self.label_2, 0, 1, 1, 1)
+        self.label_3 = QLabel(message2, self)
+        spacerItem1 = QSpacerItem(369, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.buttonBox = QDialogButtonBox(self)
+        self.buttonBox.setOrientation(Qt.Horizontal)
+        if singleBtn:
+            self.buttonBox.setStandardButtons(QDialogButtonBox.Ok)
+        else:
+            self.buttonBox.setStandardButtons(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+        self.textEdit = QTextEdit(self)
+        self.textEdit.setAcceptRichText(False)
+        self.textEdit.setText(text)
+        self.gridLayout.addWidget(self.textEdit, 1, 1, 1, 1)
+        self.horizontalLayout = QHBoxLayout()
+        self.horizontalLayout.addWidget(self.label_3)
+        self.horizontalLayout.addItem(spacerItem1)
+        self.horizontalLayout.addWidget(self.buttonBox)
+        self.gridLayout.addLayout(self.horizontalLayout, 2, 0, 1, 2)
+        QMetaObject.connectSlotsByName(self)
+        self.adjustSize()
+
+class AllListWidget(QListWidget):
+
+    def __init__(self, *args, **kwargs):
+        super(AllListWidget, self).__init__(*args, **kwargs)
+        # 不能编辑
+        self.setEditTriggers(self.NoEditTriggers)
+        self.setAcceptDrops(True)
+        self._rubberPos = None
+        self._rubberBand = QRubberBand(QRubberBand.Rectangle, self)
+        # 设置角落的文字
+        self.gridLayout = QGridLayout(self)
+        spacerItem = QSpacerItem(20, 249, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.gridLayout.addItem(spacerItem, 0, 1, 1, 1)
+        spacerItem1 = QSpacerItem(350, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.gridLayout.addItem(spacerItem1, 1, 0, 1, 1)
+        self.corner_label = QLabel("Variables", self)
+        self.corner_label.setAlignment(Qt.AlignBottom | Qt.AlignRight | Qt.AlignTrailing)
+        self.corner_label.setStyleSheet("QLabel { background-color: transparent; "
+                                                "color: grey;"
+                                                "font: 14px;}")
+        self.gridLayout.addWidget(self.corner_label, 1, 1, 1, 1)
+
+    # 实现拖拽的时候预览效果图
+    # 这里演示拼接所有的item截图(也可以自己写算法实现堆叠效果)
+    def startDrag(self, supportedActions):
+        items = self.selectedItems()
+        drag = QDrag(self)
+        mimeData = self.mimeData(items)
+        # 由于QMimeData只能设置image、urls、str、bytes等等不方便
+        # 这里添加一个额外的属性直接把item放进去,后面可以根据item取出数据
+        mimeData.setProperty('myItems', items)
+        drag.setMimeData(mimeData)
+        pixmap = QPixmap(self.viewport().visibleRegion().boundingRect().size())
+        pixmap.fill(Qt.transparent)
+        painter = QPainter()
+        painter.begin(pixmap)
+        for item in items:
+            rect = self.visualRect(self.indexFromItem(item))
+            painter.drawPixmap(rect, self.viewport().grab(rect))
+        painter.end()
+        drag.setPixmap(pixmap)
+        drag.setHotSpot(self.viewport().mapFromGlobal(QCursor.pos()))
+        drag.exec_(supportedActions)
+
+    def mousePressEvent(self, event):
+        # 列表框点击事件,用于设置框选工具的开始位置
+        super(AllListWidget, self).mousePressEvent(event)
+        if event.buttons() != Qt.LeftButton or self.itemAt(event.pos()):
+            return
+        self._rubberPos = event.pos()
+        self._rubberBand.setGeometry(QRect(self._rubberPos, QSize()))
+        self._rubberBand.show()
+
+    def mouseReleaseEvent(self, event):
+        # 列表框点击释放事件,用于隐藏框选工具
+        super(AllListWidget, self).mouseReleaseEvent(event)
+        self._rubberPos = None
+        self._rubberBand.hide()
+
+    def mouseMoveEvent(self, event):
+        # 列表框鼠标移动事件,用于设置框选工具的矩形范围
+        super(AllListWidget, self).mouseMoveEvent(event)
+        if self._rubberPos:
+            pos = event.pos()
+            lx, ly = self._rubberPos.x(), self._rubberPos.y()
+            rx, ry = pos.x(), pos.y()
+            size = QSize(abs(rx - lx), abs(ry - ly))
+            self._rubberBand.setGeometry(
+                QRect(QPoint(min(lx, rx), min(ly, ry)), size))
+
+    def makeItem(self, cname, type_):
+        font_ = self.font()
+        length = QFontMetrics(QFont(font_.family(), font_.pointSize())).width(cname)
+        height = QFontMetrics(QFont(font_.family(), font_.pointSize())).height()
+        size = QSize(length + 25, height + 10)
+        item = QListWidgetItem(self)
+        item.setData(Qt.UserRole + 1, cname)  # 把颜色放进自定义的data里面
+        item.setSizeHint(size)
+        item.variable_name = QLabel(cname, self)  # 自定义控件
+        item.variable_name.setMargin(2)  # 往内缩进2
+        item.variable_name.resize(size)
+        item.variable_name.setAlignment(Qt.AlignCenter)
+        item.type = type_
+        color = "#009900" if type_ == "object" else "#0c4c8a"
+        item.variable_name.setStyleSheet(f"""QLabel {{background-color: {color}; 
+                                                    color : white; 
+                                                    border-radius: 7px;
+                                                    font: 14px;}}
+                                            QLabel:selected {{
+                                                border-radius: 10px;
+                                                border: 1px solid rgb(0, 170, 255);
+                                            }}
+                                            QLabel:selected:!active {{
+                                                border-radius: 10px;
+                                                border: 1px solid transparent;
+                                            }}
+                                            QLabel:selected:active {{
+                                                border-radius: 10px;
+                                                border: 1px solid rgb(0, 170, 255);
+                                            }}
+                                            QLabel:hover {{
+                                                border-radius: 10px;
+                                                border: 1px solid rgb(0, 170, 255);}}""")
+        self.setItemWidget(item, item.variable_name)
+
+    def dragEnterEvent(self, event):
+        event.accept()
+
+    def dropEvent(self, event):
+        event.accept()
+        sender = event.mimeData().property('sender')
+        if sender:
+            sender.clear()
+
+
+class SingleListWidget(QListWidget):
+    # 可以拖进来的QListWidget
+
+    def __init__(self, *args, **kwargs):
+        super(SingleListWidget, self).__init__(*args, **kwargs)
+        self.resize(400, 400)
+        self.setAcceptDrops(True)
+        # 设置从左到右、自动换行、依次排列
+        self.setFlow(self.LeftToRight)
+        self.setWrapping(True)
+        self.setResizeMode(self.Adjust)
+        # item的间隔
+        self.setSpacing(5)
+        self._rubberPos = None
+        self._rubberBand = QRubberBand(QRubberBand.Rectangle, self)
+        # 设置角落的文字
+        self.gridLayout = QGridLayout(self)
+        spacerItem = QSpacerItem(20, 249, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.gridLayout.addItem(spacerItem, 0, 1, 1, 1)
+        spacerItem1 = QSpacerItem(350, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.gridLayout.addItem(spacerItem1, 1, 0, 1, 1)
+        self.corner_label = QLabel(self)
+        self.corner_label.setAlignment(Qt.AlignBottom|Qt.AlignRight|Qt.AlignTrailing)
+        # self.corner_label.setStyleSheet("Qlabel {color: white; font: 14px;}")
+        self.corner_label.setStyleSheet("QLabel { background-color: transparent; "
+                                        "color: grey;"
+                                        "font: 14px;}")
+        self.gridLayout.addWidget(self.corner_label, 1, 1, 1, 1)
+
+    def setCornerText(self, text):
+        self.corner_label.setText(text)
+
+    # 实现拖拽的时候预览效果图
+    # 这里演示拼接所有的item截图(也可以自己写算法实现堆叠效果)
+    def startDrag(self, supportedActions):
+        items = self.selectedItems()
+        drag = QDrag(self)
+        mimeData = self.mimeData(items)
+        # 由于QMimeData只能设置image、urls、str、bytes等等不方便
+        # 这里添加一个额外的属性直接把item放进去,后面可以根据item取出数据
+        mimeData.setProperty('myItems', items)
+        mimeData.setProperty('sender', self)
+        drag.setMimeData(mimeData)
+        pixmap = QPixmap(self.viewport().visibleRegion().boundingRect().size())
+        pixmap.fill(Qt.transparent)
+        painter = QPainter()
+        painter.begin(pixmap)
+        for item in items:
+            rect = self.visualRect(self.indexFromItem(item))
+            painter.drawPixmap(rect, self.viewport().grab(rect))
+        painter.end()
+        drag.setPixmap(pixmap)
+        drag.setHotSpot(self.viewport().mapFromGlobal(QCursor.pos()))
+        drag.exec_(supportedActions)
+
+    def makeItem(self, cname, type_):
+        font_ = self.font()
+        length = QFontMetrics(QFont(font_.family(), font_.pointSize())).width(cname)
+        height = QFontMetrics(QFont(font_.family(), font_.pointSize())).height()
+        size = QSize(length + 25, height + 10)
+        item = QListWidgetItem(self)
+        item.setData(Qt.UserRole + 1, cname)  # 把颜色放进自定义的data里面
+        item.setSizeHint(size)
+        item.variable_name = QLabel(cname, self)  # 自定义控件
+        item.variable_name.setMargin(2)  # 往内缩进2
+        item.variable_name.resize(size)
+        item.variable_name.setAlignment(Qt.AlignCenter)
+        color = "#009900" if type_ == "object" else "#0c4c8a"
+        item.variable_name.setStyleSheet(f"""QLabel {{background-color: {color}; 
+                                                            color : white; 
+                                                            border-radius: 7px;
+                                                            font: 14px;}}
+                                                    QLabel:selected {{
+                                                        border-radius: 10px;
+                                                        border: 1px solid rgb(0, 170, 255);
+                                                    }}
+                                                    QLabel:selected:!active {{
+                                                        border-radius: 10px;
+                                                        border: 1px solid transparent;
+                                                    }}
+                                                    QLabel:selected:active {{
+                                                        border-radius: 10px;
+                                                        border: 1px solid rgb(0, 170, 255);
+                                                    }}
+                                                    QLabel:hover {{
+                                                        border-radius: 10px;
+                                                        border: 1px solid rgb(0, 170, 255);}}""")
+        self.setItemWidget(item, item.variable_name)
+
+    def dragEnterEvent(self, event):
+        mimeData = event.mimeData()
+        if not mimeData.property('myItems'):
+            event.ignore()
+        else:
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        # 获取拖放的items
+        event.accept()
+        items = event.mimeData().property('myItems')
+        sender = event.mimeData().property('sender')
+        if sender == self: return
+        self.clear()
+        for item in items:
+            # 取出item里的data并生成item
+            self.makeItem(item.data(Qt.UserRole + 1), item.type)
+        if sender:
+            if sender.objectName() != "listWidget":
+                sender.clear()
+
+    def mousePressEvent(self, event):
+        # 列表框点击事件,用于设置框选工具的开始位置
+        super(SingleListWidget, self).mousePressEvent(event)
+        if event.buttons() != Qt.LeftButton or self.itemAt(event.pos()):
+            return
+        self._rubberPos = event.pos()
+        self._rubberBand.setGeometry(QRect(self._rubberPos, QSize()))
+        self._rubberBand.show()
+
+    def mouseReleaseEvent(self, event):
+        # 列表框点击释放事件,用于隐藏框选工具
+        super(SingleListWidget, self).mouseReleaseEvent(event)
+        self._rubberPos = None
+        self._rubberBand.hide()
+
+    def mouseMoveEvent(self, event):
+        # 列表框鼠标移动事件,用于设置框选工具的矩形范围
+        super(SingleListWidget, self).mouseMoveEvent(event)
+        if self._rubberPos:
+            pos = event.pos()
+            lx, ly = self._rubberPos.x(), self._rubberPos.y()
+            rx, ry = pos.x(), pos.y()
+            size = QSize(abs(rx - lx), abs(ry - ly))
+            self._rubberBand.setGeometry(
+                QRect(QPoint(min(lx, rx), min(ly, ry)), size))
+
+
+class RangeSlider(QWidget):
+    valueChanged = pyqtSignal(tuple)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.first_position = 1
+        self.second_position = 8
+
+        self.opt = QStyleOptionSlider()
+        self.opt.minimum = 0
+        self.opt.maximum = 10
+
+        self.setTickPosition(QSlider.TicksAbove)
+        self.setTickInterval(1)
+
+        self.setSizePolicy(
+            QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed, QSizePolicy.Slider)
+        )
+
+    def setRangeLimit(self, minimum: float, maximum: float):
+        self.opt.minimum = minimum
+        self.opt.maximum = maximum
+
+    def setRange(self, start: float, end: float):
+        self.first_position = start
+        self.second_position = end
+
+    def getRange(self):
+        return (self.first_position, self.second_position)
+
+    def setTickPosition(self, position: QSlider.TickPosition):
+        self.opt.tickPosition = position
+
+    def setTickInterval(self, ti: float):
+        self.opt.tickInterval = ti
+
+    def paintEvent(self, event: QPaintEvent):
+
+        painter = QPainter(self)
+
+        # Draw rule
+        self.opt.initFrom(self)
+        self.opt.rect = self.rect()
+        self.opt.sliderPosition = 0
+        self.opt.subControls = QStyle.SC_SliderGroove | QStyle.SC_SliderTickmarks
+
+        #   Draw GROOVE
+        self.style().drawComplexControl(QStyle.CC_Slider, self.opt, painter)
+
+        #  Draw INTERVAL
+
+        color = self.palette().color(QPalette.Highlight)
+        color.setAlpha(160)
+        painter.setBrush(QBrush(color))
+        painter.setPen(Qt.NoPen)
+
+        self.opt.sliderPosition = self.first_position
+        x_left_handle = (
+            self.style()
+            .subControlRect(QStyle.CC_Slider, self.opt, QStyle.SC_SliderHandle)
+            .right()
+        )
+
+        self.opt.sliderPosition = self.second_position
+        x_right_handle = (
+            self.style()
+            .subControlRect(QStyle.CC_Slider, self.opt, QStyle.SC_SliderHandle)
+            .left()
+        )
+
+        groove_rect = self.style().subControlRect(
+            QStyle.CC_Slider, self.opt, QStyle.SC_SliderGroove
+        )
+
+        selection = QRect(
+            x_left_handle,
+            groove_rect.y(),
+            x_right_handle - x_left_handle,
+            groove_rect.height(),
+        ).adjusted(-1, 1, 1, -1)
+
+        painter.drawRect(selection)
+
+        # Draw first handle
+
+        self.opt.subControls = QStyle.SC_SliderHandle
+        self.opt.sliderPosition = self.first_position
+        self.style().drawComplexControl(QStyle.CC_Slider, self.opt, painter)
+
+        # Draw second handle
+        self.opt.sliderPosition = self.second_position
+        self.style().drawComplexControl(QStyle.CC_Slider, self.opt, painter)
+
+    def mousePressEvent(self, event: QMouseEvent):
+
+        self.opt.sliderPosition = self.first_position
+        self._first_sc = self.style().hitTestComplexControl(
+            QStyle.CC_Slider, self.opt, event.pos(), self
+        )
+
+        self.opt.sliderPosition = self.second_position
+        self._second_sc = self.style().hitTestComplexControl(
+            QStyle.CC_Slider, self.opt, event.pos(), self
+        )
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+
+        distance = self.opt.maximum - self.opt.minimum
+
+        pos = self.style().sliderValueFromPosition(
+            0, distance, event.pos().x(), self.rect().width()
+        )
+
+        if self._first_sc == QStyle.SC_SliderHandle:
+            if pos <= self.second_position:
+                self.first_position = pos
+                self.update()
+                self.valueChanged.emit((self.first_position, self.second_position))
+                return
+
+        if self._second_sc == QStyle.SC_SliderHandle:
+            if pos >= self.first_position:
+                self.second_position = pos
+                self.update()
+                self.valueChanged.emit((self.first_position, self.second_position))
+
+    def sizeHint(self):
+        """ override """
+        SliderLength = 84
+        TickSpace = 5
+
+        w = SliderLength
+        h = self.style().pixelMetric(QStyle.PM_SliderThickness, self.opt, self)
+
+        if (
+            self.opt.tickPosition & QSlider.TicksAbove
+            or self.opt.tickPosition & QSlider.TicksBelow
+        ):
+            h += TickSpace
+
+        return (
+            self.style()
+            .sizeFromContents(QStyle.CT_Slider, self.opt, QSize(w, h), self)
+            .expandedTo(QApplication.globalStrut())
+        )
+
+
+class RemovedListWidget(QListWidget):
+
+    def __init__(self, dataframe, column_name, list_data, parent=None):
+        super(RemovedListWidget, self).__init__(parent)
+        self.dataframe = dataframe
+        self.column_name = column_name
+        self.setAcceptDrops(True)
+        # 设置从左到右、自动换行、依次排列
+        self.setFlow(self.LeftToRight)
+        self.setWrapping(True)
+        self.setResizeMode(self.Adjust)
+        # item的间隔
+        self.setSpacing(5)
+        # 创建item
+        for item in list_data:
+            self.addItem(str(item))
+
+    def addItem(self, text):
+        font_ = self.font()
+        length = QFontMetrics(QFont(font_.family(), font_.pointSize())).width(text)
+        height = QFontMetrics(QFont(font_.family(), font_.pointSize())).height()
+        size_all = QSize(length + 45, height + 13)
+        size_btn = QSize(length + 20, height + 10)
+        item = QListWidgetItem(self)
+        item.setSizeHint(size_all)
+        item.widget = QWidget(self)
+        item.horizontalLayout = QHBoxLayout(item.widget)
+        item.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        item.horizontalLayout.setSpacing(0)
+        item.pushButton = QPushButton(item.widget)
+        item.pushButton.setText(text)
+        item.pushButton.resize(size_btn)
+        item.horizontalLayout.addWidget(item.pushButton)
+        item.rmvbutton = QToolButton(item.widget)
+        icon = QIcon()
+        icon.addPixmap(QPixmap(":/picture/resourses/btn_close.png"), QIcon.Normal, QIcon.Off)
+        item.rmvbutton.setIcon(icon)
+        item.rmvbutton.setAutoRaise(True)
+        item.rmvbutton.clicked.connect(lambda : self.takeItem(self.row(item)))
+        item.horizontalLayout.addWidget(item.rmvbutton)
+        self.setItemWidget(item, item.widget)
+
+    def getAllItemsText(self):
+        return [self.item(row).pushButton.text() for row in range(self.count())]
+
+class MyCopiedTableView(QTableView):
+
+    def __init__(self, parent=None):
+        super(MyCopiedTableView, self).__init__(parent)
+        self.setStyleSheet("QTableView::item:selected {background: #a6e4ff; color: black; border: 0px;}")
+        # self.resize(800, 600)
+        # self.setContextMenuPolicy(Qt.ActionsContextMenu)# 右键菜单
+        # self.setEditTriggers(self.NoEditTriggers)# 禁止编辑
+        # self.addAction(QAction("复制", self, triggered=self.copyData))
+        # self.myModel = QStandardItemModel()# model
+        # self.setModel(self.myModel)
+
+    def keyPressEvent(self, event):
+        super(MyCopiedTableView, self).keyPressEvent(event)
+        # Ctrl + C
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_C:
+            self.copyData()
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_V:
+            self.pastData()
+
+    def copyData(self):
+        rows = set()
+        cols = set()
+        for index in self.selectedIndexes():# 得到所有选择的
+            rows.add(index.row())
+            cols.add(index.column())
+        minrow = min(rows)
+        maxrow = max(rows)
+        mincol = min(cols)
+        maxcol = max(cols)
+        # print(mrow, mcol)
+        arrays = [
+            ["" for _ in range(mincol, maxcol+1)
+             ] for _ in range(minrow, maxrow+1)
+        ]# 创建二维数组
+        # print(arrays, minrow, maxrow, mincol, maxcol)
+        # 填充数据
+        for index in self.selectedIndexes():# 遍历所有选择的
+            arrays[index.row()-minrow][index.column()-mincol] = index.data()
+        # print(arrays)
+        data = ""# 最后的结果
+        for row in arrays:
+            data += "\t".join(row) + "\n"
+        # print(data)
+        QApplication.clipboard().setText(data)# 复制到剪贴板中
+        QMessageBox.information(self, "Information", "Data copied")
+
+    def pastData(self):
+        old_array = self.model().arraydata
+        old_col = len(old_array[0])
+        old_row = len(old_array)
+        text = QApplication.clipboard().text()
+        array = [row.split("\t") for row in text.split("\n")]
+        if array:
+            reply = QMessageBox.information(
+                self,
+                "Confirmation",
+                "<p style='line-height:25px; height:25px'>Are you sure that you want to paste the data here? "
+                "The old data will be replaced!</p>",
+                QMessageBox.Ok,
+                QMessageBox.Cancel)
+            if reply == QMessageBox.Ok:
+                indices = self.selectedIndexes()
+                index = indices[0]
+                for row, list_row in enumerate(array):
+                    for col, value in enumerate(list_row):
+                        if ((index.row() + row + 1) <= old_row) and ((index.column() + col + 1 <= old_col)):
+                            old_array[index.row() + row][index.column() + col] = value
+                            self.model().dataChanged.emit(index, index)
 
 def showERROR():
     errmsg = traceback.format_exc()

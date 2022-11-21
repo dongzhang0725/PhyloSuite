@@ -476,7 +476,7 @@
                <number>99999999</number>
               </property>
               <property name="value">
-               <number>100</number>
+               <number>1000</number>
               </property>
              </widget>
             </item>
@@ -538,12 +538,12 @@
               </property>
               <item>
                <property name="text">
-                <string>Halfcompat</string>
+                <string>Allcompat</string>
                </property>
               </item>
               <item>
                <property name="text">
-                <string>Allcompat</string>
+                <string>Halfcompat</string>
                </property>
               </item>
              </widget>

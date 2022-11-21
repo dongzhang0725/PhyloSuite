@@ -16,7 +16,7 @@ QComboBox {
     padding: 1px 2px 1px 2px;
     min-width: 7 em;
     background-color: white;
-    /* height: 22px; */
+    height: 30px;
     selection-background-color: #BDD7FD;
     selection-color: black;
     /* border-top-color: rgb(218, 216, 216) */
@@ -45,7 +45,7 @@ QPushButton {
 border-style:none;
 border:1px solid #B2B6B9;
 color:#000000;
-padding:5px;
+padding:3px;
 min-height:15px;
 border-radius:5px;
 background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #E1E4E6,stop:1 #CCD3D9);
@@ -65,7 +65,7 @@ border-style:none;
 border:1px solid #B2B6B9;
 color:#000000;
 /* font: 12px;
-height: 22px; */
+height: 30px; */
 background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #E1E4E6,stop:1 #CCD3D9);
 }
 QPushButton#pushButton_partition:hover {
@@ -83,8 +83,8 @@ margin-bottom: 2px;
 background: none;
 border: 2px solid #B2B6B9;
 border-radius: 1px;
-min-height: 22px;
-min-width: 22px;
+min-height: 30px;
+min-width: 30px;
 }
 QPushButton#pushButton_3:hover:!pressed, QPushButton#pushButton_4:hover:!pressed, QPushButton#pushButton_22:hover:!pressed
 {
@@ -102,7 +102,7 @@ QPushButton#pushButton_input1, QPushButton#pushButton_input2{
     min-width: 7 em;
     background-color: white;
     /* font: 12px;
-    height: 22px; */
+    height: 30px; */
     text-align: left;
     }
 
@@ -282,7 +282,7 @@ QLineEdit {
     background: white;  
     selection-background-color: green; 
     selection-color:white;
-    /* height: 22px; */
+    height: 30px;
 }
 
 QLineEdit:hover {
@@ -492,6 +492,11 @@ QTextEdit{
     font-family: "Courier New" 
 }
 
+QPlainTextEdit{
+    selection-color: white;
+    selection-background-color: rgb(238, 101, 83);
+    font-family: "Courier New"
+}
 
 #topWidget , TestWidget
     {
@@ -589,7 +594,7 @@ QDateEdit
     min-width: 7 em;
     background-color: white;
     /* font: 12px;
-	height: 22px; */
+	height: 30px; */
 }
 
 
@@ -671,3 +676,27 @@ QListWidget#listWidget_workflow::item:selected:!active
     border-width:0px;
     background:none;
 } */
+
+QToolBox  {
+    padding: 2px;
+    border: 1px transparent black;
+    background-color: white;
+}
+
+QToolBox QWidget {
+    background-color: white;
+}
+
+QToolBox::tab {
+    color: #000000;
+    background-color: qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #E1E4E6,stop:1 #CCD3D9);
+    border: 1px solid #76797C;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+}
+
+QToolBox::tab:selected { /* italicize selected tabs */
+    font: italic;
+    background-color: qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #E1E4E6,stop:1 #CCD3D9);
+    border-color: #3daee9;
+ }

@@ -6,6 +6,7 @@
 
 import io
 import os
+import platform
 import sys
 from shutil import rmtree
 
@@ -17,13 +18,30 @@ DESCRIPTION = 'A desktop platform for streamlined molecular sequence data manage
 URL = 'https://github.com/dongzhang0725/PhyloSuite'
 EMAIL = 'dongzhang0725@gmail.com'
 AUTHOR = 'Dong Zhang'
-REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '1.2.2'
+REQUIRES_PYTHON = '>=3.6.0, <=3.7.0'
+VERSION = '1.2.3pre2'
 
+platform_ = platform.system().lower()
+
+# 如何配置：https://stackoverflow.com/questions/16055403/setuptools-platform-specific-dependencies
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'biopython', 'python-dateutil', 'suds-py3', 'PyQt5>=5.10.1', 'reportlab', 'psutil', 'pywin32; platform_system=="Windows"'
+    'biopython==1.76',
+    'python-dateutil',
+    'suds-py3',
+    'PyQt5==5.10.1',
+    'psutil',
+    'pywin32; platform_system=="Windows"',
+    'plotly==5.10.0',
+    'pandas==1.1.5',
+    'kaleido==0.2.1; platform_system=="Darwin"',
+    'kaleido==0.2.1; platform_system=="Linux"',
+    'kaleido==0.1.*; platform_system=="Windows"', # other version will cause error,like 0.2.1
+    'statsmodels==0.10.2; platform_system=="Darwin"',
+    'statsmodels==0.12.2; platform_system=="Linux"',
+    'statsmodels==0.12.2; platform_system=="Windows"',
 ]
+# , 'reportlab==3.5.57'
 
 # What packages are optional?
 EXTRAS = {

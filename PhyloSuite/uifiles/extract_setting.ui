@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>725</width>
+    <width>962</width>
     <height>682</height>
    </rect>
   </property>
@@ -200,6 +200,20 @@
          </spacer>
         </item>
         <item>
+         <widget class="QToolButton" name="toolButton_7">
+          <property name="toolTip">
+           <string>Adjust size for table</string>
+          </property>
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../myRes.qrc">
+            <normaloff>:/picture/resourses/settings-icon-flat_343252.png</normaloff>:/picture/resourses/settings-icon-flat_343252.png</iconset>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QCheckBox" name="checkBox">
           <property name="text">
            <string>Only extract these genes</string>
@@ -209,7 +223,7 @@
         <item>
          <widget class="QToolButton" name="toolButton_6">
           <property name="toolTip">
-           <string>Import Table (.csv)</string>
+           <string>Import Table (.csv; .tsv)</string>
           </property>
           <property name="text">
            <string>...</string>

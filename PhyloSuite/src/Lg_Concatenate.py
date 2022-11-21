@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+from itertools import chain
+
 from uifiles.Ui_Concatenate import Ui_Matrix
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -14,72 +16,73 @@ from src.factory import Factory, WorkThread, Parsefmt
 import traceback
 from collections import OrderedDict
 import platform
-from Bio.SeqFeature import SeqFeature, FeatureLocation
-from Bio.Graphics import GenomeDiagram
-from reportlab.lib.units import cm
+# from Bio.SeqFeature import SeqFeature, FeatureLocation
+# from Bio.Graphics import GenomeDiagram
+# from reportlab.lib.units import cm
 
-class Partition2fig(object):
-    def __init__(self, **kwargs):
-        super(Partition2fig, self).__init__()
-        self.dict_args = kwargs
-        self.readpartFile()
-        self.drawFig()
-
-    def readpartFile(self):
-        self.list_name_start_stop = []
-        with open(self.dict_args["partition_file"], encoding="utf-8", errors='ignore') as f:
-            line = f.readline()
-            while ("***codon style***" not in line) and (line):
-                if "=" in line:
-                    name, indices = line.strip(";\n").split("=")
-                    # name = name.split("_")[0]
-                    start, stop = indices.split("-")
-                    self.list_name_start_stop.append([name, start.strip(), stop.strip()])
-                line = f.readline()
-
-    def drawFig(self):
-        gdd = GenomeDiagram.Diagram('linear figure')
-        gdt_features = gdd.new_track(1, greytrack=False, scale=0, height=0.4)
-        gds_features = gdt_features.new_set()
-        for name, start, stop in self.list_name_start_stop:
-            if "COX" in name.upper():
-                color = "#81CEEA"
-            elif "NAD" in name.upper():
-                color = "#F9C997"
-            elif "ATP" in name.upper():
-                color = "#E97E8D"
-            elif ("CYTB" in name.upper()) or ("COB" in name.upper()):
-                color = "#E2E796"
-            elif "RRN" in name.upper():
-                color = "#94F2DB"
-            # strand = -1 if name in ["nad1", "cytb", "nad4", "nad4L", "rrnL"] else 1
-            feature = SeqFeature(FeatureLocation(int(start), int(stop)), strand=1)
-            gds_features.add_feature(feature, name=name, label=True,
-                                     label_size=self.dict_args["label_size"], label_angle=self.dict_args["Label_angle"],
-                                     color=self.dict_args["Label_color"], label_position=self.dict_args["Label_position"],
-                                     sigil="BIGARROW", arrowshaft_height=0.5,
-                                     arrowhead_length=0.5)
-        gdd.draw(format='linear', pagesize=(self.dict_args["fig_width"] * cm, self.dict_args["fig_height"] * cm), fragments=1,
-                 start=0, end=int(stop))
-        gdd.write(self.dict_args["exportPath"] + os.sep + "linear.pdf", "pdf")
+# class Partition2fig(object):
+#     def __init__(self, **kwargs):
+#         super(Partition2fig, self).__init__()
+#         self.dict_args = kwargs
+#         self.readpartFile()
+#         self.drawFig()
+#
+#     def readpartFile(self):
+#         self.list_name_start_stop = []
+#         with open(self.dict_args["partition_file"], encoding="utf-8", errors='ignore') as f:
+#             line = f.readline()
+#             while ("***codon style***" not in line) and (line):
+#                 if "=" in line:
+#                     name, indices = line.strip(";\n").split("=")
+#                     # name = name.split("_")[0]
+#                     start, stop = indices.split("-")
+#                     self.list_name_start_stop.append([name, start.strip(), stop.strip()])
+#                 line = f.readline()
+#
+#     def drawFig(self):
+#         gdd = GenomeDiagram.Diagram('linear figure')
+#         gdt_features = gdd.new_track(1, greytrack=False, scale=0, height=0.4)
+#         gds_features = gdt_features.new_set()
+#         for name, start, stop in self.list_name_start_stop:
+#             if "COX" in name.upper():
+#                 color = "#81CEEA"
+#             elif "NAD" in name.upper():
+#                 color = "#F9C997"
+#             elif "ATP" in name.upper():
+#                 color = "#E97E8D"
+#             elif ("CYTB" in name.upper()) or ("COB" in name.upper()):
+#                 color = "#E2E796"
+#             elif "RRN" in name.upper():
+#                 color = "#94F2DB"
+#             # strand = -1 if name in ["nad1", "cytb", "nad4", "nad4L", "rrnL"] else 1
+#             feature = SeqFeature(FeatureLocation(int(start), int(stop)), strand=1)
+#             gds_features.add_feature(feature, name=name, label=True,
+#                                      label_size=self.dict_args["label_size"], label_angle=self.dict_args["Label_angle"],
+#                                      color=self.dict_args["Label_color"], label_position=self.dict_args["Label_position"],
+#                                      sigil="BIGARROW", arrowshaft_height=0.5,
+#                                      arrowhead_length=0.5)
+#         gdd.draw(format='linear', pagesize=(self.dict_args["fig_width"] * cm, self.dict_args["fig_height"] * cm), fragments=1,
+#                  start=0, end=int(stop))
+#         gdd.write(self.dict_args["exportPath"] + os.sep + "linear.pdf", "pdf")
 
 class Seq_matrix(object):
-
     def __init__(self, **kwargs):
         self.factory = Factory()
         self.dict_args = kwargs
         self.outpath = self.dict_args["exportPath"]
         self.dict_species = {}
-        self.dict_statistics = dict(prefix='taxon')
-        self.partition_style = '***partitionfinder style***\n'
-        self.partition_codon = "\n***codon style***\n"
-        self.bayes_style = '\n***bayes style***\n'
-        self.bayes_codon = "\n***bayes codon style***\n"
-        self.iqtree_style = '\n***IQ-TREE style***\n#nexus\nbegin sets;\n'
-        self.iqtree_codon = "\n***IQ-TREE codon style***\n#nexus\nbegin sets;\n"
+        self.dict_statistics = dict(prefix=['taxon'])
+        self.partition_style = ['***partitionfinder style***\n']
+        self.partition_codon = ["\n***codon style***\n"]
+        self.bayes_style = ['\n***bayes style***\n']
+        self.bayes_codon = ["\n***bayes codon style***\n"]
+        self.iqtree_style = ['\n***IQ-TREE style***\n#nexus\nbegin sets;\n']
+        self.iqtree_codon = ["\n***IQ-TREE codon style***\n#nexus\nbegin sets;\n"]
         self.parent = self.dict_args["parent"]
-        self.partition_name = ''
-        self.partition_codname = ""
+        self.dict_args["split_codon"] = list(sorted(self.dict_args["split_codon"])) if \
+                                    self.dict_args["split_codon"] else self.dict_args["split_codon"] # [1,2,3]
+        self.partition_name = []
+        self.partition_codname = []
         self.gene_index = []
         self.dist_warning_message = OrderedDict()
         self.error_message = ""
@@ -88,15 +91,19 @@ class Seq_matrix(object):
         self.dict_genes_alignments = OrderedDict()
         self.unaligned = False
         self.unaligns = []
+        self.not_PCGs = [gene for gene, flag in self.dict_args["PCG_genes"].items() if not flag]
+        self.wrong_PCGs = []
         self.exportName = self.dict_args["export_name"]
         self.interrupt = False
         self.list_empty_files = []
+        self.name_mapping = {}
         for num, eachFile in enumerate(self.dict_args["files"]):
             if self.interrupt:
                 break
             geneName = os.path.splitext(os.path.basename(eachFile))[0]
             geneName = self.factory.refineName(geneName)
             dict_taxon = self.parsefmt.readfile(eachFile)
+            self.name_mapping.update(self.parsefmt.name_mapping)
             set_length = set([len(dict_taxon[i]) for i in dict_taxon])
             if set_length == {0}:
                 self.list_empty_files.append(os.path.basename(eachFile))
@@ -137,7 +144,7 @@ class Seq_matrix(object):
                 if self.interrupt:
                     break
                 self.dict_taxon = self.dict_genes_alignments[self.genename]
-                self.dict_statistics['prefix'] += '\t' + self.genename
+                self.dict_statistics['prefix'].append(f'\t{self.genename}')
                 self.append()
                 self.addPartition()
                 self.dict_args["progressSig"].emit(
@@ -156,6 +163,10 @@ class Seq_matrix(object):
                 QMetaObject.invokeMethod(self.parent, "popupWarning",
                                          Qt.BlockingQueuedConnection,
                                          Q_ARG(list, [self.warning_message]))
+            if self.dict_args["split_codon"] and self.wrong_PCGs:
+                QMetaObject.invokeMethod(self.parent, "popupWarning",
+                                         Qt.BlockingQueuedConnection,
+                                         Q_ARG(list, [self.wrong_PCGs]))
         # else:
         #     self.dict_args["unaligned_signal"].emit(self.unaligns)
 
@@ -181,7 +192,7 @@ class Seq_matrix(object):
                     keys = list(self.dict_genes_alignments[j].keys())
                     alignmentLenth = len(
                         self.dict_genes_alignments[j][keys[0]])
-                    self.dict_genes_alignments[j][i] = "?" * alignmentLenth
+                    self.dict_genes_alignments[j][i] = self.dict_args["missing_symbol"] * alignmentLenth
                     lossingGene.append(j)
             if lossingGene:
                 self.dist_warning_message[i] = lossingGene
@@ -191,62 +202,69 @@ class Seq_matrix(object):
                                      Qt.BlockingQueuedConnection,
                                      Q_ARG(list, [self.dist_warning_message]))
 
+    def split_codon(self, seq):
+        # 如果序列不是3的倍数，则不执行切割
+        if len(seq)%3 != 0:
+            if self.genename not in self.not_PCGs:
+                self.not_PCGs.append(self.genename)
+            if self.genename not in self.wrong_PCGs:
+                self.wrong_PCGs.append(self.genename)
+            return seq
+        new_seq = []
+        for index in range(0, len(seq), 3):
+            sites = self.dict_args["split_codon"] # [1,2,3]
+            for site in sites:
+                # print(index + site - 1, len(seq))
+                new_seq.append(seq[index + site - 1])
+        return "".join(new_seq)
+
     def append(self):
         for self.spe_key, self.seq in self.dict_taxon.items():  # 因为读新的文件会
             self.seq = self.seq.upper()  # 全部改为大写
+            self.seq = self.seq if not (self.dict_args["split_codon"] and
+                                        self.dict_args["PCG_genes"][self.genename]) else self.split_codon(self.seq)
             lenth = len(self.seq)
             indels = self.seq.count('-')
-            if self.spe_key in self.dict_species:
-                self.dict_species[self.spe_key] += self.seq
-                if self.spe_key in self.dict_statistics:
-                    self.dict_statistics[self.spe_key] += '\t' + \
-                        str(lenth) + ' (' + str(indels) + ' indels)'
-                else:
-                    self.dict_statistics[self.spe_key] = '\t' + \
-                        str(lenth) + ' (' + str(indels) + ' indels)'
-            else:
-                self.dict_species[self.spe_key] = self.seq
-                self.dict_statistics[self.spe_key] = self.spe_key + \
-                    '\t' + str(lenth) + ' (' + str(indels) + ' indels)'
+            self.dict_species[self.spe_key] = f"{self.dict_species.get(self.spe_key, '')}{self.seq}"
+            self.dict_statistics[self.spe_key] = [f"{''.join(self.dict_statistics.get(self.spe_key, [self.spe_key]))}\t{lenth} ({indels} indels)"]
+
+    def codon_partition_text(self, span):
+        start = span[0] + 1
+        stop = span[1]
+        if self.genename in self.not_PCGs:
+            self.partition_codon.append(f"{self.genename}={start}-{stop};\n")
+            self.bayes_codon.append(f'charset {self.genename}={start}-{stop};\n')
+            self.iqtree_codon.append(f'\tcharset {self.genename}={start}-{stop};\n')
+            self.partition_codname.append(f"{self.genename},")
+        else:
+            sites_num = len(self.dict_args["split_codon"])
+            for num, site in enumerate(self.dict_args["split_codon"]):
+                suffix = '\\%d;\n'%sites_num if sites_num>1 else ";\n"
+                self.partition_codon.append(f"{self.genename}_codon{site}={start + num}-{stop}{suffix}")
+                self.bayes_codon.append(f'charset {self.genename}_codon{site}={start + num}-{stop}{suffix}')
+                self.iqtree_codon.append(f'\tcharset {self.genename}_codon{site}={start + num}-{stop}{suffix}')
+                self.partition_codname.append(f"{self.genename}_codon{site},")
 
     def addPartition(self):
         ##替换这些特殊符号，可以让序列更容易被识别
         rgx = re.compile(r"([.^$*+?{}[\]\\|()])")
         matFlag = rgx.sub(r"[\1]", self.seq) + '$'
         span = re.search(matFlag, self.dict_species[self.spe_key]).span()
+        start = span[0] + 1
+        stop = span[1]
         self.gene_index.append(span)
-        self.partition_style += self.genename + '=' + \
-            str(span[0] + 1) + '-' + str(span[1]) + ';\n'
-        self.partition_codon += self.genename + "_codon1" + \
-            '=' + str(span[0] + 1) + '-' + str(span[1]) + '\\3;\n'
-        self.partition_codon += self.genename + "_codon2" + \
-            '=' + str(span[0] + 2) + '-' + str(span[1]) + '\\3;\n'
-        self.partition_codon += self.genename + "_codon3" + \
-            '=' + str(span[0] + 3) + '-' + str(span[1]) + '\\3;\n'
-        self.bayes_style += 'charset ' + self.genename + \
-            '=' + str(span[0] + 1) + '-' + str(span[1]) + ';\n'
-        self.bayes_codon += 'charset ' + self.genename + "_codon1" + \
-            '=' + str(span[0] + 1) + '-' + str(span[1]) + '\\3;\n'
-        self.bayes_codon += 'charset ' + self.genename + "_codon2" + \
-            '=' + str(span[0] + 2) + '-' + str(span[1]) + '\\3;\n'
-        self.bayes_codon += 'charset ' + self.genename + "_codon3" + \
-            '=' + str(span[0] + 3) + '-' + str(span[1]) + '\\3;\n'
-        self.iqtree_style += '\tcharset ' + self.genename + \
-                            '=' + str(span[0] + 1) + '-' + str(span[1]) + ';\n'
-        self.iqtree_codon += '\tcharset ' + self.genename + "_codon1" + \
-                            '=' + str(span[0] + 1) + '-' + str(span[1]) + '\\3;\n'
-        self.iqtree_codon += '\tcharset ' + self.genename + "_codon2" + \
-                            '=' + str(span[0] + 2) + '-' + str(span[1]) + '\\3;\n'
-        self.iqtree_codon += '\tcharset ' + self.genename + "_codon3" + \
-                            '=' + str(span[0] + 3) + '-' + str(span[1]) + '\\3;\n'
-        self.partition_name += self.genename + ','
-        self.partition_codname += self.genename + "_codon1," + \
-            self.genename + "_codon2," + self.genename + "_codon3,"
+        self.partition_style.append(f"{self.genename}={start}-{stop};\n")
+        self.bayes_style.append(f'charset {self.genename}={start}-{stop};\n')
+        self.iqtree_style.append(f'\tcharset {self.genename}={start}-{stop};\n')
+        if self.dict_args["split_codon"]:
+            self.codon_partition_text(span)
+        self.partition_name.append(f"{self.genename},")
 
     def align(self, seq):
         list_seq = re.findall(r'(.{60})', seq)
         if not list_seq:
-            return seq + "\n"
+            self.align_seq = seq + "\n"
+            return self.align_seq
         remainder = len(seq) % 60
         if remainder == 0:
             self.align_seq = '\n'.join(list_seq) + '\n'
@@ -261,65 +279,67 @@ class Seq_matrix(object):
         if self.dict_args["export_nexi"]:
             while num <= integer:
                 for i in self.list_keys:
-                    self.nxs_inter += i.ljust(self.name_longest) + ' ' + self.dict_species[i][
-                        (num - 1) * 60:num * 60] + '\n'
-                self.nxs_inter += "\n"
+                    self.nxs_inter.append(f"{i.ljust(self.name_longest)} "
+                                          f"{self.dict_species[i][(num - 1) * 60:num * 60]}\n")
+                self.nxs_inter.append("\n")
                 num += 1
             if length % 60 != 0:
                 for i in self.list_keys:
-                    self.nxs_inter += i.ljust(self.name_longest) + ' ' + self.dict_species[i][
-                        (num - 1) * 60:length] + '\n'
+                    self.nxs_inter.append(f"{i.ljust(self.name_longest)} {self.dict_species[i][(num - 1) * 60:length]}\n")
         if self.dict_args["export_nexig"]:
             for each_span in self.gene_index:  # 以gene分界形式的nex
                 for i in self.list_keys:
-                    self.nxs_gene += i.ljust(self.name_longest) + " " + self.dict_species[i][
-                        each_span[0]:each_span[1]] + "\n"
-                self.nxs_gene += "\n"
+                    self.nxs_gene.append(f"{i.ljust(self.name_longest)} {self.dict_species[i][each_span[0]:each_span[1]]}\n")
+                self.nxs_gene.append("\n")
 
     def get_str(self):  # 只有nex和phy格式需要改序列名字空格
         for i in self.list_keys:
-            self.dict_statistics[i] += '\t' + \
-                str(len(self.dict_species[i])) + '\t' + str(self.count) + '\n'
-            self.file += '>' + i + '\n' + \
-                self.dict_species[i] + '\n'
-            self.phy_file += i.ljust(self.name_longest) + \
-                ' ' + self.dict_species[i] + '\n'
-            self.nxs_file += i.ljust(self.name_longest) + \
-                ' ' + self.dict_species[i] + '\n'
+            if self.dict_args["export_stat"]:
+                self.dict_statistics[i].append(f'\t{len(self.dict_species[i])}\t{self.count}\n')
+            if self.dict_args["export_fas"]:
+                self.file.append(f'>{i}\n{self.dict_species[i]}\n')
+            if self.dict_args["export_phylip"]:
+                self.phy_file.append(f"{i.ljust(self.name_longest)} {self.dict_species[i]}\n")
+            if self.dict_args["export_nex"]:
+                self.nxs_file.append(f"{i.ljust(self.name_longest)} {self.dict_species[i]}\n")
             self.align(self.dict_species[i])
-            self.paml_file += i + '\n' + \
-                self.align_seq + '\n'
-            self.axt_file += self.dict_species[i] + '\n'
-            self.statistics += self.dict_statistics[i]
+            if self.dict_args["export_paml"]:
+                self.paml_file.append(f"{i}\n{self.align_seq}\n")
+            if self.dict_args["export_axt"]:
+                self.axt_file.append(f"{self.dict_species[i]}\n")
+            if self.dict_args["export_stat"]:
+                self.statistics.extend(self.dict_statistics[i])
 
     def complete(self):
         self.count = len(self.dict_genes_alignments)
-        self.partition_name = 'partition Names = %s:' % str(
-            self.count) + self.partition_name.strip(',') + ';\nset partition=Names;\n'
-        self.partition_codname = 'partition Names = %s:' % str(
-            self.count * 3) + self.partition_codname.strip(',') + ';\nset partition=Names;\n'
-        self.dict_statistics['prefix'] += '\tTotal lenth\tNo of charsets\n'
+        self.partition_name = [f'partition Names = {self.count}:{"".join(self.partition_name).strip(",")}' \
+                              f';\nset partition=Names;\n']
+        if self.dict_args["split_codon"]:
+            self.partition_codname = [f'partition Names = ' \
+             f'{(self.count-len(self.not_PCGs)) * len(self.dict_args["split_codon"]) + len(self.not_PCGs)}:' 
+             f'{"".join(self.partition_codname).strip(",")};\nset partition=Names;\n']
+        if self.dict_args["export_stat"]:
+            self.dict_statistics['prefix'].append('\tTotal lenth\tNo of charsets\n')
         self.list_keys = sorted(list(self.dict_species.keys()))
+        spe_num = len(self.list_keys)
+        seq_num = len(self.dict_species[self.list_keys[-1]])
         self.pattern = self.parsefmt.which_pattern(
             self.dict_species, "Concatenated file")  # 得到pattern
         self.error_message += self.parsefmt.error_message
         self.warning_message += self.parsefmt.warning_message
-        self.file = ''
-        self.phy_file = ' ' + \
-            str(len(self.list_keys)) + ' ' + \
-            str(len(self.dict_species[self.list_keys[-1]])) + '\n'
-        self.nxs_file = '#NEXUS\nBEGIN DATA;\ndimensions ntax=%s nchar=%s;\nformat missing=?\ndatatype=%s gap= -;\n\nmatrix\n' % (
-            str(len(self.list_keys)), str(len(self.dict_species[self.list_keys[-1]])), self.pattern)
-        self.nxs_inter = '#NEXUS\nBEGIN DATA;\ndimensions ntax=%s nchar=%s;\nformat missing=?\ndatatype=%s gap= - interleave;\n\nmatrix\n' % (
-            str(len(self.list_keys)), str(len(self.dict_species[self.list_keys[-1]])), self.pattern)
+        self.file = []
+        self.phy_file = [f' {spe_num} {seq_num}\n']
+        self.nxs_file = [f'#NEXUS\nBEGIN DATA;\ndimensions ntax={spe_num} nchar={seq_num};\n' 
+                         f'format missing=?\ndatatype={self.pattern} gap= -;\n\nmatrix\n']
+        self.nxs_inter = [f'#NEXUS\nBEGIN DATA;\ndimensions ntax={spe_num} nchar={seq_num};'
+                          f'\nformat missing=?\ndatatype={self.pattern} gap= - interleave;\n\nmatrix\n']
         '''nex的interleave模式'''
-        self.nxs_gene = '#NEXUS\nBEGIN DATA;\ndimensions ntax=%s nchar=%s;\nformat missing=?\ndatatype=%s gap= - interleave;\n\nmatrix\n' % (
-            str(len(self.list_keys)), str(len(self.dict_species[self.list_keys[-1]])), self.pattern)
+        self.nxs_gene = [f'#NEXUS\nBEGIN DATA;\ndimensions ntax={spe_num} nchar={seq_num};\n' \
+                        f'format missing=?\ndatatype={self.pattern} gap= - interleave;\n\nmatrix\n']
         '''nex的interleave模式，以gene换行'''
-        self.paml_file = str(len(self.list_keys)) + '  ' + \
-            str(len(self.dict_species[self.list_keys[-1]])) + '\n\n'
-        self.axt_file = '-'.join(self.list_keys) + '\n'
-        self.statistics = self.dict_statistics['prefix']
+        self.paml_file = [f"{spe_num}  {seq_num}\n\n"]
+        self.axt_file = [f"{'-'.join(self.list_keys)}\n"]
+        self.statistics = self.dict_statistics['prefix'] if self.dict_args["export_stat"] else ""
         list_lenth = [len(i) for i in self.list_keys]
         self.name_longest = max(list_lenth)  # 最长的序列名字
         self.get_str()
@@ -328,35 +348,38 @@ class Seq_matrix(object):
     def save(self):
         self.partition_detail = self.outpath + os.sep + 'partition.txt'
         with open(self.partition_detail, 'w', encoding="utf-8") as f4:
-            f4.write(self.partition_style + self.partition_codon +
-                     self.bayes_style + self.partition_name +
-                     self.bayes_codon + self.partition_codname +
-                     self.iqtree_style + "end;\n" +
-                     self.iqtree_codon + "end;")
+            f4.write("".join(list(chain(self.partition_style, self.partition_codon +
+                                          self.bayes_style, self.partition_name +
+                                          self.bayes_codon, self.partition_codname +
+                                          self.iqtree_style, ["end;\n"] +
+                                          self.iqtree_codon, ["end;"]))))
+        # name mapping file
+        with open(self.outpath + os.sep + 'name_mapping.txt', 'w', encoding="utf-8") as f4:
+            f4.write("\n".join([f"{i}\t{self.name_mapping[i]}" for i in self.name_mapping]))
         if self.dict_args["export_axt"]:
             with open(self.outpath + os.sep + '%s.axt'%self.exportName, 'w', encoding="utf-8") as f1:
-                f1.write(self.axt_file)
+                f1.write("".join(self.axt_file))
         if self.dict_args["export_fas"]:
             with open(self.outpath + os.sep + '%s.fas'%self.exportName, 'w', encoding="utf-8") as f2:
-                f2.write(self.file)
+                f2.write("".join(self.file))
         if self.dict_args["export_stat"]:
             with open(self.outpath + os.sep + 'statistics.csv', 'w', encoding="utf-8") as f3:
-                f3.write(self.statistics.replace('\t', ','))
+                f3.write("".join(self.statistics).replace('\t', ','))
         if self.dict_args["export_phylip"]:
             with open(self.outpath + os.sep + '%s.phy'%self.exportName, 'w', encoding="utf-8") as f5:
-                f5.write(self.phy_file)
+                f5.write("".join(self.phy_file))
         if self.dict_args["export_nex"]:
             with open(self.outpath + os.sep + '%s.nex'%self.exportName, 'w', encoding="utf-8") as f6:
-                f6.write(self.nxs_file + ';\nEND;\n')
+                f6.write("".join(self.nxs_file) + ';\nEND;\n')
         if self.dict_args["export_paml"]:
             with open(self.outpath + os.sep + '%s.PML'%self.exportName, 'w', encoding="utf-8") as f7:
-                f7.write(self.paml_file)
+                f7.write("".join(self.paml_file))
         if self.dict_args["export_nexi"]:
             with open(self.outpath + os.sep + '%s_interleave.nex'%self.exportName, 'w', encoding="utf-8") as f8:
-                f8.write(self.nxs_inter + ';\nEND;\n')
+                f8.write("".join(self.nxs_inter) + ';\nEND;\n')
         if self.dict_args["export_nexig"]:
             with open(self.outpath + os.sep + '%s_bygene.nex'%self.exportName, 'w', encoding="utf-8") as f9:
-                f9.write(self.nxs_gene + ';\nEND;\n')
+                f9.write("".join(self.nxs_gene) + ';\nEND;\n')
 
     # def is_aligned(self, dict_taxon):  # 判定序列是否比对过
     #     list_lenth = []
@@ -388,6 +411,8 @@ class Matrix(QDialog, Ui_Matrix, object):
         super(Matrix, self).__init__(parent)
         self.parent = parent
         self.function_name = "Concatenation"
+        self.setupUi(self)
+        self.comboBox_4.concatenate = True # 可以选择是否为PCGs
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         # 保存设置
@@ -402,7 +427,6 @@ class Matrix(QDialog, Ui_Matrix, object):
             self.concatenate_settings.beginGroup('Concatenate Sequence')
         # File only, no fallback to registry or or.
         self.concatenate_settings.setFallbacksEnabled(False)
-        self.setupUi(self)
         self.files = files
         self.workPath = workPath
         self.focusSig = focusSig if focusSig else pyqtSignal(str)  # 为了方便workflow
@@ -413,15 +437,24 @@ class Matrix(QDialog, Ui_Matrix, object):
         with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
             self.qss_file = f.read()
         self.setStyleSheet(self.qss_file)
-        self.groupBox_top_line.setStyleSheet('''QGroupBox{
-        border-bottom:none;
-        border-right:none;
-        border-left:none;
-        }
-        QGroupBox::title{
-        subcontrol-origin: margin;
-        subcontrol-position: top left;
-        }''')
+        # self.groupBox_top_line.setStyleSheet('''QGroupBox{
+        #         border-bottom:none;
+        #         border-right:none;
+        #         border-left:none;
+        #         }
+        #         QGroupBox::title{
+        #         subcontrol-origin: margin;
+        #         subcontrol-position: top left;
+        # }''')
+        self.groupBox_top_line_2.setStyleSheet('''QGroupBox{
+                border-bottom:none;
+                border-right:none;
+                border-left:none;
+                }
+                QGroupBox::title{
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                }''')
         self.unalignedSig.connect(self.unaligned)
         self.exception_signal.connect(self.popupException)
         # self.warning_signal.connect(self.popupWarning)
@@ -435,7 +468,9 @@ class Matrix(QDialog, Ui_Matrix, object):
         self.comboBox_4.view().setDefaultDropAction(Qt.MoveAction)
         # self.comboBox_4.view().setSelectionMode(QAbstractItemView.MultiSelection)
         self.comboBox_4.view().installEventFilter(self)
+        # 设置信号槽
         self.checkBox_6.toggled.connect(lambda : self.input(self.comboBox_4.fetchListsText()))
+        self.checkBox_11.toggled.connect(self.comboBox_4.switch_PCGs)
         # 给开始按钮添加菜单
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
@@ -448,6 +483,8 @@ class Matrix(QDialog, Ui_Matrix, object):
         self.pushButton.toolButton.setMenu(menu)
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
+        # 给codon添加提示
+        self.groupBox_top_line_2.toggled.connect(self.prompt_codon_warning)
         ## brief demo
         country = self.factory.path_settings.value("country", "UK")
         url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-7-1-Brief-example" if \
@@ -484,16 +521,25 @@ class Matrix(QDialog, Ui_Matrix, object):
             self.dict_args["export_fas"] = self.checkBox_12.isChecked()
             self.dict_args["export_stat"] = self.checkBox_9.isChecked()
             self.dict_args["export_name"] = self.lineEdit.text() if self.lineEdit.text() else "concatenation"
-            if self.groupBox_top_line.isChecked():
-                self.dict_args["draw_linear"] = True
-                self.dict_args["fig_height"] = self.spinBox_5.value()
-                self.dict_args["fig_width"] = self.spinBox_6.value()
-                self.dict_args["label_size"] = self.spinBox_7.value()
-                self.dict_args["Label_angle"] = self.spinBox_8.value()
-                self.dict_args["Label_position"] = self.comboBox.currentText()
-                self.dict_args["Label_color"] = self.pushButton_color.text()
+            self.dict_args["missing_symbol"] = self.lineEdit_2.text() if self.lineEdit_2.text() else "?"
+            self.dict_args["PCG_genes"] = self.comboBox_4.fetchPCGs()
+            # if self.groupBox_top_line.isChecked():
+            #     self.dict_args["draw_linear"] = True
+            #     self.dict_args["fig_height"] = self.spinBox_5.value()
+            #     self.dict_args["fig_width"] = self.spinBox_6.value()
+            #     self.dict_args["label_size"] = self.spinBox_7.value()
+            #     self.dict_args["Label_angle"] = self.spinBox_8.value()
+            #     self.dict_args["Label_position"] = self.comboBox.currentText()
+            #     self.dict_args["Label_color"] = self.pushButton_color.text()
+            # else:
+            #     self.dict_args["draw_linear"] = False
+            if self.groupBox_top_line_2.isChecked():
+                self.dict_args["split_codon"] = []
+                if self.checkBox_7.isChecked(): self.dict_args.setdefault("split_codon", []).append(1)
+                if self.checkBox_8.isChecked(): self.dict_args.setdefault("split_codon", []).append(2)
+                if self.checkBox_10.isChecked(): self.dict_args.setdefault("split_codon", []).append(3)
             else:
-                self.dict_args["draw_linear"] = False
+                self.dict_args["split_codon"] = False
             if True not in list(self.dict_args.values()):
                 QMessageBox.critical(
                     self,
@@ -529,15 +575,15 @@ class Matrix(QDialog, Ui_Matrix, object):
                      self])
                 self.seqMatrix.interrupt = True
                 return
-            if "draw_linear" in self.dict_args and self.dict_args["draw_linear"]:
-                self.dict_args["partition_file"] = self.seqMatrix.partition_detail
-                Partition2fig(**self.dict_args)
+            # if "draw_linear" in self.dict_args and self.dict_args["draw_linear"]:
+            #     self.dict_args["partition_file"] = self.seqMatrix.partition_detail
+            #     Partition2fig(**self.dict_args)
             time_end = datetime.datetime.now()
             self.time_used = str(time_end - time_start)
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
-            with open(self.dict_args["exportPath"] + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
+            with open(self.dict_args["exportPath"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
+                f.write("If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
             if not self.seqMatrix.unaligned and not self.seqMatrix.interrupt:
                 if self.workflow:
                     ##work flow跑的
@@ -672,7 +718,8 @@ class Matrix(QDialog, Ui_Matrix, object):
             ## 有缺失基因的情况，这时候warning是个字典
             msg.setIcon(QMessageBox.Information)
             msg.setText(
-                "<p style='line-height:25px; height:25px'>Missing genes are replaced with '?' (see details or 'missing_genes.txt')</p>")
+                "<p style='line-height:25px; height:25px'>Missing genes are replaced with '%s' "
+                "(see details or 'missing_genes.txt')</p>"%(self.lineEdit_2.text()))
             msg.setWindowTitle("Concatenation Warning")
             max_len_taxa = len(max(list(info), key=len))
             max_len_taxa = max_len_taxa if max_len_taxa > 7 else 7 #要大于species的占位符
@@ -692,24 +739,18 @@ class Matrix(QDialog, Ui_Matrix, object):
             msg.setDetailedText(info)
             msg.setStandardButtons(QMessageBox.Ok)
             msg.exec_()
-        # if msg.exec_() == 1024:  # QDialog.Accepted:
-        #     self.seqMatrix.concatenate()
-        #     if self.workflow:
-        #         ##work flow跑的
-        #         self.startButtonStatusSig.emit(
-        #             [
-        #                 self.pushButton,
-        #                 self.progressBar,
-        #                 "workflow stop",
-        #                 self.dict_args["exportPath"],
-        #                 self.qss_file,
-        #                 self])
-        #         self.workflow_finished.emit("finished")
-        #         return
-        #     self.startButtonStatusSig.emit(
-        #         [self.pushButton, self.progressBar, "stop", self.dict_args["exportPath"], self.qss_file, self])
-        #     self.focusSig.emit(self.dict_args["exportPath"])
-        #     self.seqMatrix.interrupt = True
+        elif type(info) == list:
+            # 序列不是3的倍数
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(
+                f"<p style='line-height:25px; height:25px'>The length of {len(info)} gene(s) is not a multiple of 3 "
+                f"(see details or 'genes_not_PCGs.txt'), they will be ignored when splitting the codons.</p>")
+            msg.setWindowTitle("Concatenation Warning")
+            msg.setDetailedText("\n".join(info))
+            msg.setStandardButtons(QMessageBox.Ok)
+            with open(self.dict_args["exportPath"] + os.sep + "genes_not_PCGs.txt", "w", encoding="utf-8") as f:
+                f.write("\n".join(info))
+            msg.exec_()
 
     def guiSave(self):
         # Save geometry
@@ -728,10 +769,10 @@ class Matrix(QDialog, Ui_Matrix, object):
             if isinstance(obj, QSpinBox):
                 value = obj.value()
                 self.concatenate_settings.setValue(name, value)
-            if isinstance(obj, QPushButton):
-                if name == "pushButton_color":
-                    color = obj.palette().color(1)
-                    self.concatenate_settings.setValue(name, color.name())
+            # if isinstance(obj, QPushButton):
+            #     if name == "pushButton_color":
+            #         color = obj.palette().color(1)
+            #         self.concatenate_settings.setValue(name, color.name())
             if isinstance(obj, QComboBox):
                 if name == "comboBox":
                     # save combobox selection to registry
@@ -773,12 +814,15 @@ class Matrix(QDialog, Ui_Matrix, object):
                     else:
                         self.input([])
             if isinstance(obj, QCheckBox):
-                value = self.concatenate_settings.value(
-                    name, "true")  # get stored value from registry
-                obj.setChecked(
-                    self.factory.str2bool(value))  # restore checkbox
+                if name != "checkBox_11":
+                    value = self.concatenate_settings.value(
+                        name, "true")  # get stored value from registry
+                    obj.setChecked(
+                        self.factory.str2bool(value))  # restore checkbox
+                else:
+                    obj.setChecked(False)
             if isinstance(obj, QLineEdit):
-                text = self.concatenate_settings.value(name, "concatenation")
+                text = self.concatenate_settings.value(name, obj.text())
                 obj.setText(text)
             if isinstance(obj, QSpinBox):
                 value = self.concatenate_settings.value(name, None)
@@ -786,15 +830,15 @@ class Matrix(QDialog, Ui_Matrix, object):
                     obj.setValue(int(value))
             if isinstance(obj, QGroupBox):
                 value = self.concatenate_settings.value(
-                    name, "true")  # get stored value from registry
+                    name, "false")  # get stored value from registry
                 obj.setChecked(
                     self.factory.str2bool(value))  # restore checkbox
-            if isinstance(obj, QPushButton):
-                if name == "pushButton_color":
-                    color = self.concatenate_settings.value(name, "#F9C997")
-                    obj.setStyleSheet("background-color:%s"%color)
-                    obj.setText(color)
-                    obj.clicked.connect(self.changePbColor)
+            # if isinstance(obj, QPushButton):
+            #     if name == "pushButton_color":
+            #         color = self.concatenate_settings.value(name, "#F9C997")
+            #         obj.setStyleSheet("background-color:%s"%color)
+            #         obj.setText(color)
+            #         obj.clicked.connect(self.changePbColor)
 
     def closeEvent(self, event):
         self.guiSave()
@@ -954,6 +998,16 @@ class Matrix(QDialog, Ui_Matrix, object):
             self,
             "Concatenation Warning",
             "<p style='line-height:25px; height:25px'>%s!</p>" % text)
+
+    @pyqtSlot(bool)
+    def prompt_codon_warning(self, bool_):
+        if bool_:
+            QMessageBox.information(
+                self,
+                "Concatenation",
+                "<p style='line-height:25px; height:25px'>Please ensure that your sequences that are marked as \"PCGS\" "
+                "are protein-coding "
+                "and the length of each alignment is a multiple of 3!</p>")
 
 
 if __name__ == "__main__":

@@ -35,7 +35,8 @@ class PartitionEditor(QDialog, Ui_Partition_editor, object):
         self.pushButton_2.clicked.connect(self.addRow)
         self.pushButton.clicked.connect(self.deleteRow)
         self.pushButton_recog.clicked.connect(self.recogFromText)
-        self.pushButton_codon.clicked.connect(self.ToCodonMode)
+        self.pushButton_codon.clicked.connect(self.ToCodonMode3)
+        self.pushButton_codon_2.clicked.connect(self.ToCodonMode2)
         self.pushButton_nocodon.clicked.connect(self.CancelCodonMode)
         self.data_type = "NUC"
         self.mode = mode
@@ -106,11 +107,14 @@ class PartitionEditor(QDialog, Ui_Partition_editor, object):
             currentData = currentModel.arraydata
             currentModel.layoutAboutToBeChanged.emit()
             list_data = []
-            for i in currentData[-1]:
-                if i in ["=", "-", " "]:
-                    list_data.append(i)
-                else:
-                    list_data.append("")
+            if currentData:
+                for i in currentData[-1]:
+                    if i in ["=", "-", " "]:
+                        list_data.append(i)
+                    else:
+                        list_data.append("")
+            else:
+                list_data = ["","=", "", "-", ""]
             currentData.append(list_data)
             currentModel.layoutChanged.emit()
             # self.partitionDataSig.emit(currentData)
@@ -184,7 +188,7 @@ class PartitionEditor(QDialog, Ui_Partition_editor, object):
                 array.append(i)
         return array
 
-    def ToCodonMode(self):
+    def ToCodonMode3(self):
         indices = self.tableView_partition.selectedIndexes()
         currentModel = self.tableView_partition.model()
         if currentModel and indices:
@@ -212,7 +216,36 @@ class PartitionEditor(QDialog, Ui_Partition_editor, object):
                     self,
                     "Partition editor",
                     "<p style='line-height:25px; height:25px'>The length of the selected genes is not a multiple of 3 or "
-                    "the data are already in the codon mode!</p>")
+                    "the data are already in the codon mode (3)!</p>")
+
+    def ToCodonMode2(self):
+        indices = self.tableView_partition.selectedIndexes()
+        currentModel = self.tableView_partition.model()
+        if currentModel and indices:
+            currentData = currentModel.arraydata
+            rows = sorted(set(index.row() for index in indices), reverse=True)
+            # 排除/2的行
+            CDS_rows = self.fetchCDSrow(currentData, mode="2")
+            intersect_rows = list(set(rows).intersection(set(CDS_rows)))
+            if intersect_rows:
+                new_array = []
+                for row, line in enumerate(currentData):
+                    if row in intersect_rows:
+                        name, x1, start, x2, stop = line
+                        new_array.append([name + "_codonA", "=", start, "-", stop + "\\2"])
+                        new_array.append([name + "_codonB", "=", str(int(start)+1), "-", stop + "\\2"])
+                    else:
+                        new_array.append(line)
+                model = MyPartEditorTableModel(new_array, self.header, parent=self)
+                model.dataChanged.connect(self.sortGenes)
+                self.tableView_partition.setModel(model)
+                self.ctrlResizedColumn()
+            else:
+                QMessageBox.information(
+                    self,
+                    "Partition editor",
+                    "<p style='line-height:25px; height:25px'>The length of the selected genes is not a multiple of 2 or "
+                    "the data are already in the codon mode (2)!</p>")
 
     def CancelCodonMode(self):
         '''
@@ -234,6 +267,15 @@ class PartitionEditor(QDialog, Ui_Partition_editor, object):
                     if (stop - start + 1)%3 == 0: dict_[stop][0] = row #第一位
                     elif (stop - start + 1)%3 == 2:  dict_[stop][1] = row #第二位
                     elif (stop - start + 1) % 3 == 1:  dict_[stop][2] = row  # 第三位
+                elif "\\2" in currentData[row][4]:
+                    start = int(currentData[row][2])
+                    stop = int(currentData[row][4].replace("\\2", ""))
+                    dict_.setdefault(stop, ["NA", "NA"])
+                    # 不管是哪一位，先把三联的起始位置找到
+                    if (stop - start + 1) % 2 == 0:
+                        dict_[stop][0] = row  # 第一位
+                    elif (stop - start + 1) % 2 == 1:
+                        dict_[stop][1] = row  # 第二位
             #先按三联行的位置排序，然后从大开始删和修改
             list_values = sorted([i for i in dict_.values() if "NA" not in i], key=lambda x: max(x), reverse=True)
             for i in list_values:
@@ -241,19 +283,22 @@ class PartitionEditor(QDialog, Ui_Partition_editor, object):
                 if delete_rows:
                     # 先修改第一个
                     currentModel.layoutAboutToBeChanged.emit()
-                    currentData[delete_rows[-1]][0] = re.sub(r"_codon\d", "", currentData[delete_rows[0]][0])
-                    currentData[delete_rows[-1]][4] = currentData[delete_rows[0]][4].replace("\\3", "")
+                    currentData[delete_rows[-1]][0] = re.sub(r"_codon[\dAB]", "", currentData[delete_rows[0]][0]) # 将基因名字替换为正常的
+                    currentData[delete_rows[-1]][4] = currentData[delete_rows[0]][4].replace("\\3", "").replace("\\2", "") # 将最后的索引替换为正常的
                     currentModel.layoutChanged.emit()
-                    self.deleteFromRows(delete_rows[:-1]) #只删除2、3行
+                    self.deleteFromRows(delete_rows[:-1]) #只删除2、3行或2行
             self.ctrlResizedColumn()
 
-    def fetchCDSrow(self, array):
+    def fetchCDSrow(self, array, mode="3"):
         CDS_rows = []
+        sign = "\\3" if mode=="3" else "\\2"
         for row, line in enumerate(array):
-            if "\\3" in line[4]: continue
+            if ("\\3" in line[4]) or ("\\2" in line[4]): continue
             start = int(line[2])
-            stop = int(line[4].replace("\\3", ""))
-            if (stop - start + 1) % 3 == 0:
+            stop = int(line[4].replace(sign, ""))
+            if (mode == "3") and ((stop - start + 1) % 3 == 0):
+                if row not in CDS_rows: CDS_rows.append(row)
+            elif (mode == "2") and ((stop - start + 1) % 2 == 0):
                 if row not in CDS_rows: CDS_rows.append(row)
         return CDS_rows
 
@@ -266,11 +311,23 @@ class PartitionEditor(QDialog, Ui_Partition_editor, object):
     def GeneIndexIsOK(self, array):
         # 基因多的时候只展示前2个
         list_ = [] # [[cox1, 1, 867]]
+        stop_error = False
         for row in array:
-            geneName, start, stop = row[0], int(row[2]), int(row[4].replace("\\3", ""))
-            if "\\3" in row[4]:
-                if ((stop - start + 1) % 3 == 0): list_.append([geneName, start, stop])
-            else: list_.append([geneName, start, stop])
+            try:
+                geneName, start, stop = row[0], int(row[2]), int(row[4].replace("\\3", "").replace("\\2", ""))
+                if "\\3" in row[4]:
+                    if ((stop - start + 1) % 3 == 0): list_.append([geneName, start, stop])
+                elif "\\2" in row[4]:
+                    if ((stop - start + 1) % 2 == 0): list_.append([geneName, start, stop])
+                else: list_.append([geneName, start, stop])
+            except:
+                stop_error = True
+        if stop_error:
+            QMessageBox.warning(
+                self,
+                "Warning",
+                "<p style='line-height:25px; height:25px'>Only \"\\3\" or \"\\2\" are allowed in the stop position</p>")
+            return
         overlap = [] # [[cox1, cox2]]
         space = [] # [[cox1, cox2]]
         startError = ""

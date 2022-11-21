@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>622</width>
-    <height>492</height>
+    <height>578</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,6 +20,37 @@
    <bool>true</bool>
   </property>
   <layout class="QGridLayout" name="gridLayout_5">
+   <item row="2" column="0">
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="title">
+      <string>Run</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3" columnstretch="1,1">
+      <item row="0" column="0">
+       <widget class="ArrowPushButton" name="pushButton">
+        <property name="text">
+         <string>Start</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../myRes.qrc">
+          <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QPushButton" name="pushButton_2">
+        <property name="text">
+         <string>Stop</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../myRes.qrc">
+          <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
    <item row="0" column="0">
     <widget class="QGroupBox" name="groupBox_4">
      <property name="title">
@@ -130,9 +161,6 @@
       <string>Parameter</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
-      <property name="horizontalSpacing">
-       <number>0</number>
-      </property>
       <item row="0" column="0">
        <widget class="QLabel" name="label">
         <property name="text">
@@ -143,12 +171,12 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
+      <item row="0" column="1">
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
          <widget class="QRadioButton" name="normal_radioButton">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="text">
            <string>Normal</string>
@@ -186,17 +214,17 @@
         </item>
        </layout>
       </item>
-      <item row="1" column="0" colspan="2">
+      <item row="1" column="0">
        <widget class="QCheckBox" name="checkBox_2">
         <property name="text">
-         <string>Extract-Seq.:</string>
+         <string>Extracted-Seq.:</string>
         </property>
         <property name="checked">
          <bool>true</bool>
         </property>
        </widget>
       </item>
-      <item row="1" column="2">
+      <item row="1" column="1">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
         <item>
          <widget class="QRadioButton" name="AA_radioButton_2">
@@ -245,7 +273,17 @@
         </item>
        </layout>
       </item>
-      <item row="2" column="0">
+      <item row="2" column="0" colspan="2">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600; color:#ff0000;&quot;&gt;Note&lt;/span&gt;: The above three options are only used to auto-input files! &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
        <widget class="QLabel" name="label_22">
         <property name="font">
          <font>
@@ -257,170 +295,7 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_24">
-        <property name="font">
-         <font>
-          <pointsize>10</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Strategy:</string>
-        </property>
-        <property name="buddy">
-         <cstring>comboBox_3</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="2">
-       <widget class="QComboBox" name="comboBox_3">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>13</width>
-          <height>26</height>
-         </size>
-        </property>
-        <item>
-         <property name="text">
-          <string>1. --auto</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>2. FFT-NS-1 (fast)</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>3. FFT-NS-2 (default)</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>4. G-INS-i  (accurate)</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>5. L-INS-i  (accurate)</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>6. E-INS-i  (accurate)</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_23">
-        <property name="font">
-         <font>
-          <pointsize>10</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Export Format:</string>
-        </property>
-        <property name="buddy">
-         <cstring>comboBox_2</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="2">
-       <widget class="QComboBox" name="comboBox_2">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>13</width>
-          <height>26</height>
-         </size>
-        </property>
-        <item>
-         <property name="text">
-          <string>1. CLUSTAL Format / Sorted</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>2. CLUSTAL Format / Input order</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>3. FASTA Format   / Sorted</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>4. FASTA Format   / Input order</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>5. PHYLIP Format  / Sorted</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>6. PHYLIP Format  / Input order</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item row="5" column="0">
-       <widget class="QLabel" name="label_25">
-        <property name="font">
-         <font>
-          <pointsize>10</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Parameters:</string>
-        </property>
-        <property name="buddy">
-         <cstring>comboBox_2</cstring>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="2">
-       <widget class="QPushButton" name="pushButton_par">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>26</height>
-         </size>
-        </property>
-        <property name="layoutDirection">
-         <enum>Qt::LeftToRight</enum>
-        </property>
-        <property name="text">
-         <string>Additional Parameters</string>
-        </property>
-        <property name="icon">
-         <iconset resource="../myRes.qrc">
-          <normaloff>:/picture/resourses/keynote.png</normaloff>:/picture/resourses/keynote.png</iconset>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
+      <item row="3" column="1">
        <widget class="QComboBox" name="comboBox_9">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -565,34 +440,166 @@
         </item>
        </widget>
       </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="2" column="0">
-    <widget class="QGroupBox" name="groupBox_3">
-     <property name="title">
-      <string>Run</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_3" columnstretch="1,1">
-      <item row="0" column="0">
-       <widget class="ArrowPushButton" name="pushButton">
-        <property name="text">
-         <string>Start</string>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_24">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
         </property>
-        <property name="icon">
-         <iconset resource="../myRes.qrc">
-          <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
+        <property name="text">
+         <string>Strategy:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_3</cstring>
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
-       <widget class="QPushButton" name="pushButton_2">
+      <item row="4" column="1">
+       <widget class="QComboBox" name="comboBox_3">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>13</width>
+          <height>26</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>1. --auto</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>2. FFT-NS-1 (fast)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>3. FFT-NS-2 (default)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>4. G-INS-i  (accurate)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>5. L-INS-i  (accurate)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>6. E-INS-i  (accurate)</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_23">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
         <property name="text">
-         <string>Stop</string>
+         <string>Export Format:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_2</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QComboBox" name="comboBox_2">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>13</width>
+          <height>26</height>
+         </size>
+        </property>
+        <item>
+         <property name="text">
+          <string>1. CLUSTAL Format / Sorted</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>2. CLUSTAL Format / Input order</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>3. FASTA Format   / Sorted</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>4. FASTA Format   / Input order</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>5. PHYLIP Format  / Sorted</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>6. PHYLIP Format  / Input order</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="label_25">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Parameters:</string>
+        </property>
+        <property name="buddy">
+         <cstring>comboBox_2</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QPushButton" name="pushButton_par">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="layoutDirection">
+         <enum>Qt::LeftToRight</enum>
+        </property>
+        <property name="text">
+         <string>Additional Parameters</string>
         </property>
         <property name="icon">
          <iconset resource="../myRes.qrc">
-          <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
+          <normaloff>:/picture/resourses/keynote.png</normaloff>:/picture/resourses/keynote.png</iconset>
         </property>
        </widget>
       </item>
@@ -1007,7 +1014,7 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup_2"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="buttonGroup_2"/>
  </buttongroups>
 </ui>

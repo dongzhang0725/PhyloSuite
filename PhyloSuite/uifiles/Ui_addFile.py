@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\PhyloSuite\PhyloSuite\uifiles\addFile.ui'
+# Form implementation generated from reading ui file 'D:\works\ZD\phylosuite\uifiles\addFile.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -65,7 +65,6 @@ class Ui_addFile(object):
         self.plainTextEdit.setObjectName("plainTextEdit")
         self.verticalLayout.addWidget(self.plainTextEdit)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
-        self.horizontalLayout.setSpacing(0)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.label = QtWidgets.QLabel(self.groupBox_2)
         self.label.setObjectName("label")
@@ -81,6 +80,19 @@ class Ui_addFile(object):
         self.toolButton.setAutoRaise(True)
         self.toolButton.setObjectName("toolButton")
         self.horizontalLayout.addWidget(self.toolButton)
+        self.label_4 = QtWidgets.QLabel(self.groupBox_2)
+        self.label_4.setObjectName("label_4")
+        self.horizontalLayout.addWidget(self.label_4)
+        self.comboBox_2 = QtWidgets.QComboBox(self.groupBox_2)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.comboBox_2.sizePolicy().hasHeightForWidth())
+        self.comboBox_2.setSizePolicy(sizePolicy)
+        self.comboBox_2.setObjectName("comboBox_2")
+        self.comboBox_2.addItem("")
+        self.comboBox_2.addItem("")
+        self.horizontalLayout.addWidget(self.comboBox_2)
         self.verticalLayout.addLayout(self.horizontalLayout)
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
@@ -125,6 +137,9 @@ class Ui_addFile(object):
 "</p></body></html>"))
         self.label.setText(_translate("addFile", "Email:"))
         self.lineEdit.setPlaceholderText(_translate("addFile", "A.N.Other@example.com"))
+        self.label_4.setText(_translate("addFile", "Database:"))
+        self.comboBox_2.setItemText(0, _translate("addFile", "nucleotide"))
+        self.comboBox_2.setItemText(1, _translate("addFile", "protein"))
         self.pushButton_2.setText(_translate("addFile", "Start"))
         self.pushButton_8.setText(_translate("addFile", "Search in NCBI"))
 

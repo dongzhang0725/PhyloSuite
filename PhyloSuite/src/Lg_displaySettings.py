@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import platform
 import re
 
 from PyQt5.QtCore import *
@@ -51,6 +51,8 @@ class DisplaySettings(QDialog, Ui_DisplaySettings, object):
         # 恢复用户的设置
         self.guiRestore()
         self.listWidget.installEventFilter(self)
+        # 当lineage改变以后，更新树
+        self.parent.modify_lineage_finished.connect(self.updateTreee)
         ## brief demo
         country = self.factory.path_settings.value("country", "UK")
         url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#4-4-2-Information-display-and-modification" if \
@@ -154,6 +156,7 @@ class DisplaySettings(QDialog, Ui_DisplaySettings, object):
         key = re.sub(r"/|\\", "_", self.workPath) + "_availableInfo"
         value = self.data_settings.value(
             key, None)  # 每点一个工作区，就会自动初始化一个，所以一般不会none
+        # print(value)
         treeModel = TreeModel(value)
         self.treeView.setModel(treeModel)
         self.treeView.clicked.connect(self.updatelistWidget)
@@ -185,8 +188,7 @@ class DisplaySettings(QDialog, Ui_DisplaySettings, object):
     def popUpSettings(self):
         self.setting = Setting(self)
         # if hasattr(self.parent, "updateTableWorker"):
-        self.setting.taxmyChangeSig.connect(lambda x: [self.parent.updateTable(x),
-                                                      self.parent.updateTableWorker.finished.connect(self.updateTreee)])
+        self.setting.taxmyChangeSig.connect(lambda x: [self.parent.updateTable(x)])
         self.setting.display_table(self.setting.listWidget.item(0))
         self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
         self.setting.exec_()

@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Partition definations</string>
+   <string>Partition definitions</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0" colspan="2">
@@ -19,12 +19,12 @@
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <layout class="QGridLayout" name="gridLayout">
        <item row="0" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>Specify the data blocks:</string>
+          <string>Specify data blocks:</string>
          </property>
         </widget>
        </item>
@@ -39,7 +39,7 @@
             <string>Add Subset</string>
            </property>
            <property name="icon">
-            <iconset resource="myRes.qrc">
+            <iconset resource="../myRes.qrc">
              <normaloff>:/picture/resourses/table_row_add_after.png</normaloff>:/picture/resourses/table_row_add_after.png</iconset>
            </property>
           </widget>
@@ -50,7 +50,7 @@
             <string>Delete Subset</string>
            </property>
            <property name="icon">
-            <iconset resource="myRes.qrc">
+            <iconset resource="../myRes.qrc">
              <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
            </property>
           </widget>
@@ -65,7 +65,7 @@
             <string>Add Partition</string>
            </property>
            <property name="icon">
-            <iconset resource="myRes.qrc">
+            <iconset resource="../myRes.qrc">
              <normaloff>:/picture/resourses/table_column_add_after.png</normaloff>:/picture/resourses/table_column_add_after.png</iconset>
            </property>
           </widget>
@@ -76,7 +76,7 @@
             <string>Delete Partition</string>
            </property>
            <property name="icon">
-            <iconset resource="myRes.qrc">
+            <iconset resource="../myRes.qrc">
              <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
            </property>
           </widget>
@@ -85,7 +85,7 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
         <widget class="QLabel" name="label_2">
@@ -114,7 +114,7 @@
       <string>Generate Command Block</string>
      </property>
      <property name="icon">
-      <iconset resource="myRes.qrc">
+      <iconset resource="../myRes.qrc">
        <normaloff>:/picture/resourses/refresh-icon.png</normaloff>:/picture/resourses/refresh-icon.png</iconset>
      </property>
     </widget>
@@ -125,7 +125,7 @@
       <string>Close</string>
      </property>
      <property name="icon">
-      <iconset resource="myRes.qrc">
+      <iconset resource="../myRes.qrc">
        <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
      </property>
     </widget>
@@ -133,7 +133,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="myRes.qrc"/>
+  <include location="../myRes.qrc"/>
  </resources>
  <connections/>
 </ui>

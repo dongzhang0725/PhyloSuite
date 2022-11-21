@@ -7,6 +7,8 @@ import shutil
 
 import datetime
 import signal
+import subprocess
+import uuid
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -47,13 +49,14 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             parent=None):
         super(IQTREE, self).__init__(parent)
         self.parent = parent
+        self.function_name = "IQ-TREE"
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
         self.workPath = workPath
         self.focusSig = focusSig if focusSig else pyqtSignal(
             str)  # 为了方便workflow
         self.workflow = workflow
-        self.iqtree_exe = '"' + IQ_exe + '"'
+        self.iqtree_exe = IQ_exe
         self.autoMFPath = autoMFPath
         self.autoModelFile = autoModelFile
         self.interrupt = False
@@ -84,9 +87,17 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         self.comboBox_7.currentIndexChanged[str].connect(self.ctrlModel)
         self.ctrlBootstrap(self.comboBox_8.currentText())
         self.ctrlModel(self.comboBox_7.currentText())
+        self.spinBox_3.valueChanged.connect(self.judgeBootStrap) # 判断不同模式下的bootstrap
         # 恢复用户的设置
         self.guiRestore()
         self.judgePFresults() #判断partitionfinder2是否有结果
+        # 判断IQTREE的版本，以决定要不要加新功能
+        self.version = ""
+        version_worker = WorkThread(
+            lambda : self.factory.get_version("IQ-TREE", self),
+            parent=self)
+        version_worker.finished.connect(self.switchNewOptions)
+        version_worker.start()
         if self.autoModelFile[1]:
             self.autoModel()
         self.exception_signal.connect(self.popupException)
@@ -340,32 +351,54 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                 self.run_IQ(0, 100)
             else:
                 each_pro = 100/len(files)
+                # gt_id = f"gene-tree-{uuid.uuid4()}"
+                self.output_dir_name = self.factory.fetch_output_dir_name(self.dir_action)
+                self.exportPath = self.factory.creat_dirs(self.workPath +
+                                                          os.sep + "IQtree_results" + os.sep + self.output_dir_name)
+                ok1 = QMetaObject.invokeMethod(self, "rmvDir",
+                                               Qt.BlockingQueuedConnection, Q_RETURN_ARG(bool),
+                                               Q_ARG(str, self.exportPath))
+                if not ok1:
+                    # 提醒是否删除旧结果，如果用户取消，就不执行
+                    self.startButtonStatusSig.emit(
+                        [
+                            self.pushButton,
+                            self.progressBar,
+                            "except",
+                            self.exportPath,
+                            self.qss_file,
+                            self])
+                    return
                 for num, i in enumerate(files):
                     if self.interrupt:
                         return
-                    self.exportPath = self.factory.creat_dirs(self.workPath +
-                                        os.sep + "IQtree_results" + os.sep + os.path.splitext(os.path.basename(i))[0])
-                    ok1 = QMetaObject.invokeMethod(self, "rmvDir",
-                                                  Qt.BlockingQueuedConnection, Q_RETURN_ARG(bool),
-                                                  Q_ARG(str, self.exportPath))
-                    if not ok1:
-                        # 提醒是否删除旧结果，如果用户取消，就不执行
-                        continue
+                    gene_tree_path = self.factory.creat_dirs(self.exportPath +
+                                        os.sep + os.path.splitext(os.path.basename(i))[0])
+                    # 创建一个文件作为单基因建树批次的标记（每一批要不一样的ID
+                    # with open(f"{gene_tree_path}/{gt_id}", "w") as f:
+                    #     f.write("This file is used as identifier")
                     # input
-                    inputFile = shutil.copy(i, self.exportPath)
+                    inputFile = shutil.copy(i, gene_tree_path)
                     command = self.command.replace("-s inputFile", "-s \"%s\"" % inputFile)
                     ok = QMetaObject.invokeMethod(self, "fetchPopen",
                                                   Qt.BlockingQueuedConnection, Q_RETURN_ARG(bool),
                                                   Q_ARG(str, command))
                     self.factory.emitCommands(self.logGuiSig, command)
-                    self.run_IQ(each_pro*num, each_pro)
+                    self.run_IQ(each_pro*num, each_pro, path=gene_tree_path)
+                trees = glob.glob(f"{self.exportPath}/*/*.treefile")
+                all_tree_contents = []
+                for tree in trees:
+                    with open(tree) as f:
+                        all_tree_contents.append(f.read())
+                with open(f"{self.exportPath}/all_gene_trees.nwk", "w") as f:
+                    f.write("".join(all_tree_contents))
             time_end = datetime.datetime.now()
             self.time_used = str(time_end - time_start)
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
 
-            with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write(self.description + "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+            with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
+                f.write(self.description + "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                         "If you use IQ-TREE and Ultrafast bootstrap, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -584,6 +617,14 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                 "<p style='line-height:25px; height:25px'>%s</p>" % text)
             if "Show log" in text:
                 self.on_pushButton_9_clicked()
+                self.startButtonStatusSig.emit(
+                    [
+                        self.pushButton,
+                        self.progressBar,
+                        "except",
+                        self.exportPath,
+                        self.qss_file,
+                        self])
 
     def closeEvent(self, event):
         self.guiSave()
@@ -748,7 +789,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         else:
             self.comboBox_9.setEnabled(False)
 
-    def run_IQ(self, base, proportion):
+    def run_IQ(self, base, proportion, path=None):
         isStandBP = True if self.bootstrap_method == "Standard" else False
         isAutoModel = True if self.model_text == "Auto" else False
         rgx_1st = re.compile(r"^\*\*\*\*  TOTAL")  # 1%
@@ -1028,7 +1069,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             for i in [self.spinBox_3, self.doubleSpinBox, self.spinBox_4, self.checkBox_5, self.label_35, self.label_37, self.label_36]:
                 i.setEnabled(True)
             self.spinBox_3.setMinimum(1000)
-            if self.spinBox_3.value() < 5000:
+            if self.spinBox_3.value() < 1000:
                 self.spinBox_3.setValue(5000)
         elif text == "Standard":
             self.spinBox_3.setEnabled(True)
@@ -1039,6 +1080,8 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             self.label_36.setEnabled(False)
             self.label_37.setEnabled(False)
             self.spinBox_3.setMinimum(1)
+            if self.spinBox_3.value() > 1000:
+                self.spinBox_3.setValue(1000)
             # self.spinBox_3.setValue(100)
 
     def ctrlModel(self, text):
@@ -1306,10 +1349,12 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             if not self.workflow:
                 self.lineEdit_3.setEnabled(True)
                 self.pushButton_22.setEnabled(True)
+            self.groupBox.setVisible(False)
         else:
             if not self.workflow:
                 self.lineEdit_3.setEnabled(False)
                 self.pushButton_22.setEnabled(False)
+            self.groupBox.setVisible(True)
 
     def getCMD(self):
         alignments = self.isFileIn()
@@ -1331,12 +1376,12 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             # model
             self.model_text = self.comboBox_7.currentText().split(" ")[0]
             if self.isPartitionChecked():
-                if not self.workflow:
-                    QMessageBox.information(
-                        self,
-                        "IQ-TREE",
-                        "<p style='line-height:25px; height:25px'>As you selected \"Partition Mode\", "
-                        "\"Models\" argument will be ignored!</p>")
+                # if not self.workflow:
+                #     QMessageBox.information(
+                #         self,
+                #         "IQ-TREE",
+                #         "<p style='line-height:25px; height:25px'>As you selected \"Partition Mode\", "
+                #         "\"Models\" argument will be ignored!</p>")
                 if self.isPartitionCalculated():
                     # 其他分区软件计算好模型了
                     model = ""
@@ -1402,9 +1447,14 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             # pers = " -pers %.1f"%self.doubleSpinBox_2.value() if self.doubleSpinBox_2.value() != 0.5 else ""
             # numstop = " -numstop %d"%self.spinBox_2.value() if self.spinBox_2.value() != 100 else ""
             # search_par = pers + numstop
+            # fasttree
+            if self.checkBox_10.isVisible() and self.checkBox_10.isChecked():
+                fasttree = " --fast"
+            else:
+                fasttree = ""
             threads = " -nt %s" % self.comboBox_6.currentText()
-            command = self.iqtree_exe + " -s inputFile" + seqType + \
-                model_final + branch_support + outgroup + threads
+            command = f"\"{self.iqtree_exe}\" -s inputFile" + seqType + \
+                model_final + branch_support + fasttree + outgroup + threads
             self.textEdit_log.clear()  # 清空
             # 描述
             if self.checkBox_8.isChecked() and self.lineEdit_3.toolTip() and self.lineEdit_3.isEnabled():
@@ -1424,7 +1474,8 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             ) + " (Minh et al., 2013)" if self.bootstrap_method.lower() == "ultrafast" else self.bootstrap_method.lower()
             bootstrap_method_ref = "\nMinh, B.Q., Nguyen, M.A., von Haeseler, A., 2013. Ultrafast approximation for phylogenetic bootstrap. Mol. Biol. Evol. 30, 1188-1195." if self.bootstrap_method.lower(
             ) == "ultrafast" else ""
-            self.description = '''Maximum likelihood phylogenies were inferred using IQ-TREE (Nguyen et al., 2015) %s for %d %s bootstraps%s.''' % (
+            self.description = '''Maximum likelihood phylogenies were inferred using IQ-TREE v%s (Nguyen et al., 2015) %s for %d %s bootstraps%s.''' % (
+                self.version,
                 model_des,
                 self.spinBox_3.value(),
                 bootstrap_method_des,
@@ -1490,17 +1541,43 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             self.worker = WorkThread(self.run_command, parent=self)
             self.worker.start()
 
-    def changeOutgroup(self):
+    def getOutgroups(self):
         alinmentPath = self.comboBox_11.fetchListsText()[0]
         if os.path.exists(alinmentPath):
-            # alinmentPath = self.lineEdit.toolTip()
-            parseFmt = Parsefmt()
-            parseFmt.readfile(alinmentPath)
-            dict_taxon = parseFmt.dict_taxon
-            allItems = list(dict_taxon.keys())
+            command = f"\"{self.iqtree_exe}\" -s \"{alinmentPath}\""
+            popen = self.factory.init_popen(command)
+            # 自己读序列，读到标志性的位置就退出
+            self.outgroups = []
+            try:
+                while True:
+                    try:
+                        out_line = popen.stdout.readline().decode("utf-8", errors="ignore")
+                    except UnicodeDecodeError:
+                        out_line = popen.stdout.readline().decode("gbk", errors="ignore")
+                    rgx = re.compile(r"^ +\d+ +(.+?) +\d+\.\d+% +\w+ +\d+\.\d+%")
+                    rgx_end = re.compile(r"^\*\*\*\*  TOTAL")
+                    if rgx.search(out_line.rstrip()):
+                        self.outgroups.append(rgx.search(out_line.rstrip()).group(1))
+                    if rgx_end.search(out_line):
+                        break
+                    if out_line == "" and popen.poll() is not None:
+                        break
+            except:
+                pass
+            if not self.outgroups:
+                # print("read by alignment")
+                parseFmt = Parsefmt()
+                parseFmt.readfile(alinmentPath)
+                dict_taxon = parseFmt.dict_taxon
+                self.outgroups = list(dict_taxon.keys())
+        else:
+            self.outgroups = []
+
+    def changeOutgroup(self):
+        if self.outgroups:
             model = self.comboBox_10.model()
             self.comboBox_10.clear()
-            for num, i in enumerate(allItems):
+            for num, i in enumerate(self.outgroups):
                 item = QStandardItem(i)
                 item.setCheckState(Qt.Unchecked)
                 # 背景颜色
@@ -1527,7 +1604,13 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         if len(files) == 1:
             self.comboBox_10.setDisabled(False)
             self.checkBox_9.setDisabled(False)
-            self.changeOutgroup()
+            # outgroups
+            outgroup_worker = WorkThread(
+                self.getOutgroups,
+                parent=self)
+            outgroup_worker.finished.connect(self.changeOutgroup)
+            outgroup_worker.start()
+            # self.changeOutgroup()
             self.checkBox_8.setDisabled(False)
             if hasattr(self, "dir_action"):
                 self.dir_action.setDisabled(False)
@@ -1536,8 +1619,8 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             self.checkBox_8.setDisabled(True)
             self.checkBox_9.setDisabled(True)
             # self.checkBox_8.setChecked(False)
-            if hasattr(self, "dir_action"):
-                self.dir_action.setDisabled(True)
+            # if hasattr(self, "dir_action"):
+            #     self.dir_action.setDisabled(True)
         if not files:
             self.checkBox_8.setDisabled(False)
             self.checkBox_9.setDisabled(False)
@@ -1585,6 +1668,29 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                 "IQ-TREE",
                 "<p style='line-height:25px; height:25px'>Cannot find \"<span style='font-weight:600; color:#ff0000;'>best_scheme.txt</span>\" in \"<span style='font-weight:600; color:#ff0000;'>analysis</span>\" folder, "
                 "PartitionFinder analysis seems to be unfinished!</p>")
+
+    def judgeBootStrap(self, value):
+        if self.comboBox_8.currentText() == "Standard":
+            if value > 1000:
+                QMessageBox.information(
+                    self,
+                    "IQ-TREE",
+                    "<p style='line-height:25px; height:25px'>Note that \"<span style='font-weight:600; color:#ff0000;'>Standard bootstrap</span>\" "
+                    "generally uses \"<span style='font-weight:600; color:#ff0000;'>100 to 1000</span>\" bootstraps!"
+                    " More bootstraps will be time-consuming!</p>")
+
+    # def judgeIQTREEversion(self):
+    #     command = f"{self.iqtree_exe} -h"
+    #     popen = self.factory.init_popen(command)
+    #     stdout = self.factory.getSTDOUT(popen)
+    #     rgx_version = re.compile(r"version (\d\.\d+\.\d+)")
+    #     self.version = rgx_version.search(stdout).group(1)
+
+    def switchNewOptions(self):
+        if self.version.startswith("2"):
+            self.checkBox_10.setVisible(True)
+        else:
+            self.checkBox_10.setVisible(False)
 
 
 if __name__ == "__main__":

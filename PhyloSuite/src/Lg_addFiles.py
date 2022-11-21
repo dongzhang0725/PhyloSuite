@@ -3,6 +3,7 @@
 '''
 description goes here
 '''
+import platform
 import re
 import sys
 import traceback
@@ -65,7 +66,7 @@ class Lg_addFiles(QDialog, Ui_addFile, object):
             if (start + batch_size) > count:
                 batch_size = count - start
             Entrez.email = self.email if self.email else "A.N.Other@example.com"
-            fetch_handle = Entrez.efetch(db="nucleotide", rettype=self.rettype, retmode="text",
+            fetch_handle = Entrez.efetch(db=self.db, rettype=self.rettype, retmode="text",
                                          retstart=start, retmax=batch_size, id=id_array)
             download_contents += fetch_handle.read()
             self.progressDiologSig.emit(end * 100 / count)
@@ -126,6 +127,7 @@ class Lg_addFiles(QDialog, Ui_addFile, object):
         text_content = self.plainTextEdit.toPlainText()
         if text_content:
             self.outputPath = self.fetchOutputPath()
+            self.db = self.comboBox_2.currentText()
             self.rettype = "gb" if self.parent.isWorkFolder(self.outputPath, mode="gb") else "fasta"
             if self.rettype == "fasta":
                 name, ok = QInputDialog.getText(

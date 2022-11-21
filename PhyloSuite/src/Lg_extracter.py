@@ -4,6 +4,9 @@
 import copy
 
 import datetime
+import multiprocessing
+import random
+import time
 
 from src.Lg_extractSettings import ExtractSettings
 from src.Lg_settings import Setting
@@ -13,7 +16,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import os
 import sys
-from src.handleGB import GBextract, GBextract_MT
+from src.handleGB import GBextract
 import inspect
 from src.factory import Factory, WorkThread
 import traceback
@@ -26,6 +29,7 @@ import platform
 class ExtractGB(QDialog, Ui_Extractor, object):
     exception_signal = pyqtSignal(str)  # 定义所有类都可以使用的信号
     progressSig = pyqtSignal(int)  # 控制进度条
+    progressDialogSig = pyqtSignal(int)  # 控制进度条
     threadFinished = pyqtSignal()
     startButtonStatusSig = pyqtSignal(list)
 
@@ -81,7 +85,6 @@ class ExtractGB(QDialog, Ui_Extractor, object):
             "octagon": "OC",
             "rectangle (gap)": "GP"}
 
-        self.showOn()
         self.extractGB_settings = QSettings(
             self.thisPath + '/settings/extractGB_settings.ini', QSettings.IniFormat)
         # File only, no fallback to registry or or.
@@ -94,6 +97,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         # File only, no fallback to registry or or.
         self.data_settings.setFallbacksEnabled(False)
         # 恢复用户的设置
+        self.displaySettings()
         self.guiRestore()
         # 开始装载样式表
         with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
@@ -128,8 +132,10 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.tableWidget_2.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tableWidget_2.customContextMenuRequested.connect(lambda x: self.table_popMenu.exec_(QCursor.pos()))
         self.comboBox_6.activated[str].connect(self.switchSeqType)
-        # self.checkBox.toggled.connect(self.judgeCodonW)
         self.switchSeqType(self.comboBox_6.currentText())
+        # 信号槽
+        self.checkBox.toggled.connect(self.judgeCodonWinstallation)
+        self.progressDialogSig.connect(self.Progress)
         # 给开始按钮添加菜单
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
@@ -142,6 +148,8 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.pushButton_2.toolButton.setMenu(menu)
         self.pushButton_2.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
+        self.checkBox_2.toggled.connect(self.judgeMAFFT)
+        self.qmut_progress = QMutex() # 创建线程锁
         ## brief demo
         country = self.factory.path_settings.value("country", "UK")
         url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-1-1-Brief-example" if \
@@ -174,24 +182,14 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.dict_args["if itol"] = self.groupBox_4.isChecked()
         self.dict_args["totleID"] = self.totleID
         self.dict_args["seq type"] = str(self.comboBox_6.currentText())
-        for row, row_text in enumerate(
-                ["atp", "nad", "cytb", "cox", "rRNA", "tRNA", "NCR"]):
-            for column, column_text in enumerate(
-                    ["checked", "colour", "length", "shape"]):
-                if column == 0:
-                    self.dict_args[row_text + column_text] = True if self.tableWidget.item(
-                        row, column).checkState() == Qt.Checked else False  # bool
-                elif column == 1:
-                    self.dict_args[row_text +
-                                   column_text] = self.tableWidget.item(row, column).text()
-                elif column == 2:
-                    self.dict_args[row_text +
-                                   column_text] = self.tableWidget.item(row, column).text()
-                elif column == 3:
-                    shape_combo = self.tableWidget.cellWidget(row, column)
-                    shape = shape_combo.currentText()
-                    self.dict_args[row_text +
-                                   column_text] = self.dict_shape[shape]  # 转为缩写形式
+        self.dict_args["checked gene names"] = self.fetch_checked_gene_names()
+        self.dict_args["itol gene display"] = OrderedDict()
+        for row, gene_name in enumerate(self.dict_args["checked gene names"]):
+            color = self.tableWidget.item(row, 1).text()
+            size = self.tableWidget.item(row, 2).text()
+            shape_combo = self.tableWidget.cellWidget(row, 3)
+            shape = self.dict_shape[shape_combo.currentText()] # 转为缩写形式
+            self.dict_args["itol gene display"][gene_name] = [color, size, shape]
         self.dict_args["gene interval"] = self.doubleSpinBox.value()
         self.dict_args["included_lineages"] = [self.comboBox_7.itemText(i) for i in range(self.comboBox_7.count())
                                                if self.comboBox_7.model().item(i).checkState() == Qt.Checked]
@@ -225,10 +223,37 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.dict_args["qualifiers"] = dict_extract_settings  ###只剩下qualifier的设置
         self.dict_args["extract_entire_seq"] = self.radioButton.isChecked()
         self.dict_args["entire_seq_name"] = self.lineEdit.text() if self.lineEdit.text() else "sequence"
-        self.dict_args["cal_codon_bias"] = False # self.checkBox.isChecked()
+        self.dict_args["cal_codon_bias"] = self.checkBox.isChecked()
+        self.dict_args["CodonW_exe"] = self.factory.programIsValid("CodonW", mode="tool") if self.checkBox.isChecked() else None
         self.dict_args["start_gene_with"] = "cox1" if not self.lineEdit_2.text() else self.lineEdit_2.text()
+        self.dict_args["analyze all PCGs"] = self.groupBox_3.isChecked()
+        self.dict_args["analyze RSCU"] = self.checkBox_8.isChecked()
+        self.dict_args["analyze 1st codon"] = self.checkBox_3.isChecked()
+        self.dict_args["analyze 2nd codon"] = self.checkBox_4.isChecked()
+        self.dict_args["analyze 3rd codon"] = self.checkBox_5.isChecked()
+        self.dict_args["analyze all rRNAs"] = self.checkBox_13.isChecked()
+        self.dict_args["analyze all tRNAs"] = self.checkBox_14.isChecked()
+        self.dict_args["analyze + sequence"] = self.checkBox_6.isChecked()
+        self.dict_args["analyze - sequence"] = self.checkBox_7.isChecked()
+        self.dict_args["resolve duplicates"] = self.checkBox_2.isChecked()
+        self.dict_args["exception_signal"] = self.exception_signal
+        ## NCR ratio
+        self.dict_args["cal_NCR_ratio"] = self.groupBox_8.isChecked()
+        self.dict_args["NCR_features"] = self.textEdit.toPlainText().split("\n")
+        # self.progressDialog = self.factory.myProgressDialog(
+        #     "Please Wait", "Resolving duplicates...", parent=self, busy=True)
+        # self.progressDialog.close()
+        # self.dict_args["rsl_dupl progressDialog"] = self.progressDialog
+        self.dict_args["rsl_dupl progressSig"] = self.progressDialogSig
+        self.dict_args["rsl_dupl threads"] = int(self.comboBox.currentText()) if self.comboBox.currentText() else 1
+        MAFFTpath = self.factory.programIsValid("mafft", mode="tool")
+        self.dict_args["mafft_exe"] = MAFFTpath
         ok = self.factory.remove_dir(self.dict_args["exportPath"], parent=self)
-        if not ok: return  # 提醒是否删除旧结果，如果用户取消，就不执行
+        if not ok:
+            return  # 提醒是否删除旧结果，如果用户取消，就不执行
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.updateRsdplProcess)
+        self.timer.start(1)
         self.worker = WorkThread(self.run_command, parent=self)
         self.worker.start()
 
@@ -237,30 +262,37 @@ class ExtractGB(QDialog, Ui_Extractor, object):
             # 清空文件夹再生成结果,放在这里执行好统一管理报错
             # self.clearFolderSig.emit(self.dict_args["exportPath"])
             time_start = datetime.datetime.now()
+            self.progressSig.emit(1)
+            ## 比较耗时，放到此处执行
+            if self.dict_args["resolve duplicates"]:
+                manager = multiprocessing.Manager()
+                self.queue = manager.Queue()
+                self.dict_args["rsdpl_queue"] = self.queue
+                self.resolved_gene_num = 0
             self.startButtonStatusSig.emit(
                 [self.pushButton_2, self.progressBar, "start", self.dict_args["exportPath"], self.qss_file, self])
-            if (self.dict_args["seq type"] == "Mitogenome") and (not self.dict_args["extract_entire_seq"]):
-                # 如果是整个序列提取，也不能用这个
-                extract = GBextract_MT(**self.dict_args)
-                extract._exec()
-            else:
-                extract = GBextract(**self.dict_args)
-                extract._exec()
-            # extract = GBextract(**self.dict_args)
+            # if (self.dict_args["seq type"] == "Mitogenome") and (not self.dict_args["extract_entire_seq"]):
+            #     # 如果是整个序列提取，也不能用这个
+            #     extract = GBextract_MT(**self.dict_args)
+            #     extract._exec()
+            # else:
+            extract = GBextract(**self.dict_args)
+            extract._exec()
             if extract.Error_ID:
-                stopStatus = extract.Error_ID
+                stopStatus = "".join(extract.Error_ID)
             elif extract.source_feature_IDs:
                 stopStatus = "extract_no_feature%s"%", ".join(extract.source_feature_IDs)
             else:
                 stopStatus = "stop"
+            # self.progressDialog.close()
             self.startButtonStatusSig.emit(
                 [self.pushButton_2, self.progressBar, stopStatus, self.dict_args["exportPath"], self.qss_file, self])
             self.focusSig.emit(self.dict_args["exportPath"])
             time_end = datetime.datetime.now()
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
-            with open(self.dict_args["exportPath"] + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, "
+            with open(self.dict_args["exportPath"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
+                f.write("If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, "
                         "and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular "
                         "sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, "
                         "2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des
@@ -343,37 +375,57 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
         self.setting.exec_()
 
-    def showOn(self):
-        list_color = [
-            "#ffff33",
-            "#99ffff",
-            "#ff9999",
-            "#6699ff",
-            "#DAA520",
-            "#ccff00",
-            "#bfbfbf"]
-        self.tableWidget.itemClicked.connect(self.handleItemClicked)
-        for row in range(self.tableWidget.rowCount()):
-            # 2列颜色 (必须初始化一个item，不然恢复界面设置会出错)
-            item2 = QTableWidgetItem(list_color[row])
-            item2.setBackground(QColor(list_color[row]))
-            self.tableWidget.setItem(row, 1, item2)
-            model = QStandardItemModel()
-            for i in self.dict_icon:
-                item = QStandardItem(i)
-                item.setIcon(QIcon(self.dict_icon[i]))
-                font = item.font()
-                font.setPointSize(13)
-                item.setFont(font)
-                model.appendRow(item)
-            comb_box = MyComboBox(self)
-            comb_box.setModel(model)
-            # 改变icon大小
-            view = comb_box.view()
-            view.setIconSize(QSize(38, 38))
-            self.tableWidget.setCellWidget(row, 3, comb_box)
-        self.tableWidget.resizeColumnsToContents()
-        self.tableWidget.verticalHeader().setVisible(False)
+    @pyqtSlot()
+    def on_pushButton_7_clicked(self):
+        """
+        add row for gene order table
+        """
+        rowPosition = self.tableWidget.rowCount()
+        self.tableWidget.insertRow(rowPosition)
+        # 初始化必要的item
+        # col1
+        item = QTableWidgetItem("Dblclick to input name")
+        item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
+        item.setCheckState(Qt.Checked)
+        self.tableWidget.setItem(rowPosition, 0, item)
+        # col2
+        color = self.colorPicker(self.fetch_used_colors())
+        item = QTableWidgetItem(color)
+        item.setBackground(QColor(color))
+        item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsEnabled)
+        self.tableWidget.setItem(rowPosition, 1, item)
+        # col3
+        item = QTableWidgetItem("28")
+        item.setTextAlignment(Qt.AlignCenter)
+        item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsEnabled)
+        self.tableWidget.setItem(rowPosition, 2, item)
+        model = QStandardItemModel()
+        for i in self.dict_icon:
+            item = QStandardItem(i)
+            item.setIcon(QIcon(self.dict_icon[i]))
+            font = item.font()
+            font.setPointSize(13)
+            item.setFont(font)
+            model.appendRow(item)
+        comb_box = MyComboBox(self)
+        comb_box.setModel(model)
+        # 改变icon大小
+        view = comb_box.view()
+        view.setIconSize(QSize(38, 38))
+        self.tableWidget.setCellWidget(rowPosition, 3, comb_box)
+        self.tableWidget.scrollToBottom()
+
+    @pyqtSlot()
+    def on_pushButton_11_clicked(self):
+        """
+        delete selected row of gene order table
+        """
+        rows = []
+        for idx in self.tableWidget.selectedIndexes():
+            rows.append(idx.row())
+        rows = sorted(rows, reverse=True)
+        for row in rows:
+            self.tableWidget.removeRow(row)
 
     def handleItemClicked(self, item):
         if item.column() == 1:
@@ -406,6 +458,9 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                         state = 2 if obj.model().item(i).checkState() == Qt.Checked else 0
                         dict_state[text] = state
                     self.extractGB_settings.setValue(name, dict_state)
+                elif name == "comboBox":
+                    index = obj.currentIndex()
+                    self.extractGB_settings.setValue(name, index)
                 elif name != "comboBox_5":
                     text = obj.currentText()
                     if text:
@@ -425,15 +480,16 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                 self.extractGB_settings.setValue(name, state)
             if isinstance(obj, QTableWidget):
                 if name == "tableWidget":
-                    array = []  # 每一行存：checked, color, length, index_text
+                    array = []  # 每一行存：[gene_name, checked], color, length, index_text
                     for row in range(obj.rowCount()):
+                        gene_name = obj.item(row, 0).text()
                         checked = "true" if obj.item(
                             row, 0).checkState() == Qt.Checked else "false"
                         colour = obj.item(row, 1).text()
                         length = obj.item(row, 2).text()
                         shape_combo = obj.cellWidget(row, 3)
                         shape = shape_combo.currentText()
-                        array.append([checked, colour, length, shape])
+                        array.append([[gene_name, checked], colour, length, shape])
                     self.extractGB_settings.setValue(name, array)
                 elif name == "tableWidget_2":
                     dict_color_array = self.getLineageColor()
@@ -470,8 +526,23 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                             item.setBackground(QColor(237, 243, 254))
                         model.appendRow(item)
                     self.changeLable()
-                elif name == "comboBox_6":
-                    self.displaySettings()
+                elif name == "comboBox":
+                    cpu_num = multiprocessing.cpu_count()
+                    list_cpu = [str(i + 1) for i in range(cpu_num)]
+                    index = self.extractGB_settings.value(name, "0")
+                    model = obj.model()
+                    obj.clear()
+                    for num, i in enumerate(list_cpu):
+                        item = QStandardItem(i)
+                        # 背景颜色
+                        if num % 2 == 0:
+                            item.setBackground(QColor(255, 255, 255))
+                        else:
+                            item.setBackground(QColor(237, 243, 254))
+                        model.appendRow(item)
+                    obj.setCurrentIndex(int(index))
+                # elif name == "comboBox_6":
+                #     self.displaySettings()
                 elif name == "comboBox_7":
                     self.updateLineageCombo()
                 elif name == "comboBox_4":
@@ -523,11 +594,16 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                 state = self.extractGB_settings.value(name, "true")
                 obj.setChecked(self.factory.str2bool(state))
             if isinstance(obj, QCheckBox):
+                if name == "checkBox":
+                    CodonWpath = self.factory.programIsValid("CodonW", mode="tool")
+                    if not CodonWpath:
+                        obj.setChecked(False)
+                        continue
                 value = self.extractGB_settings.value(
-                    name, "no setting")  # get stored value from registry
-                if value != "no setting":
-                    obj.setChecked(
-                        self.factory.str2bool(value))  # restore checkbox
+                    name, obj.isChecked())  # get stored value from registry
+                # if value != "no setting":
+                obj.setChecked(
+                    self.factory.str2bool(value))  # restore checkbox
             if isinstance(obj, QRadioButton):
                 value = self.extractGB_settings.value(
                     name, "first")  # get stored value from registry
@@ -536,34 +612,70 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                         self.factory.str2bool(value))  # restore checkbox
             if isinstance(obj, QTableWidget):
                 if name == "tableWidget":
-                    # 每一行存：checked, color, length, index_text
+                    # 每一行存：[gene_name, checked], color, length, index_text
                     ini_array = [
                         [
-                            'true', '#ffff33', '25', 'rectangle'], [
-                            'true', '#99ffff', '25', 'rectangle'], [
-                            'true', '#ff9999', '30', 'rectangle'], [
-                            'true', '#6699ff', '25', 'rectangle'], [
-                            'true', '#DAA520', '18', 'rectangle'], [
-                                'true', '#ccff00', '15', 'rectangle'], [
-                                    'false', '#bfbfbf', '15', 'ellipse']]
+                            ["ATP6|ATP8", 'true'], '#ffff33', '25', 'rectangle'], [
+                            ["NAD1-6|NAD4L", 'true'], '#99ffff', '25', 'rectangle'], [
+                            ["CYTB", 'true'], '#ff9999', '30', 'rectangle'], [
+                            ["COX1-3", 'true'], '#6699ff', '25', 'rectangle'], [
+                            ["rRNAs", 'true'], '#DAA520', '18', 'rectangle'], [
+                            ["tRNAs", 'true'], '#ccff00', '15', 'rectangle'], [
+                            ["NCR", 'false'], '#bfbfbf', '15', 'ellipse']]
                     array = self.extractGB_settings.value(name, ini_array)
-                    for row in range(obj.rowCount()):
-                        ifChecked = Qt.Checked if array[row][
-                            0] == "true" else Qt.Unchecked
-                        obj.item(row, 0).setCheckState(ifChecked)
-                        obj.item(row, 1).setText(array[row][1])
-                        obj.item(row, 1).setBackground(QColor(array[row][1]))
-                        obj.item(row, 2).setText(array[row][2])
-                        shape = array[row][3]
-                        shape_combo = obj.cellWidget(row, 3)
-                        shape_combo_index = shape_combo.findText(shape)
+                    obj.setRowCount(len(array))
+                    for row, list_row in enumerate(array):
+                        # col 1
+                        if type(list_row[0]) == list:
+                            ifChecked = Qt.Checked if list_row[
+                                0][1] == "true" else Qt.Unchecked
+                            gene_name = list_row[0][0]
+                            item = QTableWidgetItem(gene_name)
+                            item.setFlags(
+                                Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable)
+                            item.setCheckState(ifChecked)
+                            obj.setItem(row, 0, item)
+                        else:
+                            # 旧版本保存的字符串（true或false）
+                            ifChecked = Qt.Checked if list_row[0] == "true" else Qt.Unchecked
+                            obj.item(row, 0).setCheckState(ifChecked)
+                        # col 2
+                        item = QTableWidgetItem(list_row[1])
+                        item.setBackground(QColor(list_row[1]))
+                        item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsEnabled)
+                        obj.setItem(row, 1, item)
+                        # col 3
+                        item = QTableWidgetItem(list_row[2])
+                        item.setTextAlignment(Qt.AlignCenter)
+                        item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsEnabled)
+                        obj.setItem(row, 2, item)
+                        # col 4
+                        model = QStandardItemModel()
+                        for i in self.dict_icon:
+                            item = QStandardItem(i)
+                            item.setIcon(QIcon(self.dict_icon[i]))
+                            font = item.font()
+                            font.setPointSize(13)
+                            item.setFont(font)
+                            model.appendRow(item)
+                        comb_box = MyComboBox(self)
+                        comb_box.setModel(model)
+                        # 改变icon大小
+                        view = comb_box.view()
+                        view.setIconSize(QSize(38, 38))
+                        shape = list_row[3]
+                        shape_combo_index = comb_box.findText(shape)
                         if shape_combo_index == -1:  # add to list if not found
-                            shape_combo.insertItems(0, [value])
-                            index = shape_combo.findText(value)
-                            shape_combo.setCurrentIndex(index)
+                            comb_box.insertItems(0, [value])
+                            index = comb_box.findText(value)
+                            comb_box.setCurrentIndex(index)
                         else:
                             # preselect a combobox value by index
-                            shape_combo.setCurrentIndex(shape_combo_index)
+                            comb_box.setCurrentIndex(shape_combo_index)
+                        obj.setCellWidget(row, 3, comb_box)
+                    obj.itemClicked.connect(self.handleItemClicked)
+                    obj.resizeColumnsToContents()
+                    obj.verticalHeader().setVisible(False)
                 elif name == "tableWidget_2":
                     self.updateLineageTable()
             if isinstance(obj, QTabWidget):
@@ -578,6 +690,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                     obj.setText(text)
 
     def popupException(self, exception):
+        print(exception)
         rgx = re.compile(r'Permission.+?[\'\"](.+\.csv)[\'\"]')
         if rgx.search(exception):
             csvfile = rgx.search(exception).group(1)
@@ -744,21 +857,21 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                 self.dict_gbExtract_set = OrderedDict((i, self.dict_gbExtract_set[i]) for i in reorder_list)
                 self.GenBankExtract_settings.setValue('set_version', self.dict_gbExtract_set)
         ###控制itol
-        if text != "Mitogenome":
-            targetIndex = "null"
-            for index in range(self.tabWidget.count()):
-                if self.tabWidget.tabText(index) == "Gene order display":
-                    targetIndex = index
-            if targetIndex != "null":
-                self.hiddenIndex = targetIndex
-                self.hiddenWidget = self.tabWidget.widget(self.hiddenIndex)
-                self.hiddenTabText = self.tabWidget.tabText(self.hiddenIndex)
-                self.tabWidget.removeTab(self.hiddenIndex)
-                self.hiddenFlag = True
-        else:
-            if hasattr(self, "hiddenFlag") and self.hiddenFlag:
-                self.tabWidget.insertTab(self.hiddenIndex, self.hiddenWidget, self.hiddenTabText)
-                self.hiddenFlag = False
+        # if text != "Mitogenome":
+        #     targetIndex = "null"
+        #     for index in range(self.tabWidget.count()):
+        #         if self.tabWidget.tabText(index) == "Gene order display":
+        #             targetIndex = index
+        #     if targetIndex != "null":
+        #         self.hiddenIndex = targetIndex
+        #         self.hiddenWidget = self.tabWidget.widget(self.hiddenIndex)
+        #         self.hiddenTabText = self.tabWidget.tabText(self.hiddenIndex)
+        #         self.tabWidget.removeTab(self.hiddenIndex)
+        #         self.hiddenFlag = True
+        # else:
+        #     if hasattr(self, "hiddenFlag") and self.hiddenFlag:
+        #         self.tabWidget.insertTab(self.hiddenIndex, self.hiddenWidget, self.hiddenTabText)
+        #         self.hiddenFlag = False
         self.tabWidget.setCurrentIndex(0)
 
     def updateLineageTable(self):
@@ -824,9 +937,89 @@ class ExtractGB(QDialog, Ui_Extractor, object):
             self.comboBox_4.item.setCheckState(Qt.Checked)
             self.comboBox_4.setTopText()
 
-    def judgeCodonW(self, bool_):
+    def judgeCodonWinstallation(self, bool_):
         if bool_:
-            pass
+            CodonWpath = self.factory.programIsValid("CodonW", mode="tool")
+            if not CodonWpath:
+                reply = QMessageBox.information(
+                    self,
+                    "Information",
+                    "<p style='line-height:25px; height:25px'>Please install CodonW and reopen the window.</p>",
+                    QMessageBox.Ok,
+                    QMessageBox.Cancel)
+                if reply == QMessageBox.Ok:
+                    self.close()
+                    self.setting = Setting(self)
+                    self.setting.display_table(self.setting.listWidget.item(1))
+                    # 隐藏？按钮
+                    self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
+                    self.setting.exec_()
+                else:
+                    self.checkBox.setChecked(False)
+
+    def fetch_used_colors(self):
+        list_colors = []
+        for row in range(self.tableWidget.rowCount()):
+            if self.tableWidget.item(row, 1):
+                list_colors.append(self.tableWidget.item(row, 1).text())
+        return list_colors
+
+    def colorPicker(self, list_colors):
+        # 生成不重复的随机颜色
+        colour = '#%06X' % random.randint(0, 256 ** 3 - 1)
+        while colour in list_colors:
+            # 不让range用自定义的颜色
+            colour = '#%06X' % random.randint(0, 256 ** 3 - 1)
+        return colour
+
+    def fetch_checked_gene_names(self):
+        list_names = []
+        for row in range(self.tableWidget.rowCount()):
+            if self.tableWidget.item(row, 0) and \
+                    self.tableWidget.item(row, 0).checkState() == Qt.Checked:
+                list_names.append(self.tableWidget.item(row, 0).text())
+        return list_names
+
+    def Progress(self, num, progressCancel=False):
+        # self.blockSignals(True)
+        if num <= 5:
+            self.progressDialog.show()
+        return
+        print(num)
+        oldValue = self.progressDialog.value()
+        done_int = int(num)
+        # if not hasattr(self, "last_progress_update_time"):
+        #     self.last_progress_update_time = 0
+        if (done_int > oldValue): # and ((time.time()-self.last_progress_update_time)>1):
+            # print(self.last_progress_update_time, time.time()-self.last_progress_update_time)
+            self.progressDialog.setProperty("value", done_int) # 刷新太快会导致程序卡死
+            # self.progressDialog.setLabelText(f"finish {done_int}%...")
+            # self.last_progress_update_time = time.time()
+            if done_int == 100:
+                self.progressDialog.close()
+        # self.blockSignals(False)
+        QCoreApplication.processEvents()
+
+    def judgeMAFFT(self, state):
+        MAFFTpath = self.factory.programIsValid("mafft", mode="tool")
+        if state and (not MAFFTpath):
+            reply = QMessageBox.information(
+                self,
+                "Information",
+                "<p style='line-height:25px; height:25px'>Please install MAFFT first!</p>",
+                QMessageBox.Ok,
+                QMessageBox.Cancel)
+            self.checkBox_2.setChecked(False)
+
+    def updateRsdplProcess(self):
+        if (not hasattr(self, "queue")) or self.queue.empty():
+            return
+        total_num = self.queue.get()
+        if type(total_num) == tuple:
+            total_num = total_num[0]
+            self.resolved_gene_num += 1
+            # print(self.resolved_gene_num, total_num)
+            self.progressSig.emit(70 + self.resolved_gene_num * 25 /total_num)
 
 
 if __name__ == "__main__":

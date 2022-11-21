@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: PhyloSuite
-Version: 1.2.2
+Version: 1.2.3rc2
 Summary: A desktop platform for streamlined molecular sequence data management and state of the art evolutionary phylogenetics studies.
 Home-page: https://github.com/dongzhang0725/PhyloSuite
 Author: Dong Zhang
@@ -96,5 +96,5 @@ Classifier: Programming Language :: Python
 Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3.6
 Classifier: Topic :: Software Development :: User Interfaces
-Requires-Python: >=3.6.0
+Requires-Python: >=3.6.0, <=3.7.0
 Description-Content-Type: text/markdown

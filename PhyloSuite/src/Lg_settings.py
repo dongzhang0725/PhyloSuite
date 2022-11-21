@@ -2,12 +2,16 @@
 # -*- coding: utf-8 -*-
 import glob
 import re
+import zipfile
 from collections import OrderedDict
+from pathlib import Path
+from zipfile import ZipFile
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
+from src.update import UpdateAPP
 from uifiles.Ui_PF_exe_path import Ui_PF2ExePath
 from uifiles.Ui_settings import Ui_Settings
 from src.factory import Factory, HttpWindowDownload, WorkThread
@@ -19,167 +23,7 @@ import inspect
 import traceback
 import copy
 import platform
-
-dict_url = {
-    "windows": {
-        "64bit": {
-            "Github": {
-                "mafft": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mafft.zip",
-                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe",
-                "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-1.6.8-Windows.zip",
-                "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win64.zip",
-                "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder-2.1.1.zip",
-                "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse_v2.03.jar.zip",
-                "trimAl": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/trimal.v1.2rev59.zip",
-                "tbl2asn": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/tbl2asn.zip"
-            },
-            "Gitlab": {
-                "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft.zip",
-                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe",
-                "gblocks": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/iqtree-1.6.8-Windows.zip",
-                "MrBayes": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_win64.zip",
-                "PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/partitionfinder-2.1.1.zip",
-                "macse": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/macse_v2.03.jar.zip",
-                "trimAl": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/trimal.v1.2rev59.zip",
-                "tbl2asn": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/tbl2asn.zip"
-            },
-            "Coding": {
-                "mafft": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/mafft.zip",
-                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe",
-                "gblocks": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/iqtree-1.6.8-Windows.zip",
-                "MrBayes": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_win64.zip",
-                "PF2": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/partitionfinder-2.1.1.zip",
-                "macse": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/macse_v2.03.jar.zip",
-                "trimAl": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/trimal.v1.2rev59.zip",
-                "tbl2asn": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/tbl2asn.zip"
-            },
-            "Chinese resource": {
-                "mafft": "http://phylosuite.jushengwu.com/plugins/mafft.zip",
-                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86_64.exe",
-                "gblocks": "http://phylosuite.jushengwu.com/plugins/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "http://phylosuite.jushengwu.com/plugins/iqtree-1.6.8-Windows.zip",
-                "MrBayes": "http://phylosuite.jushengwu.com/plugins/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "http://phylosuite.jushengwu.com/plugins/PartitionFinder_win64.zip",
-                "PF2": "http://phylosuite.jushengwu.com/plugins/partitionfinder-2.1.1.zip",
-                "macse": "http://phylosuite.jushengwu.com/plugins/macse_v2.03.jar.zip",
-                "trimAl": "http://phylosuite.jushengwu.com/plugins/trimal.v1.2rev59.zip",
-                "tbl2asn": "http://phylosuite.jushengwu.com/plugins/tbl2asn.zip"
-            }
-        },
-        "32bit": {
-            "Github": {
-                "mafft": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mafft-7.304-win32.zip",
-                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe",
-                "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-1.6.8-Windows32.zip",
-                "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win32.zip",
-                "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder-2.1.1.zip",
-                "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse_v2.03.jar.zip",
-                "trimAl": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/trimal.v1.2rev59.zip",
-                "tbl2asn": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/tbl2asn.zip"
-            },
-            "Gitlab": {
-                "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-7.304-win32.zip",
-                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe",
-                "gblocks": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/iqtree-1.6.8-Windows32.zip",
-                "MrBayes": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_win32.zip",
-                "PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/partitionfinder-2.1.1.zip",
-                "macse": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/macse_v2.03.jar.zip",
-                "trimAl": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/trimal.v1.2rev59.zip",
-                "tbl2asn": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/tbl2asn.zip"
-            },
-            "Coding": {
-                "mafft": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/mafft-7.304-win32.zip",
-                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe",
-                "gblocks": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/iqtree-1.6.8-Windows32.zip",
-                "MrBayes": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_win32.zip",
-                "PF2": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/partitionfinder-2.1.1.zip",
-                "macse": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/macse_v2.03.jar.zip",
-                "trimAl": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/trimal.v1.2rev59.zip",
-                "tbl2asn": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/tbl2asn.zip"
-            },
-            "Chinese resource": {
-                "mafft": "http://phylosuite.jushengwu.com/plugins/mafft-7.304-win32.zip",
-                "Rscript": "https://cran.r-project.org/bin/windows/base/old/3.4.4/R-3.4.4-win.exe",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-Windows-x86.exe",
-                "gblocks": "http://phylosuite.jushengwu.com/plugins/Gblocks_Windows_0.91b.zip",
-                "iq-tree": "http://phylosuite.jushengwu.com/plugins/iqtree-1.6.8-Windows32.zip",
-                "MrBayes": "http://phylosuite.jushengwu.com/plugins/MrBayes-3.2.6_WIN32_x64.zip",
-                "compiled PF2": "http://phylosuite.jushengwu.com/plugins/PartitionFinder_win32.zip",
-                "PF2": "http://phylosuite.jushengwu.com/plugins/partitionfinder-2.1.1.zip",
-                "macse": "http://phylosuite.jushengwu.com/plugins/macse_v2.03.jar.zip",
-                "trimAl": "http://phylosuite.jushengwu.com/plugins/trimal.v1.2rev59.zip",
-                "tbl2asn": "http://phylosuite.jushengwu.com/plugins/tbl2asn.zip"
-            }
-        }
-    },
-    "darwin": {
-        "64bit": {
-            "Github": {
-                "mafft": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mafft-7.407-mac.zip",
-                "Rscript": "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg",
-                "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_OSX_0.91b.zip",
-                "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-1.6.8-MacOSX.zip",
-                "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MrBayes-3.2.6_MACx64.zip",
-                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_mac.zip",
-                "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder-2.1.1.zip",
-                "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse_v2.03.jar.zip",
-            },
-            "Gitlab": {
-                "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-7.407-mac.zip",
-                "Rscript": "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg",
-                "gblocks": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/Gblocks_OSX_0.91b.zip",
-                "iq-tree": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/iqtree-1.6.8-MacOSX.zip",
-                "MrBayes": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/MrBayes-3.2.6_MACx64.zip",
-                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_mac.zip",
-                "PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/partitionfinder-2.1.1.zip",
-                "macse": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/macse_v2.03.jar.zip",
-            },
-            "Coding": {
-                "mafft": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/mafft-7.407-mac.zip",
-                "Rscript": "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg",
-                "gblocks": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/Gblocks_OSX_0.91b.zip",
-                "iq-tree": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/iqtree-1.6.8-MacOSX.zip",
-                "MrBayes": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/MrBayes-3.2.6_MACx64.zip",
-                "compiled PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/PartitionFinder_mac.zip",
-                "PF2": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/partitionfinder-2.1.1.zip",
-                "macse": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/macse_v2.03.jar.zip",
-            },
-            "Chinese resource": {
-                "mafft": "http://phylosuite.jushengwu.com/plugins/mafft-7.407-mac.zip",
-                "Rscript": "https://cran.r-project.org/bin/macosx/R-3.5.1.pkg",
-                "python27": "https://repo.continuum.io/archive/Anaconda2-5.2.0-MacOSX-x86_64.pkg",
-                "gblocks": "http://phylosuite.jushengwu.com/plugins/Gblocks_OSX_0.91b.zip",
-                "iq-tree": "http://phylosuite.jushengwu.com/plugins/iqtree-1.6.8-MacOSX.zip",
-                "MrBayes": "http://phylosuite.jushengwu.com/plugins/MrBayes-3.2.6_MACx64.zip",
-                "compiled PF2": "http://phylosuite.jushengwu.com/plugins/PartitionFinder_mac.zip",
-                "PF2": "http://phylosuite.jushengwu.com/plugins/partitionfinder-2.1.1.zip",
-                "macse": "http://phylosuite.jushengwu.com/plugins/macse_v2.03.jar.zip",
-            }
-        }
-    }
-}
+from src.plugins import dict_url, dict_plugin_settings
 
 class LG_exePath(QDialog, Ui_ExePath, object):
     downloadSig = pyqtSignal()
@@ -191,7 +35,7 @@ class LG_exePath(QDialog, Ui_ExePath, object):
         self.parent = parent
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
-        self.downloadRes = "Github"
+        self.downloadRes = "Chinese resource"
         self.setupUi(self)
         if label1:
             self.label_3.setText(label1)
@@ -202,7 +46,7 @@ class LG_exePath(QDialog, Ui_ExePath, object):
         if placeholdertext:
             self.lineEdit.setPlaceholderText(placeholdertext)
         self.flag = flag
-        self.target = target
+        self.target = " ".join(target) if type(target) == list else target
         # 开始装载样式表
         with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
             self.qss_file = f.read()
@@ -223,11 +67,13 @@ class LG_exePath(QDialog, Ui_ExePath, object):
             self.label_4.deleteLater()
             del self.label_4
         elif (platform.system().lower() == "linux") or (flag in ["java", "perl", "HmmCleaner"]) or \
-                (platform.system().lower() == "darwin" and flag=="trimAl"):
-            self.gridLayout_2.removeWidget(self.pushButton_5)
-            self.pushButton_5.close()
-            self.pushButton_5.deleteLater()
-            del self.pushButton_5
+                ("If download failed," not in link):
+            # self.gridLayout_2.removeWidget(self.pushButton_5)
+            # self.pushButton_5.close()
+            # self.pushButton_5.deleteLater()
+            # del self.pushButton_5
+            for i in [self.pushButton_5, self.label_7, self.comboBox]:
+                i.setVisible(False)
             self.label_4.setText(link)
             self.label_4.setWordWrap(True)
         else:
@@ -235,7 +81,7 @@ class LG_exePath(QDialog, Ui_ExePath, object):
             self.label_4.setWordWrap(True)
         self.adjustSize()
         ##调用一下
-        self.switchRes("Github")
+        self.switchRes("Chinese resource")
         if (flag in ["RscriptPath", "python27"]) or (platform.system().lower() == "linux"):
             self.comboBox.setEnabled(False)
 
@@ -243,7 +89,7 @@ class LG_exePath(QDialog, Ui_ExePath, object):
     def on_toolButton_3_clicked(self):
         if self.flag != "PF2":
             fileName = QFileDialog.getOpenFileName(
-                self, "Input File", filter="%s;;"%self.target)
+                self, "Input File", filter="%s *;;"%self.target)
             if fileName[0]:
                 if os.path.isfile(fileName[0]):
                     self.lineEdit.setText(fileName[0])
@@ -378,7 +224,7 @@ class LG_PF2_exePath(QDialog, Ui_PF2ExePath, object):
         self.parent = parent
         self.thisPath = self.factory.thisPath
         self.setupUi(self)
-        self.downloadRes = "Github"
+        self.downloadRes = "Chinese resource"
         self.groupBox_2.toggled.connect(lambda bool_: self.groupBox_3.setChecked(not bool_))
         self.groupBox_3.toggled.connect(lambda bool_: self.groupBox_2.setChecked(not bool_))
         self.groupBox_2.setChecked(True)
@@ -398,7 +244,7 @@ class LG_PF2_exePath(QDialog, Ui_PF2ExePath, object):
             country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/"
         self.label_9.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
         self.comboBox.currentTextChanged.connect(self.switchRes)
-        self.switchRes("Github")
+        self.switchRes("Chinese resource")
         self.adjustSize()
         if platform.system().lower() == "linux":
             self.comboBox.setEnabled(False)
@@ -505,6 +351,10 @@ class Setting(QDialog, Ui_Settings, object):
         iniCheckWorker = WorkThread(lambda: self.factory.init_check(self),
                                     parent=self)
         iniCheckWorker.start()
+        # 开始装载样式表
+        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+            self.qss_file = f.read()
+        self.setStyleSheet(self.qss_file)
         # self.factory.init_check(self)
         ##信号槽
         self.comboBox.currentTextChanged.connect(self.judgeSettings)
@@ -546,8 +396,17 @@ class Setting(QDialog, Ui_Settings, object):
                               "trimAl": 11,
                               "perl": 12,
                               "HmmCleaner": 13,
+                              "CodonW": 14,
+                              "plot_engine": 15
                               }
+        for plugin in dict_plugin_settings:
+            if "link_mac" not in dict_plugin_settings[plugin]:
+                continue
+            self.dict_name_row[plugin] = len(self.dict_name_row)
+        # print(self.dict_name_row)
         # self.display_table(self.listWidget.item(0))
+        # 设置行数
+        self.tableWidget.setRowCount(len(self.dict_name_row))
         # 预设置按钮
         self.download_mafft_button = QPushButton("Install", self)
         self.download_mafft_button.clicked.connect(
@@ -605,25 +464,49 @@ class Setting(QDialog, Ui_Settings, object):
         self.download_HmmCleaner_button.clicked.connect(
             self.on_download_HmmCleaner_button_clicked)
         self.tableWidget.setCellWidget(self.dict_name_row["HmmCleaner"], 3, self.download_HmmCleaner_button)
+        self.download_CodonW_button = QPushButton("Install", self)
+        self.download_CodonW_button.clicked.connect(
+            self.on_download_CodonW_button_clicked)
+        self.tableWidget.setCellWidget(self.dict_name_row["CodonW"], 3, self.download_CodonW_button)
+        self.download_plot_engine_button = QPushButton("Install", self)
+        self.download_plot_engine_button.clicked.connect(
+            self.on_download_plot_engine_button_clicked)
+        self.tableWidget.setCellWidget(self.dict_name_row["plot_engine"], 3, self.download_plot_engine_button)
         self.dict_name_button = {"mafft": self.download_mafft_button,
-                              "RscriptPath": self.download_Rscript_button,
-                              "python27": self.download_python27_button,
-                              "PF2": self.download_partfind_button,
-                              "gblocks": self.download_gblocks_button,
-                              "iq-tree": self.download_iq_tree_button,
-                              "MrBayes": self.download_MrBayes_button,
-                              "tbl2asn": self.download_tbl2asn_button,
-                              "mpi": self.download_mpi_button,
-                              "java": self.download_java_button,
-                              "macse": self.download_macse_button,
-                              "trimAl": self.download_trimAl_button,
-                              "perl": self.download_perl_button,
-                              "HmmCleaner": self.download_HmmCleaner_button,
+                                 "RscriptPath": self.download_Rscript_button,
+                                 "python27": self.download_python27_button,
+                                 "PF2": self.download_partfind_button,
+                                 "gblocks": self.download_gblocks_button,
+                                 "iq-tree": self.download_iq_tree_button,
+                                 "MrBayes": self.download_MrBayes_button,
+                                 "tbl2asn": self.download_tbl2asn_button,
+                                 "mpi": self.download_mpi_button,
+                                 "java": self.download_java_button,
+                                 "macse": self.download_macse_button,
+                                 "trimAl": self.download_trimAl_button,
+                                 "perl": self.download_perl_button,
+                                 "HmmCleaner": self.download_HmmCleaner_button,
+                                 "CodonW": self.download_CodonW_button,
+                                 "plot_engine": self.download_plot_engine_button
                                  }
-        # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        for plugin in dict_plugin_settings:
+            if "link_mac" not in dict_plugin_settings[plugin]:
+                continue
+            setattr(self, f"install_button{self.dict_name_row[plugin]}",
+                    QPushButton("Install", self))
+            # getattr(self, f"install_button{self.dict_name_row[plugin]}").setStyleSheet(self.qss_file)
+            getattr(self, f"install_button{self.dict_name_row[plugin]}").clicked.connect(lambda checked,
+                                                                                                dict_settings=dict_plugin_settings[plugin]:
+                                    self.plugin_download_button_clicked(**dict_settings))
+            self.tableWidget.setItem(self.dict_name_row[plugin], 0,
+                                     QTableWidgetItem(f'{dict_plugin_settings[plugin]["plugin_name"]} v'
+                                                      f'{dict_plugin_settings[plugin]["version"]}'))
+            self.tableWidget.setItem(self.dict_name_row[plugin], 1,
+                                     QTableWidgetItem(f'{dict_plugin_settings[plugin]["description"]}'))
+            self.tableWidget.setItem(self.dict_name_row[plugin], 2, QTableWidgetItem("Uninstalled"))
+            self.tableWidget.setCellWidget(self.dict_name_row[plugin], 3,
+                                           getattr(self, f"install_button{self.dict_name_row[plugin]}"))
+            self.dict_name_button[plugin] = getattr(self, f"install_button{self.dict_name_row[plugin]}")
         self.installButtonSig.connect(self.factory.ctrl_installButton_status)
         # self.progressSig.connect(self.runProgress)
         self.exception_signal.connect(self.popupException)
@@ -693,13 +576,82 @@ class Setting(QDialog, Ui_Settings, object):
                                   "Please restart PhyloSuite now</p>")
 
     @pyqtSlot()
+    def on_pushButton_export_clicked(self):
+        """
+        export settings
+        """
+        msgBox = QMessageBox(self)
+        # msgBox.setWindowFlags(msgBox.windowFlags() | Qt.WindowCloseButtonHint)
+        # msgBox.setWindowFlags(Qt.Window | Qt.WindowCloseButtonHint)
+        msgBox.setIcon(QMessageBox.Information)
+        msgBox.setText('Please choose the settings that you want to export.')
+        msgBox.addButton(QPushButton('Setings'), QMessageBox.NoRole)
+        msgBox.addButton(QPushButton('Plugins'), QMessageBox.NoRole)
+        msgBox.addButton(QPushButton('Setings and plugins'), QMessageBox.NoRole)
+        msgBox.addButton(QPushButton('Cancel'), QMessageBox.RejectRole)
+        ret = msgBox.exec_()
+        plugins = f"{self.thisPath}{os.sep}plugins"
+        settings = f"{self.thisPath}{os.sep}settings"
+        if ret == 0:
+            list_export_dirs = [settings]
+        elif ret == 1:
+            list_export_dirs = [plugins]
+        elif ret == 2:
+            list_export_dirs = [plugins, settings]
+        elif ret == 3:
+            list_export_dirs = []
+        if not list_export_dirs:
+            return
+        fileName = QFileDialog.getSaveFileName(
+            self, "PhyloSuite", "PhyloSuite_settings", "ZIP Format(*.zip)")
+        for folder in list_export_dirs:
+            if Path(folder) in Path(fileName[0]).parents:
+                QMessageBox.warning(
+                    self,
+                    "Warning",
+                    f"<p style='line-height:25px; height:25px'>For recursion reason, "
+                    f"the settings file cannot be saved under \"{folder}\" folder, "
+                    f"please select a new path!</p>")
+                return
+        if fileName[0]:
+            self.progressDialog = self.factory.myProgressDialog(
+                "Please Wait", "Exporting...", parent=self, busy=True)
+            self.progressDialog.show()
+            zipWorker = WorkThread(
+                lambda: self.factory.zipFolder(fileName[0], list_export_dirs),
+                parent=self)
+            zipWorker.start()
+            zipWorker.finished.connect(lambda: [self.progressDialog.close(), QMessageBox.information(
+                self, "Save settings to file", "<p style='line-height:25px; "
+                                               "height:25px'>Settings saved successfully! </p>")])
+
+    @pyqtSlot()
+    def on_pushButton_import_clicked(self):
+        """
+        import settings
+        """
+        fileName = QFileDialog.getOpenFileName(
+            self, "Input setting file", filter="ZIP Format(*.zip);;")
+        if fileName[0]:
+            self.progressDialog = self.factory.myProgressDialog(
+                "Please Wait", "Importing...", parent=self, busy=True)
+            self.progressDialog.show()
+            zipWorker = WorkThread(
+                lambda: self.factory.unzipFolder(fileName[0], self.thisPath),
+                parent=self)
+            zipWorker.start()
+            zipWorker.finished.connect(lambda: [self.progressDialog.close(), QMessageBox.information(
+                self, "Import settings", "<p style='line-height:25px; "
+                                               "height:25px'>Settings imported successfully! </p>")])
+
+    @pyqtSlot()
     def on_download_mafft_button_clicked(self):
         """
         download mafft
         """
         flag = "mafft"
         if self.download_mafft_button.text() == "Install":
-            label1 = "<html><head/><body><p>If you have <span style=\"color:red\">MAFFT v7.313</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>"
+            label1 = "<html><head/><body><p>If you have <span style=\"color:red\">MAFFT</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>"
             label2 = "MAFFT Path:"
             label3 = "<html><head/><body><p>If you don\'t have MAFFT, please <span style=\" font-weight:600; color:#ff0000;\">download</span>.</p></body></html>"
             self.installStatus(flag, "start")
@@ -729,20 +681,29 @@ class Setting(QDialog, Ui_Settings, object):
             # self.saveEXEpath("mafft", self.plugin_path + os.sep + "mafft-win")
         else:
             # 删除
-            if platform.system().lower() == "windows":
-                zipFile = self.plugin_path + os.sep + "mafft.zip"
-                zipFolder = self.plugin_path + os.sep + "mafft-win"
-                if os.path.exists(zipFolder):
-                    self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-                if os.path.exists(zipFile):
-                    os.remove(zipFile)
-            elif platform.system().lower() == "darwin":
-                zipFile = self.plugin_path + os.sep + "mafft.zip"
-                zipFolder = self.plugin_path + os.sep + "mafft-mac"
-                if os.path.exists(zipFolder):
-                    self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-                if os.path.exists(zipFile):
-                    os.remove(zipFile)
+            zipFile = self.plugin_path + os.sep + "mafft.zip"
+            zipFolder = glob.glob(f"{self.plugin_path}{os.sep}mafft*{os.sep}")
+            zipFolder = zipFolder[0] if zipFolder else ""
+            if os.path.exists(zipFolder):
+                self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            if os.path.exists(zipFile):
+                os.remove(zipFile)
+
+            # if platform.system().lower() == "windows":
+            #     zipFile = self.plugin_path + os.sep + "mafft.zip"
+            #     zipFolder = self.plugin_path + os.sep + "mafft-win"
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
+            # elif platform.system().lower() == "darwin":
+            #     zipFile = self.plugin_path + os.sep + "mafft.zip"
+            #     zipFolder = self.plugin_path + os.sep + "mafft-mac"
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
+
             self.settings.setValue("mafft", "")
             QMessageBox.information(
                 self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
@@ -786,13 +747,22 @@ class Setting(QDialog, Ui_Settings, object):
             self.lg_exePath_ts.exec_()
         else:
             # 删除
-            if platform.system().lower() == "windows":
-                zipFile = self.plugin_path + os.sep + "tbl2asn.zip"
-                zipFolder = self.plugin_path + os.sep + "tbl2asn-master"
-                if os.path.exists(zipFolder):
-                    self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-                if os.path.exists(zipFile):
-                    os.remove(zipFile)
+            zipFile = self.plugin_path + os.sep + "tbl2asn.zip"
+            zipFolder = glob.glob(f"{self.plugin_path}{os.sep}tbl2asn*{os.sep}")
+            zipFolder = zipFolder[0] if zipFolder else ""
+            if os.path.exists(zipFolder):
+                self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            if os.path.exists(zipFile):
+                os.remove(zipFile)
+
+            # if platform.system().lower() == "windows":
+            #     zipFile = self.plugin_path + os.sep + "tbl2asn.zip"
+            #     zipFolder = self.plugin_path + os.sep + "tbl2asn-master"
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
+
             self.settings.setValue("tbl2asn", "")
             QMessageBox.information(
                 self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
@@ -952,12 +922,20 @@ class Setting(QDialog, Ui_Settings, object):
         else:
             # 删除
             def deleteFiles():
-                zipFile = self.plugin_path + os.sep + "partitionfinder-2.1.1.zip"
-                zipFolder = self.plugin_path + os.sep + "partitionfinder-2.1.1"
+                zipFile = self.plugin_path + os.sep + "partitionfinder.zip"
+                zipFolder = glob.glob(f"{self.plugin_path}{os.sep}partitionfinder*{os.sep}")
+                zipFolder = zipFolder[0] if zipFolder else ""
                 if os.path.exists(zipFolder):
                     self.factory.remove_dir_directly(zipFolder, removeRoot=True)
                 if os.path.exists(zipFile):
                     os.remove(zipFile)
+
+                # zipFile = self.plugin_path + os.sep + "partitionfinder-2.1.1.zip"
+                # zipFolder = self.plugin_path + os.sep + "partitionfinder-2.1.1"
+                # if os.path.exists(zipFolder):
+                #     self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+                # if os.path.exists(zipFile):
+                #     os.remove(zipFile)
             def deleteFinished(flag):
                 self.settings.setValue("PF2", "")
                 self.refreshPython27()
@@ -1013,13 +991,21 @@ class Setting(QDialog, Ui_Settings, object):
             self.lg_exePath_gb.exec_()
         else:
             # 删除
-            if platform.system().lower() in ["windows", "darwin"]:
-                zipFile = self.plugin_path + os.sep + "Gblocks_0.91b.zip"
-                zipFolder = self.plugin_path + os.sep + "Gblocks_0.91b"
-                if os.path.exists(zipFolder):
-                    self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-                if os.path.exists(zipFile):
-                    os.remove(zipFile)
+            zipFile = self.plugin_path + os.sep + "Gblocks.zip"
+            zipFolder = glob.glob(f"{self.plugin_path}{os.sep}Gblocks*{os.sep}")
+            zipFolder = zipFolder[0] if zipFolder else ""
+            if os.path.exists(zipFolder):
+                self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            if os.path.exists(zipFile):
+                os.remove(zipFile)
+
+            # if platform.system().lower() in ["windows", "darwin"]:
+            #     zipFile = self.plugin_path + os.sep + "Gblocks.zip"
+            #     zipFolder = self.plugin_path + os.sep + "Gblocks_0.91b"
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
             self.settings.setValue("gblocks", "")
             QMessageBox.information(
                 self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
@@ -1047,10 +1033,10 @@ class Setting(QDialog, Ui_Settings, object):
                    "</span> to download manually and then specify the path as indicated above.</p></body></html>" % url
             if platform.system().lower() == "windows":
                 placeholdertext = "C:\\iqtree-1.6.8-Windows\\bin\\iqtree.exe"
-                self.IQ_target = "iqtree.exe"
+                self.IQ_target = ["iqtree.exe", "iqtree2.exe"]
             elif platform.system().lower() == "darwin":
                 placeholdertext = "../iqtree-1.6.8-MacOSX/bin/iqtree"
-                self.IQ_target = "iqtree"
+                self.IQ_target = ["iqtree", "iqtree2"]
             else:
                 placeholdertext = "/usr/bin/iqtree"
                 self.IQ_target = "All File (*)"
@@ -1066,20 +1052,13 @@ class Setting(QDialog, Ui_Settings, object):
             self.lg_exePath_iq.exec_()
         else:
             # 删除
-            if platform.system().lower() == "windows":
-                zipFile = self.plugin_path + os.sep + "iqtree-1.6.8.zip"
-                zipFolder = self.plugin_path + os.sep + "iqtree-1.6.8-Windows" if self.pc_bit == "64bit" else "iqtree-1.6.8-Windows32"
-                if os.path.exists(zipFolder):
-                    self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-                if os.path.exists(zipFile):
-                    os.remove(zipFile)
-            elif platform.system().lower() == "darwin":
-                zipFile = self.plugin_path + os.sep + "iqtree-1.6.8.zip"
-                zipFolder = self.plugin_path + os.sep + "iqtree-1.6.8-MacOSX"
-                if os.path.exists(zipFolder):
-                    self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-                if os.path.exists(zipFile):
-                    os.remove(zipFile)
+            zipFile = self.plugin_path + os.sep + "iqtree.zip"
+            zipFolder = glob.glob(f"{self.plugin_path}{os.sep}iqtree*{os.sep}")
+            zipFolder = zipFolder[0] if zipFolder else ""
+            if os.path.exists(zipFolder):
+                self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            if os.path.exists(zipFile):
+                os.remove(zipFile)
             self.settings.setValue("iq-tree", "")
             QMessageBox.information(
                 self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
@@ -1107,7 +1086,8 @@ class Setting(QDialog, Ui_Settings, object):
                    "</span> to download manually and then specify the path as indicated above.</p></body></html>" % url
             if platform.system().lower() == "windows":
                 placeholdertext = "C:\\MrBayes\\mrbayes_x64.exe" if self.pc_bit == "64bit" else "C:\\MrBayes\\mrbayes_x86.exe"
-                self.MB_target = "mrbayes_x64.exe mb.3.2.7-win64.exe" if self.pc_bit == "64bit" else "mrbayes_x86.exe mb.3.2.7-win32.exe"
+                self.MB_target = ["mrbayes_x64.exe", "mb.3.2.7-win64.exe"] if self.pc_bit == "64bit" \
+                                                        else ["mrbayes_x86.exe", "mb.3.2.7-win32.exe"]
             elif platform.system().lower() == "darwin":
                 placeholdertext = "../MrBayes/mb"
                 self.MB_target = "mb"
@@ -1126,13 +1106,21 @@ class Setting(QDialog, Ui_Settings, object):
             self.lg_exePath_mb.exec_()
         else:
             # 删除
-            if platform.system().lower() in ["darwin", "windows"]:
-                zipFile = self.plugin_path + os.sep + "MrBayes-3.2.6.zip"
-                zipFolder = self.plugin_path + os.sep + "MrBayes"
-                if os.path.exists(zipFolder):
-                    self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-                if os.path.exists(zipFile):
-                    os.remove(zipFile)
+            zipFile = self.plugin_path + os.sep + "MrBayes.zip"
+            zipFolder = glob.glob(f"{self.plugin_path}{os.sep}MrBayes*{os.sep}")
+            zipFolder = zipFolder[0] if zipFolder else ""
+            if os.path.exists(zipFolder):
+                self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            if os.path.exists(zipFile):
+                os.remove(zipFile)
+
+            # if platform.system().lower() in ["darwin", "windows"]:
+            #     zipFile = self.plugin_path + os.sep + "MrBayes.zip"
+            #     zipFolder = self.plugin_path + os.sep + "MrBayes"
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
             self.settings.setValue("MrBayes", "")
             QMessageBox.information(
                 self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
@@ -1247,17 +1235,17 @@ class Setting(QDialog, Ui_Settings, object):
             link = "<html><head/><body><p>If download failed, click <a href=\"%s\">" \
                    "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</a>" \
                    "</span> to download manually and then specify the path as indicated above.</p></body></html>" % url
-            self.MACSE_target = "macse_v2.03.jar"
+            self.MACSE_target = ["macse.jar", "macse_v2.03.jar", "macse_v2.05.jar", "macse_v2.07.jar"]
             if platform.system().lower() == "windows":
-                placeholdertext = "C:\\MACSE\\macse_v2.03.jar"
+                placeholdertext = "C:\\MACSE\\macse*.jar"
             elif platform.system().lower() in "darwin":
-                placeholdertext = "../MACSE/macse_v2.03.jar"
+                placeholdertext = "../MACSE/macse*.jar"
             else:
-                placeholdertext = "../MACSE/macse_v2.03.jar"
-                link = "<html><head/><body><p><a href=\"https://bioweb.supagro.inra.fr/macse/releases/macse_v2.03.jar\">" \
+                placeholdertext = "../MACSE/macse*.jar"
+                link = "<html><head/><body><p><a href=\"https://bioweb.supagro.inra.fr/macse/releases/macse_v2.05.jar\">" \
                        "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">MACSE download link</a>" \
                        "</span>. Please download it and specify the MACSE executable" \
-                       " file (<span style=\" font-weight:600; color:#ff0000;\">macse_v2.03.jar</span>) manually " \
+                       " file (<span style=\" font-weight:600; color:#ff0000;\">macse_v2.05.jar</span>) manually " \
                        "(using options above).</p></body></html>"
             self.lg_exePath_macse = LG_exePath(self, label1, label2, label3, placeholdertext, flag, self.MACSE_target,
                                                   link)
@@ -1269,12 +1257,20 @@ class Setting(QDialog, Ui_Settings, object):
             self.lg_exePath_macse.exec_()
         else:
             # 删除
-            exeFile = self.plugin_path + os.sep + "macse_v2.03.jar"
-            zipFile = self.plugin_path + os.sep + "macse_v2.03.jar.zip"
+            zipFile = self.plugin_path + os.sep + "macse.jar.zip"
+            exeFile = glob.glob(f"{self.plugin_path}{os.sep}macse*.jar")
+            exeFile = exeFile[0] if exeFile else ""
             if os.path.exists(exeFile):
                 os.remove(exeFile)
             if os.path.exists(zipFile):
                 os.remove(zipFile)
+
+            # exeFile = self.plugin_path + os.sep + "macse_v2.03.jar"
+            # zipFile = self.plugin_path + os.sep + "macse.jar.zip"
+            # if os.path.exists(exeFile):
+            #     os.remove(exeFile)
+            # if os.path.exists(zipFile):
+            #     os.remove(zipFile)
             self.settings.setValue("macse", "")
             QMessageBox.information(
                 self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
@@ -1349,13 +1345,21 @@ class Setting(QDialog, Ui_Settings, object):
             self.lg_exePath_trimAl.exec_()
         else:
             # 删除
-            if platform.system().lower() == "windows":
-                zipFile = self.plugin_path + os.sep + "trimal.v1.2rev59.zip"
-                zipFolder = self.plugin_path + os.sep + "trimAl"
-                if os.path.exists(zipFolder):
-                    self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-                if os.path.exists(zipFile):
-                    os.remove(zipFile)
+            zipFile = self.plugin_path + os.sep + "trimal.zip"
+            zipFolder = glob.glob(f"{self.plugin_path}{os.sep}trimAl*{os.sep}")
+            zipFolder = zipFolder[0] if zipFolder else ""
+            if os.path.exists(zipFolder):
+                self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            if os.path.exists(zipFile):
+                os.remove(zipFile)
+
+            # if platform.system().lower() == "windows":
+            #     zipFile = self.plugin_path + os.sep + "trimal.zip"
+            #     zipFolder = self.plugin_path + os.sep + "trimAl"
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
             self.settings.setValue("trimAl", "")
             QMessageBox.information(
                 self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
@@ -1442,6 +1446,204 @@ class Setting(QDialog, Ui_Settings, object):
             QMessageBox.information(
                 self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
             self.installStatus(flag, "uninstall")
+
+    @pyqtSlot()
+    def on_download_CodonW_button_clicked(self):
+        """
+        install CodonW
+        """
+        flag = "CodonW"
+        if self.download_CodonW_button.text() == "Install":
+            # self.installButtonSig.emit(
+            #     [self.download_python27_button, self.tableWidget, 3, "start", self.qss_file])
+            label1 = "<html><head/><body><p>If you have <span style=\"color:red\">CodonW v1.4.4</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>"
+            label2 = "CodonW:"
+            label3 = "<html><head/><body><p>If you don\'t have CodonW, please <span style=\" font-weight:600; color:#ff0000;\">configure</span>.</p></body></html>"
+            self.installStatus(flag, "start")
+            if platform.system().lower() == "windows":
+                placeholdertext = "C:\\CodonW\\CodonW.exe"
+                url = self.getURls("CodonW")
+                link = "<html><head/><body><p>If download failed, click <a href=\"%s\">" \
+                       "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</a>" \
+                       "</span> to download manually and then specify the path as indicated above.</p></body></html>" % url
+                self.CodonW_target = "CodonW.exe"
+            elif platform.system().lower() in "darwin":
+                placeholdertext = "../CodonW/codonw"
+                link = "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">If you already have " \
+                       "<a href=\"https://docs.conda.io/en/latest/\">Conda</a> installed, " \
+                       "you can install CodonW via the \"conda install -c bioconda codonw\" or " \
+                       "\"conda install -c bioconda/label/cf201901 codonw\" command. </span><br>" \
+                       "If you don't have Conda, you need to download CodonW " \
+                       "<a href=\"http://codonw.sourceforge.net/#Downloading%20and%20Installation\">" \
+                       "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>. " \
+                       "If you are adding CodonW to environment variables, when you finish the installation, " \
+                       "you need to close and reopen PhyloSuite to see if it installed successfully" \
+                       " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the CodonW executable" \
+                       " file (<span style=\" font-weight:600; color:#ff0000;\">CodonW</span>) manually (using options above).</p>" \
+                       "</body></html>"
+                self.CodonW_target = "codonw"
+            else:
+                placeholdertext = "../CodonW/codonw"
+                link = "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">If you already have " \
+                       "<a href=\"https://docs.conda.io/en/latest/\">Conda</a> installed, " \
+                       "you can install CodonW via the \"conda install -c bioconda codonw\" or " \
+                       "\"conda install -c bioconda/label/cf201901 codonw\" command. </span><br>" \
+                       "If you don't have Conda, you need to download CodonW " \
+                       "<a href=\"http://codonw.sourceforge.net/#Downloading%20and%20Installation\">" \
+                       "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>. " \
+                       "If you are adding CodonW to environment variables, when you finish the installation, " \
+                       "you need to close and reopen PhyloSuite to see if it installed successfully" \
+                       " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the CodonW executable" \
+                       " file (<span style=\" font-weight:600; color:#ff0000;\">CodonW</span>) manually (using options above).</p>" \
+                       "</body></html>"
+                self.CodonW_target = "codonw"
+            self.lg_exePath_CodonW = LG_exePath(self, label1, label2, label3, placeholdertext, flag, self.CodonW_target,
+                                                link)
+            if platform.system().lower() in ["darwin", "windows"]:
+                self.lg_exePath_CodonW.downloadSig.connect(self.downloadCodonW)
+            self.lg_exePath_CodonW.closeSig.connect(self.saveEXEpath)
+            # 添加最大化按钮
+            self.lg_exePath_CodonW.setWindowFlags(self.lg_exePath_CodonW.windowFlags() | Qt.WindowMinMaxButtonsHint)
+            self.lg_exePath_CodonW.exec_()
+        else:
+            # 删除
+            zipFile = self.plugin_path + os.sep + "CodonW.zip"
+            zipFolder = glob.glob(f"{self.plugin_path}{os.sep}*CodonW*{os.sep}")
+            zipFolder = zipFolder[0] if zipFolder else ""
+            if os.path.exists(zipFolder):
+                self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            if os.path.exists(zipFile):
+                os.remove(zipFile)
+
+            # if platform.system().lower() == "windows":
+            #     zipFile = self.plugin_path + os.sep + "CodonW.zip"
+            #     zipFolder = self.plugin_path + os.sep + "Win32CodonW"
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
+            # elif platform.system().lower() == "darwin":
+            #     zipFile = self.plugin_path + os.sep + "CodonW.zip"
+            #     zipFolder = self.plugin_path + os.sep + "MacOSCodonW"
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
+            self.settings.setValue("CodonW", "")
+            QMessageBox.information(
+                self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
+            self.installStatus(flag, "uninstall")
+
+    @pyqtSlot()
+    def on_download_plot_engine_button_clicked(self):
+        """
+        install plot engine for phylosuite
+        """
+        flag = "plot_engine"
+        if self.download_plot_engine_button.text() == "Install":
+            reply = QMessageBox.information(
+                self,
+                "Reminder",
+                "<p style='line-height:25px; height:25px'>"
+                "Note that only the latest version of \"PhyloSuite\" can download and configure the plot engine. <br><br>"
+                "Note that if you installed \"PhyloSuite\" using \"pip\", "
+                "please select \"Ok\" button and install necessary packages via: <br>"
+                "pip install plotly==5.10.0<br>"
+                "pip install pandas==1.1.5<br>"
+                "pip install kaleido==0.2.1<br>"
+                "pip install statsmodels==0.10.2<br><br>"
+                "Otherwise select the \"Ignore\" button to continue downloading the plot engine!</p>",
+                QMessageBox.Ok,
+                QMessageBox.Ignore)
+            if reply == QMessageBox.Ignore:
+                items = ("Chinese resource", "Coding", "Gitlab", "Github")
+                item, ok = QInputDialog.getItem(self, "Select the preferred download resource",
+                                                      "Resource:", items, 0, False)
+                if ok and item:
+                    self.downloadPlotEngine(item)
+        else:
+            # 删除
+            # 删除plotly、pandas那几个文件夹就行或者直接显示删除成功，让用户重新下载
+            # zipFile = self.plugin_path + os.sep + "CodonW.zip"
+            # zipFolder = glob.glob(f"{self.plugin_path}{os.sep}*CodonW*{os.sep}")
+            # zipFolder = zipFolder[0] if zipFolder else ""
+            # if os.path.exists(zipFolder):
+            #     self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            # if os.path.exists(zipFile):
+            #     os.remove(zipFile)
+            # self.settings.setValue("CodonW", "")
+            QMessageBox.information(
+                self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
+            self.installStatus(flag, "uninstall")
+
+    def plugin_download_button_clicked(self, **kwargs):
+        """
+        install plugins, 适用于所有的plugins
+        plugin_name
+        button
+
+        """
+        flag = kwargs["plugin_name"]
+        install_button = getattr(self, f"install_button{self.dict_name_row[flag]}")
+        if install_button.text() == "Install":
+            # self.installButtonSig.emit(
+            #     [self.download_python27_button, self.tableWidget, 3, "start", self.qss_file])
+            label1 = kwargs["label1"]
+            label2 = kwargs["label2"]
+            label3 = kwargs["label3"]
+            self.installStatus(flag, "start")
+            if platform.system().lower() == "windows":
+                placeholdertext = kwargs["placeholdertext_win"]
+                url = self.getURls(flag)
+                link = "<html><head/><body><p>If download failed, click <a href=\"%s\">" \
+                       "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</a>" \
+                       "</span> to download manually and then specify the path as indicated above.</p></body></html>" % url
+                self.target = kwargs["target_win"]
+            elif platform.system().lower() in "darwin":
+                placeholdertext = kwargs["placeholdertext_mac"]
+                link = kwargs["link_mac"]
+                self.target = kwargs["target_mac"]
+            else:
+                placeholdertext = kwargs["placeholdertext_linux"]
+                link = kwargs["link_linux"]
+                self.target = kwargs["target_linux"]
+            self.lg_exePath = LG_exePath(self, label1, label2, label3, placeholdertext, flag, self.target,
+                                                link)
+            if platform.system().lower() in ["darwin", "windows"]:
+                self.lg_exePath.downloadSig.connect(lambda : self.downloadPlugins(**kwargs))
+            self.lg_exePath.closeSig.connect(self.saveEXEpath)
+            # 添加最大化按钮
+            self.lg_exePath.setWindowFlags(self.lg_exePath.windowFlags() | Qt.WindowMinMaxButtonsHint)
+            self.lg_exePath.exec_()
+        else:
+            # 删除
+            zipFile = self.plugin_path + os.sep + kwargs["zipFileName_win"]
+            zipFolder = glob.glob(f"{self.plugin_path}{os.sep}*{kwargs['zipFolderFlag']}*{os.sep}")
+            zipFolder = zipFolder[0] if zipFolder else ""
+            if os.path.exists(zipFolder):
+                self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            if os.path.exists(zipFile):
+                os.remove(zipFile)
+
+            # if platform.system().lower() == "windows":
+            #     zipFile = self.plugin_path + os.sep + kwargs["zipFileName_win"]
+            #     zipFolder = self.plugin_path + os.sep + kwargs["zipFolder_win"]
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
+            # elif platform.system().lower() == "darwin":
+            #     zipFile = self.plugin_path + os.sep + kwargs["zipFileName_mac"]
+            #     zipFolder = self.plugin_path + os.sep + kwargs["zipFolder_mac"]
+            #     if os.path.exists(zipFolder):
+            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
+            #     if os.path.exists(zipFile):
+            #         os.remove(zipFile)
+            # self.settings.setValue(flag, "")
+            WorkThread(self.judgePluginInstall, parent=self).start()
+            QMessageBox.information(
+                self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
+            # self.installStatus(flag, "uninstall")
 
     @pyqtSlot()
     def on_pushButton_6_clicked(self):
@@ -1761,14 +1963,21 @@ class Setting(QDialog, Ui_Settings, object):
         msg.exec_()
 
     def saveEXEpath(self, name, path, mode="other"):
+        flag = "save"
+        if name.endswith("##**"):
+            flag = "download and install"
+            name = name.rstrip("##**")
         status = self.factory.programIsValid_2(name, path, parent=self)
-        self.installButtonSig.emit(
-            [self.dict_name_button[name], self.tableWidget, self.dict_name_row[name], status, self.qss_file])
+        if flag != "download and install":
+            # 如果是download，就避免调用该方法，因为后面还会调用judgePluginInstall，频繁调用会导致卡死
+            self.installButtonSig.emit(
+                [self.dict_name_button[name], self.tableWidget, self.dict_name_row[name], status, self.qss_file])
         if status == "succeed":
-            self.settings.setValue(name, path)
+            self.settings.setValue(name, path) # 该行代码导致报错
             if name == "PF2":
                 self.refreshPython27()
             if mode == "install":
+                # WorkThread(self.judgePluginInstall, parent=self).start()
                 QMessageBox.information(
                     self.parent, "Settings", "<p style='line-height:25px;height:25px'>installed successfully!</p>")
 
@@ -1893,7 +2102,7 @@ class Setting(QDialog, Ui_Settings, object):
             dict_args = {}
             dict_args["httpURL"] = self.getURls(flag)
             dict_args["exportPath"] = self.plugin_path + \
-                                      os.sep + "partitionfinder-2.1.1.zip"
+                                      os.sep + "partitionfinder.zip"
             dict_args["download_button"] = self.download_partfind_button
             dict_args["tableWidget"] = self.tableWidget
             dict_args["row"] = self.dict_name_row["PF2"]
@@ -1918,7 +2127,7 @@ class Setting(QDialog, Ui_Settings, object):
             dict_args = {}
             dict_args["httpURL"] = self.getURls("gblocks")
             dict_args["exportPath"] = self.plugin_path + \
-                                      os.sep + "Gblocks_0.91b.zip"
+                                      os.sep + "Gblocks.zip"
             dict_args["download_button"] = self.download_gblocks_button
             dict_args["tableWidget"] = self.tableWidget
             dict_args["row"] = self.dict_name_row["gblocks"]
@@ -1942,7 +2151,7 @@ class Setting(QDialog, Ui_Settings, object):
         try:
             dict_args = {}
             dict_args["httpURL"] = self.getURls("iq-tree")
-            dict_args["exportPath"] = self.plugin_path + os.sep + "iqtree-1.6.8.zip"
+            dict_args["exportPath"] = self.plugin_path + os.sep + "iqtree.zip"
             dict_args["download_button"] = self.download_iq_tree_button
             dict_args["tableWidget"] = self.tableWidget
             dict_args["row"] = self.dict_name_row["iq-tree"]
@@ -1967,7 +2176,7 @@ class Setting(QDialog, Ui_Settings, object):
             dict_args = {}
             dict_args["httpURL"] = self.getURls("MrBayes")
             dict_args["exportPath"] = self.plugin_path + \
-                                      os.sep + "MrBayes-3.2.6.zip"
+                                      os.sep + "MrBayes.zip"
             dict_args["download_button"] = self.download_MrBayes_button
             dict_args["tableWidget"] = self.tableWidget
             dict_args["row"] = self.dict_name_row["MrBayes"]
@@ -1992,7 +2201,7 @@ class Setting(QDialog, Ui_Settings, object):
             dict_args = {}
             dict_args["httpURL"] = self.getURls("macse")
             dict_args["exportPath"] = self.plugin_path + \
-                                      os.sep + "macse_v2.03.jar.zip"
+                                      os.sep + "macse.jar.zip"
             dict_args["download_button"] = self.download_macse_button
             dict_args["tableWidget"] = self.tableWidget
             dict_args["row"] = self.dict_name_row["macse"]
@@ -2017,7 +2226,7 @@ class Setting(QDialog, Ui_Settings, object):
             dict_args = {}
             dict_args["httpURL"] = self.getURls("trimAl")
             dict_args["exportPath"] = self.plugin_path + \
-                                      os.sep + "trimal.v1.2rev59.zip"
+                                      os.sep + "trimal.zip"
             dict_args["download_button"] = self.download_trimAl_button
             dict_args["tableWidget"] = self.tableWidget
             dict_args["row"] = self.dict_name_row["trimAl"]
@@ -2036,6 +2245,86 @@ class Setting(QDialog, Ui_Settings, object):
                     *sys.exc_info()))  # 捕获报错内容，只能在这里捕获，没有报错的地方无法捕获
             self.exception_signal.emit(self.exceptionInfo)  # 激发这个信号
             self.installStatus("trimAl", "uninstall")
+
+    def downloadCodonW(self):
+        try:
+            dict_args = {}
+            dict_args["httpURL"] = self.getURls("CodonW")
+            dict_args["exportPath"] = self.plugin_path + \
+                                      os.sep + "CodonW.zip"
+            dict_args["download_button"] = self.download_CodonW_button
+            dict_args["tableWidget"] = self.tableWidget
+            dict_args["row"] = self.dict_name_row["CodonW"]
+            dict_args["status"] = "succeed"
+            dict_args["qss"] = self.qss_file
+            dict_args["installButtonSig"] = self.installButtonSig
+            dict_args["flag"] = "CodonW"
+            dict_args["exe_path_window"] = self.lg_exePath_CodonW
+            dict_args["save_pathSig"] = self.save_pathSig
+            dict_args["target"] = self.CodonW_target
+            dict_args["installFinishedSig"] = self.installFinishedSig
+            httpwindow = HttpWindowDownload(parent=self, **dict_args)
+        except:
+            self.exceptionInfo = ''.join(
+                traceback.format_exception(
+                    *sys.exc_info()))  # 捕获报错内容，只能在这里捕获，没有报错的地方无法捕获
+            self.exception_signal.emit(self.exceptionInfo)  # 激发这个信号
+            self.installStatus("CodonW", "uninstall")
+
+    def downloadPlotEngine(self, resource):
+        try:
+            dict_args = {}
+            if not os.path.exists(f"{self.thisPath}{os.sep}os_bit"):
+                pc_bit = self.pc_bit
+            else:
+                with open(f"{self.thisPath}{os.sep}os_bit", encoding="utf-8", errors="ignore") as f:
+                    pc_bit = f.readline().rstrip()
+            dict_args["httpURL"] = dict_url[platform.system().lower()][pc_bit][resource]["plot engine"]
+            dict_args["exportPath"] = self.thisPath + \
+                                      os.sep + "plot_engine.zip"
+            dict_args["download_button"] = self.download_plot_engine_button
+            dict_args["tableWidget"] = self.tableWidget
+            dict_args["row"] = self.dict_name_row["plot_engine"]
+            dict_args["status"] = "succeed"
+            dict_args["qss"] = self.qss_file
+            dict_args["installButtonSig"] = self.installButtonSig
+            dict_args["flag"] = "plot_engine"
+            dict_args["save_pathSig"] = ""
+            dict_args["target"] = ""
+            dict_args["installFinishedSig"] = self.installFinishedSig
+            httpwindow = HttpWindowDownload(parent=self, **dict_args)
+        except:
+            self.exceptionInfo = ''.join(
+                traceback.format_exception(
+                    *sys.exc_info()))  # 捕获报错内容，只能在这里捕获，没有报错的地方无法捕获
+            self.exception_signal.emit(self.exceptionInfo)  # 激发这个信号
+            self.installStatus("CodonW", "uninstall")
+
+    def downloadPlugins(self, **kargs):
+        try:
+            dict_args = {}
+            dict_args["httpURL"] = self.getURls(kargs["plugin_name"])
+            dict_args["exportPath"] = self.plugin_path + \
+                                      os.sep + kargs["zipFileName_win"]
+            dict_args["download_button"] = getattr(self,
+                                                   f"install_button{self.dict_name_row[kargs['plugin_name']]}")
+            dict_args["tableWidget"] = self.tableWidget
+            dict_args["row"] = self.dict_name_row[kargs["plugin_name"]]
+            dict_args["status"] = "succeed"
+            dict_args["qss"] = self.qss_file
+            dict_args["installButtonSig"] = self.installButtonSig
+            dict_args["flag"] = kargs["plugin_name"]
+            dict_args["exe_path_window"] = self.lg_exePath
+            dict_args["save_pathSig"] = self.save_pathSig
+            dict_args["target"] = self.target
+            dict_args["installFinishedSig"] = self.installFinishedSig
+            httpwindow = HttpWindowDownload(parent=self, **dict_args)
+        except:
+            self.exceptionInfo = ''.join(
+                traceback.format_exception(
+                    *sys.exc_info()))  # 捕获报错内容，只能在这里捕获，没有报错的地方无法捕获
+            self.exception_signal.emit(self.exceptionInfo)  # 激发这个信号
+            self.installStatus(kargs["plugin_name"], "uninstall")
 
     def updateTableView2(self):
         model = self.tableView_2.model()
@@ -2070,11 +2359,15 @@ class Setting(QDialog, Ui_Settings, object):
                         "PF2": "lg_exePath_PF",
                         "macse": "lg_exePath_macse",
                         "trimAl": "lg_exePath_trimAl",
-                        "tbl2asn": "lg_exePath_ts"
+                        "tbl2asn": "lg_exePath_ts",
+                        "CodonW": "lg_exePath_CodonW"
                         }
-        if hasattr(self, dict_program[program]):
+        if (program in dict_program) and hasattr(self, dict_program[program]):
             resource = getattr(self, dict_program[program]).downloadRes
-        else: resource = ""
+        elif hasattr(self, "lg_exePath"):
+            resource = self.lg_exePath.downloadRes
+        else:
+            resource = "Chinese resource"
         if platform_ in dict_url:
             if self.pc_bit in dict_url[platform_]:
                 if resource in dict_url[platform_][self.pc_bit]:
@@ -2097,6 +2390,7 @@ class Setting(QDialog, Ui_Settings, object):
         return True if status == "Installed" else False
 
     def Install_finished(self, text, plugin):
+        WorkThread(self.judgePluginInstall, parent=self).start()
         if plugin in ["Rscript", "py27"]:
             QMessageBox.information(
                 self, "Settings",
@@ -2105,6 +2399,17 @@ class Setting(QDialog, Ui_Settings, object):
                 self.on_download_Rscript_button_clicked()
             elif plugin == "py27":
                 self.on_download_python27_button_clicked()
+        elif plugin == "plot_engine":
+            # 需要重启phylosuite
+            reply = QMessageBox.information(
+                self, "Settings",
+                "<p style='line-height:25px;height:25px'>Unzip finished, "
+                "do you want to restart PhyloSuite now?</p>",
+                QMessageBox.Ok,
+                QMessageBox.Cancel,
+            )
+            if reply == QMessageBox.Ok:
+                UpdateAPP().exec_restart()
         else:
             QMessageBox.information(
                 self, "Settings",
@@ -2122,10 +2427,24 @@ class Setting(QDialog, Ui_Settings, object):
         self.installStatus("python27", status)
 
     def judgePluginInstall(self):
-        for i in ["mafft", "tbl2asn", "RscriptPath", "PF2", "gblocks", "iq-tree", "MrBayes", "mpi",
-                  "java", "macse", "trimAl", "perl", "HmmCleaner"]:
+        for i in set(["mafft", "tbl2asn", "RscriptPath", "PF2", "gblocks", "iq-tree", "MrBayes", "mpi",
+                  "java", "macse", "trimAl", "perl", "HmmCleaner", "CodonW"] + \
+                 list(dict_plugin_settings.keys())):
             status = self.factory.programIsValid(i)
             self.installStatus(i, status)
+        # plog engine 单独判断
+        try:
+            import plotly
+            import pandas as pd
+            import statsmodels.api as sm
+            flag = "succeed"
+        except:
+            # exception = ''.join(
+            #     traceback.format_exception(
+            #         *sys.exc_info()))
+            # print(exception)
+            flag = "uninstall"
+        self.installStatus("plot_engine", flag)
         self.refreshPython27()  ##python 2.7的状态单独判断
 
     def refresh_taxonomyCombo(self, settingName=None):

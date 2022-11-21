@@ -315,10 +315,11 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
         with open(self.outpath + os.sep + self.latin_name + '.tbl', 'w', encoding="utf-8") as f2:
             f2.write(feature_tbl)
         template_line = " -t " + \
-                        self.template if self.template != "" else ""
+                        "\"%s\""%self.template if self.template != "" else ""
         commands = self.tbl2asn + template_line + \
             " -p " + self.outpath + " -a s -a b -V vb" + self.release_date
-#         print(commands)
+        with open(self.outpath + os.sep + "commands.txt", "w", errors="ignore") as f:
+            f.write(commands)
         os.system(commands)
         self.dict_args["progressSig"].emit(100)
         os.remove(self.xml_11)
@@ -353,7 +354,8 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
             r'COX[1-3]|NAD4L|NAD[1-6]|ND[1-6]|COB|CYTB|ATP[68]', re.I)  # 忽略大小写
         match = p.search(name)
         sign = 'H'
-        assert name != '', name
+        print(name, size, seq, pro)
+        assert name
         flag, dupl, cleanName = self.if_duplicated(name)
         if name[0] == '-':
             name = name.strip('-')
@@ -942,8 +944,8 @@ class ParseANNT(QDialog, Ui_parseANNT, Factory):
             time_end = datetime.datetime.now()
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
-            with open(self.dict_args["exportPath"] + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
+            with open(self.dict_args["exportPath"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
+                f.write("If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
         except BaseException:
             self.exceptionInfo = ''.join(
                 traceback.format_exception(

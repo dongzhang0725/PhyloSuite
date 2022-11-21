@@ -152,17 +152,17 @@
        </property>
        <item>
         <property name="text">
+         <string>Chinese resource</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>Github</string>
         </property>
        </item>
        <item>
         <property name="text">
          <string>Gitlab</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Chinese resource</string>
         </property>
        </item>
       </widget>

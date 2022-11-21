@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\exe_path.ui'
+# Form implementation generated from reading ui file 'D:\works\ZD\phylosuite\PhyloSuite\uifiles\exe_path.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -11,9 +11,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_ExePath(object):
     def setupUi(self, ExePath):
         ExePath.setObjectName("ExePath")
-        ExePath.resize(440, 310)
-        ExePath.setMinimumSize(QtCore.QSize(440, 0))
-        ExePath.setMaximumSize(QtCore.QSize(440, 16777215))
+        ExePath.resize(440, 313)
+        ExePath.setMinimumSize(QtCore.QSize(0, 0))
+        ExePath.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.verticalLayout = QtWidgets.QVBoxLayout(ExePath)
         self.verticalLayout.setObjectName("verticalLayout")
         self.groupBox_2 = QtWidgets.QGroupBox(ExePath)
@@ -118,7 +118,7 @@ class Ui_ExePath(object):
 
     def retranslateUi(self, ExePath):
         _translate = QtCore.QCoreApplication.translate
-        ExePath.setWindowTitle(_translate("ExePath", "Specify excutable path"))
+        ExePath.setWindowTitle(_translate("ExePath", "Specify executable path"))
         self.groupBox_2.setTitle(_translate("ExePath", "Specify"))
         self.label_3.setText(_translate("ExePath", "<html><head/><body><p>If you have Rscript, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>"))
         self.label.setText(_translate("ExePath", "Rscript Path:"))
@@ -128,10 +128,10 @@ class Ui_ExePath(object):
         self.groupBox.setTitle(_translate("ExePath", "Download"))
         self.label_2.setText(_translate("ExePath", "<html><head/><body><p>If you don\'t have Rscript, please <span style=\" font-weight:600; color:#ff0000;\">download</span>.</p></body></html>"))
         self.label_7.setText(_translate("ExePath", "Source:"))
-        self.comboBox.setItemText(0, _translate("ExePath", "Github"))
-        self.comboBox.setItemText(1, _translate("ExePath", "Gitlab"))
-        self.comboBox.setItemText(2, _translate("ExePath", "Coding"))
-        self.comboBox.setItemText(3, _translate("ExePath", "Chinese resource"))
+        self.comboBox.setItemText(0, _translate("ExePath", "Chinese resource"))
+        self.comboBox.setItemText(1, _translate("ExePath", "Github"))
+        self.comboBox.setItemText(2, _translate("ExePath", "Gitlab"))
+        self.comboBox.setItemText(3, _translate("ExePath", "Coding"))
         self.pushButton_5.setText(_translate("ExePath", "Download"))
         self.label_4.setText(_translate("ExePath", "<html><head/><body><p><a href=\"https://cran.r-project.org/src/base/R-3/\"><span style=\" text-decoration: underline; color:#0000ff;\">https://cran.r-project.org/src/base/R-3/</span></a></p></body></html>"))
         self.label_5.setText(_translate("ExePath", "Don\'t know how to configure? Please see"))

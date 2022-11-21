@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>874</width>
-    <height>496</height>
+    <width>703</width>
+    <height>393</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
@@ -31,7 +31,7 @@
        <string notr="true">QStackedWidget {background-color: white}</string>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="page_2">
        <layout class="QGridLayout" name="gridLayout_5">
@@ -128,6 +128,16 @@
             <string>14</string>
            </property>
           </row>
+          <row>
+           <property name="text">
+            <string>15</string>
+           </property>
+          </row>
+          <row>
+           <property name="text">
+            <string>16</string>
+           </property>
+          </row>
           <column>
            <property name="text">
             <string>Name</string>
@@ -150,7 +160,7 @@
           </column>
           <item row="0" column="0">
            <property name="text">
-            <string>MAFFT v7.313</string>
+            <string>MAFFT</string>
            </property>
           </item>
           <item row="0" column="1">
@@ -168,7 +178,7 @@
           </item>
           <item row="1" column="0">
            <property name="text">
-            <string>Rscript 3.4.4</string>
+            <string>Rscript</string>
            </property>
           </item>
           <item row="1" column="1">
@@ -222,7 +232,7 @@
           </item>
           <item row="4" column="0">
            <property name="text">
-            <string>Gblocks 0.91b</string>
+            <string>Gblocks</string>
            </property>
           </item>
           <item row="4" column="1">
@@ -240,7 +250,7 @@
           </item>
           <item row="5" column="0">
            <property name="text">
-            <string>IQ-TREE v. 1.6.8</string>
+            <string>IQ-TREE</string>
            </property>
           </item>
           <item row="5" column="1">
@@ -255,7 +265,7 @@
           </item>
           <item row="6" column="0">
            <property name="text">
-            <string>MrBayes 3.2.6</string>
+            <string>MrBayes</string>
            </property>
           </item>
           <item row="6" column="1">
@@ -300,7 +310,7 @@
           </item>
           <item row="9" column="0">
            <property name="text">
-            <string>JAVA (JRE&gt;1.5) + MACSE v2.03</string>
+            <string>JAVA (JRE&gt;1.5) + MACSE</string>
            </property>
           </item>
           <item row="9" column="1">
@@ -330,7 +340,7 @@
           </item>
           <item row="11" column="0">
            <property name="text">
-            <string>trimAl v1.2</string>
+            <string>trimAl</string>
            </property>
           </item>
           <item row="11" column="1">
@@ -364,6 +374,36 @@
            </property>
           </item>
           <item row="13" column="2">
+           <property name="text">
+            <string>Uninstalled</string>
+           </property>
+          </item>
+          <item row="14" column="0">
+           <property name="text">
+            <string>CodonW</string>
+           </property>
+          </item>
+          <item row="14" column="1">
+           <property name="text">
+            <string>Correspondence Analysis of Codon Usage</string>
+           </property>
+          </item>
+          <item row="14" column="2">
+           <property name="text">
+            <string>Uninstalled</string>
+           </property>
+          </item>
+          <item row="15" column="0">
+           <property name="text">
+            <string>Plot engine</string>
+           </property>
+          </item>
+          <item row="15" column="1">
+           <property name="text">
+            <string>Plot engine for PhyloSuite</string>
+           </property>
+          </item>
+          <item row="15" column="2">
            <property name="text">
             <string>Uninstalled</string>
            </property>
@@ -704,11 +744,37 @@ margin-top: 5px;</string>
             </layout>
            </item>
            <item>
-            <widget class="QPushButton" name="pushButton">
-             <property name="text">
-              <string>Restore default settings</string>
-             </property>
-            </widget>
+            <layout class="QGridLayout" name="gridLayout_7">
+             <item row="0" column="0" colspan="2">
+              <widget class="QPushButton" name="pushButton">
+               <property name="text">
+                <string>Restore default settings</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QPushButton" name="pushButton_export">
+               <property name="text">
+                <string>Export settings</string>
+               </property>
+               <property name="icon">
+                <iconset resource="../myRes.qrc">
+                 <normaloff>:/picture/resourses/up.png</normaloff>:/picture/resourses/up.png</iconset>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QPushButton" name="pushButton_import">
+               <property name="text">
+                <string>Import settings</string>
+               </property>
+               <property name="icon">
+                <iconset resource="../myRes.qrc">
+                 <normaloff>:/picture/resourses/import.png</normaloff>:/picture/resourses/import.png</iconset>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_4">

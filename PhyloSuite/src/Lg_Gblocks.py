@@ -53,7 +53,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         self.focusSig = focusSig if focusSig else pyqtSignal(
             str)  # 为了方便workflow
         self.workflow = workflow
-        self.gb_exe = '"' + gb_exe + '"'
+        self.gb_exe = gb_exe
         self.autoInputs = autoInputs
         self.interrupt = False
         self.setupUi(self)
@@ -75,6 +75,13 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         self.setStyleSheet(self.qss_file)
         # 恢复用户的设置
         self.guiRestore()
+        # 判断程序的版本
+        self.version = "0.91b"
+        # version_worker = WorkThread(
+        #     lambda : self.factory.get_version("Gblocks", self),
+        #     parent=self)
+        # version_worker.start()
+        #
         self.log_gui = self.gui4Log()
         self.exception_signal.connect(self.popupException)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
@@ -220,7 +227,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                     self.auto_parFromfile()
                     # self.auto_parSig.emit()
                     self.collect_args()  # 参数刷新了
-                commands = "{self.gb_exe} \"{self.input_file}\" -t={self.t} -b1={self.b1} -b2={self.b2} -b3={self.b3} -b4={self.b4} -b5={self.b5}{self.b6} -s={self.s} -p={self.p} -v={self.v} -n={self.n} -u={self.u} -k={self.k} -d={self.d} -e={self.e}".format(
+                commands = "\"{self.gb_exe}\" \"{self.input_file}\" -t={self.t} -b1={self.b1} -b2={self.b2} -b3={self.b3} -b4={self.b4} -b5={self.b5}{self.b6} -s={self.s} -p={self.p} -v={self.v} -n={self.n} -u={self.u} -k={self.k} -d={self.d} -e={self.e}".format(
                     self=self)
                 # print(os.path.basename(self.input_file), commands)
                 self.run_code(commands)
@@ -249,9 +256,9 @@ class Gblocks(QDialog, Ui_Gblocks, object):
             self.time_used = str(time_end - time_start)
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
-            with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
+            with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                        "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                         "If you use Gblocks, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -679,8 +686,8 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         self.e = self.lineEdit_3.text()
         prefix = "Ambiguously aligned fragments of %d alignments were removed in batches" % self.comboBox_4.count(
         ) if self.comboBox_4.count() > 1 else "Ambiguously aligned fragments of 1 alignment was removed"
-        self.description = '''%s using Gblocks (Talavera and Castresana, 2007) with the following parameter settings: minimum number of sequences for a conserved/flank position (%s/%s), maximum number of contiguous non-conserved positions (%s), minimum length of a block (%s), allowed gap positions (%s).''' % (
-            prefix, self.b1, self.b2, self.b3, self.b4, self.comboBox_5.currentText().lower())
+        self.description = '''%s using Gblocks %s (Talavera and Castresana, 2007) with the following parameter settings: minimum number of sequences for a conserved/flank position (%s/%s), maximum number of contiguous non-conserved positions (%s), minimum length of a block (%s), allowed gap positions (%s).''' % (
+            prefix, self.version, self.b1, self.b2, self.b3, self.b4, self.comboBox_5.currentText().lower())
         self.reference = "Talavera, G., Castresana, J., 2007. Improvement of phylogenies after removing divergent and ambiguously aligned blocks from protein sequence alignments. Syst. Biol. 56, 564-577."
 
     def auto_parFromfile(self):

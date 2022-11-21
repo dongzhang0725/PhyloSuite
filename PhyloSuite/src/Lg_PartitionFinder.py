@@ -60,7 +60,7 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
         self.focusSig = focusSig if focusSig else pyqtSignal(
             str)  # 为了方便workflow
         self.workflow = workflow
-        self.pythonEXE = '"' + pythonEXE + '"' if (type(pythonEXE)==str and pythonEXE) else ""
+        self.pythonEXE = pythonEXE if (type(pythonEXE)==str and pythonEXE) else ""
         self.autoPartFindPath = autoPartFindPath
         self.interrupt = False
         self.PF2_exception.connect(self.popup_PF2_exception)
@@ -343,10 +343,35 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
             self.time_used = str(time_end - time_start)
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
-            with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
+            # 加上version信息
+            with open(self.exportPath + os.sep + "PhyloSuite_PartitionFinder.log") as f:
+                content = f.read()
+            rgx_version = re.compile(r"-+\s+PartitionFinder.+?(\d+\.\d+\.\d+)")
+            if rgx_version.search(content):
+                self.version = rgx_version.search(content).group(1)
+            else:
+                self.version = ""
+            self.description = self.description.replace("$version$", self.version)
+            with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                        "\n\nIf you use PhyloSuite v1.2.3 v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
                         "If you use PartitionFinder 2, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
+            # 生成partition表格
+            best_scheme = glob.glob(f"{self.exportPath}{os.sep}*{os.sep}best_scheme.txt")
+            if best_scheme:
+                list_partition_table = [["Subset partitions", "Sites", "Best model"]]
+                best_scheme_file = best_scheme[0]
+                with open(best_scheme_file, encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                list_ = re.findall(r"(?m)^\d +\| +(.+?) +\| +(\d+) +\|[^\|]+\| (.+)", content)
+                for num,i in enumerate(list_):
+                    model, sites, name = i
+                    list_partition_table.append([f"P{num+1}: ({name.strip(' ')})",
+                                                 str(sites),
+                                                 model])
+                self.factory.write_csv_file(f"{self.exportPath}{os.sep}best_scheme_and_models.csv",
+                                            list_partition_table,
+                                            silence=True)
             if not self.interrupt:
                 if self.workflow:
                     # work flow跑的
@@ -1107,7 +1132,7 @@ models = {self.models};\n# MODEL SELECCTION #\nmodel_selection = {self.model_sel
 {self.search}".format(self=self)
         # 描述
         block_num = len(self.dataBlocks.strip().split("\n"))
-        self.description = '''Best partitioning scheme and evolutionary models for %d pre-defined partitions were selected using PartitionFinder2 (Lanfear et al., 2017), with %s algorithm and %s criterion.''' % (
+        self.description = '''Best partitioning scheme and evolutionary models for %d pre-defined partitions were selected using PartitionFinder2 v$version$ (Lanfear et al., 2017), with %s algorithm and %s criterion.''' % (
             block_num, search_algorithm, self.model_selection)
         self.reference = '''Lanfear, R., Frandsen, P. B., Wright, A. M., Senfeld, T., Calcott, B. (2016) PartitionFinder 2: new methods for selecting partitioned models of evolution formolecular and morphological phylogenetic analyses. Molecular biology and evolution. DOI: dx.doi.org/10.1093/molbev/msw260'''
 
@@ -1157,9 +1182,9 @@ models = {self.models};\n# MODEL SELECCTION #\nmodel_selection = {self.model_sel
                 shutil.copy(self.alignment, self.exportPath + os.sep + self.alnmt_base)
                 if self.tree:
                     shutil.copy(self.tree, self.exportPath + os.sep + self.treepath_base)
-            cmds = "%s \"%s\" \"%s\" %s" % (self.pythonEXE, self.PFexe, self.exportPath, self.cmd_option)
+            cmds = "\"%s\" \"%s\" \"%s\" %s" % (self.pythonEXE, self.PFexe, self.exportPath, self.cmd_option)
             if pf_compile:
-                cmds = re.sub(r"^%s "%self.pythonEXE, "", cmds)
+                cmds = re.sub(r'^\"%s\" '%self.pythonEXE, "", cmds)
             return cmds
         else:
             QMessageBox.warning(

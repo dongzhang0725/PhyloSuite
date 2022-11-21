@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>835</width>
-    <height>522</height>
+    <width>691</width>
+    <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -179,12 +179,12 @@
        <property name="checked">
         <bool>false</bool>
        </property>
-       <layout class="QGridLayout" name="gridLayout_5">
+       <layout class="QGridLayout" name="gridLayout_3">
         <property name="leftMargin">
          <number>3</number>
         </property>
         <property name="topMargin">
-         <number>6</number>
+         <number>3</number>
         </property>
         <property name="rightMargin">
          <number>3</number>
@@ -192,18 +192,65 @@
         <property name="bottomMargin">
          <number>3</number>
         </property>
-        <property name="horizontalSpacing">
-         <number>3</number>
-        </property>
-        <property name="verticalSpacing">
+        <property name="spacing">
          <number>2</number>
         </property>
+        <item row="1" column="0" colspan="3">
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <widget class="QCheckBox" name="checkBox">
+            <property name="text">
+             <string> rcluster (speed up):</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSpinBox" name="spinBox">
+            <property name="maximum">
+             <number>100</number>
+            </property>
+            <property name="value">
+             <number>10</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
         <item row="0" column="0">
          <widget class="QRadioButton" name="radioButton">
           <property name="text">
            <string>Edge-linked</string>
           </property>
           <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0" colspan="3">
+         <widget class="DblClickTexedit" name="textEdit">
+          <property name="toolTip">
+           <string>Double-click to edit partition</string>
+          </property>
+          <property name="lineWrapMode">
+           <enum>QTextEdit::NoWrap</enum>
+          </property>
+          <property name="readOnly">
            <bool>true</bool>
           </property>
          </widget>
@@ -219,19 +266,6 @@
          <widget class="QCheckBox" name="checkBox_3">
           <property name="text">
            <string>Merge</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0" colspan="3">
-         <widget class="DblClickTexedit" name="textEdit">
-          <property name="toolTip">
-           <string>Double-click to edit partition</string>
-          </property>
-          <property name="lineWrapMode">
-           <enum>QTextEdit::NoWrap</enum>
-          </property>
-          <property name="readOnly">
-           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -591,6 +625,11 @@
             <string>BEAST (AA)</string>
            </property>
           </item>
+          <item>
+           <property name="text">
+            <string>FastTree (AA)</string>
+           </property>
+          </item>
          </widget>
         </item>
        </layout>
@@ -734,5 +773,22 @@
  <resources>
   <include location="../myRes.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>checkBox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBox</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>573</x>
+     <y>60</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>646</x>
+     <y>60</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

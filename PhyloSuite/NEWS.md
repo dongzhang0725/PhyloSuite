@@ -1,5 +1,9 @@
 # Release Note
 
+## PhyloSuite v1.2.3pre1 (2022-11-16, Wednesday)
++ Optimized some functions
++ Speed up some analyses
+
 ## PhyloSuite v1.2.2 (2020-08-06, Thursday)
 + Fixed some bugs in MACSE, PartitionFinder, MrBayes and IQ-TREE plugins
 + Added a function to continue previous analyses for IQ-TREE and ModelFinder

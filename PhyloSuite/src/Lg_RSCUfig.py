@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import datetime
+
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+
+from src.Lg_settings import Setting
 from src.factory import Factory, WorkThread
 from uifiles.Ui_RSCUfig import Ui_RSCUfig
 import inspect
@@ -15,7 +18,13 @@ from collections import OrderedDict
 import subprocess
 import re
 import platform
-
+try:
+    import plotly
+    import pandas as pd
+    import plotly.express as px
+    from plotly.subplots import make_subplots
+except:
+    pass
 
 class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
     exception_signal = pyqtSignal(str)  # 定义所有类都可以使用的信号
@@ -28,7 +37,7 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
             autoInputs=None,
             workPath=None,
             focusSig=None,
-            RscriptPath=None,
+            # RscriptPath=None,
             parent=None):
         super(DrawRSCUfig, self).__init__(parent)
         self.parent = parent
@@ -37,7 +46,6 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
         self.workPath = workPath
         self.focusSig = focusSig
         self.autoInputs = autoInputs
-        self.RscriptPath = RscriptPath
         self.setupUi(self)
         # 保存设置
         self.DrawRSCUfig_settings = QSettings(
@@ -52,11 +60,13 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
         self.setStyleSheet(self.qss_file)
         # 恢复用户的设置
         self.guiRestore()
+        self.autoParameters(len(self.autoInputs))
         self.exception_signal.connect(self.popupException)
         self.warning_signal.connect(self.popupWarning)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         self.progressSig.connect(self.runProgress)
         self.listWidget_3.installEventFilter(self)
+        self.tabWidget.setCurrentIndex(0)
         # 给开始按钮添加菜单
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
@@ -69,6 +79,10 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
         self.pushButton.toolButton.setMenu(menu)
         self.pushButton.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
+        # 信号槽
+        self.tabWidget.currentChanged.connect(self.judgeRinstallation)
+        self.lineEdit.clicked.connect(self.setFont)
+        self.lineEdit_2.clicked.connect(self.setFont)
         ## brief demo
         country = self.factory.path_settings.value("country", "UK")
         url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-14-3-1-Brief-example" if \
@@ -98,6 +112,7 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
             return
         for item in listItems:
             self.listWidget_3.takeItem(self.listWidget_3.row(item))
+        self.autoParameters(self.listWidget_3.count())
 
     @pyqtSlot()
     def on_pushButton_2_clicked(self):
@@ -123,6 +138,8 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
             self.exportPath = self.factory.creat_dirs(self.workPath +
                                         os.sep + "RSCUfig_results" + os.sep + self.output_dir_name)
             self.dict_args["exportPath"] = self.exportPath
+            self.RSCUpath = os.path.normpath(self.exportPath + os.sep + "RSCU.pdf").replace("\\", "/")
+            self.RSCUhtml = os.path.normpath(self.exportPath + os.sep + "RSCU_interactive.html").replace("\\", "/")
             self.dict_args["dict_files_title"] = dict_inputs
             self.dict_args["exception_signal"] = self.exception_signal
             self.dict_args["progressSig"] = self.progressSig
@@ -130,12 +147,25 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
                 self.listWidget_2.item(i).text() for i in range(self.listWidget_2.count())]
             self.dict_args["Order of x-axis"] = xItems
             colorItems = [
-                i.text() for i in [self.pushButton_color, self.pushButton_color_2, self.pushButton_color_3, self.pushButton_color_4]]
+                i.text() for i in [self.pushButton_color, self.pushButton_color_2,
+                                   self.pushButton_color_3, self.pushButton_color_4,
+                                   self.pushButton_color_5, self.pushButton_color_6,
+                                   self.pushButton_color_7, self.pushButton_color_8
+                                   ]]
             self.dict_args["Color of stacks"] = colorItems
             self.dict_args["Figure height"] = self.spinBox_5.value()
             self.dict_args["Figure width"] = self.spinBox_6.value()
             self.dict_args["height proportion"] = self.doubleSpinBox_2.value()
             self.dict_args["ylim"] = self.doubleSpinBox_3.value()
+            self.dict_args["plot_exe"] = self.tabWidget.tabText(self.tabWidget.currentIndex())
+            # plotly
+            self.dict_args["Figure height plotly"] = self.spinBox_7.value()
+            self.dict_args["Figure width plotly"] = self.spinBox_8.value()
+            self.dict_args["Figure interval"] = self.doubleSpinBox.value()
+            self.dict_args["RSCU offset"] = self.doubleSpinBox_4.value()
+            self.dict_args["font family"] = self.lineEdit.text()
+            self.dict_args["font size"] = int(self.lineEdit_2.text())
+            self.dict_args["bar width"] = self.doubleSpinBox_5.value()
             ok = self.factory.remove_dir(self.exportPath, parent=self)
             if not ok:
                 #提醒是否删除旧结果，如果用户取消，就不执行
@@ -160,40 +190,66 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
                     self.exportPath,
                     self.qss_file,
                     self])
-            rscriptPath = self.rscu2fig()
-            # subprocess.call([self.RscriptPath, "--vanilla", rscriptPath], shell=True)
-            subprocess.call("%s --vanilla %s"%(self.RscriptPath, rscriptPath), shell=True)
-            self.progressSig.emit(100)
-            if not os.path.exists(self.RSCUpath):
-                self.warning_signal.emit("No RSCU figure generated! The R packages \"ggplot2\" or \"ggpubr\" may not be installed properly. You may:<br>"
-                    "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>1</span>. Install \"ggplot2\" and \"ggpubr\" manually, restart PhyloSuite and try again<br>"
-                    "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>2</span>. Execute \"rscu_scripts.r\" script: <span style='font-weight:600; color:#ff0000;'>Rscript rscu_scripts.r</span><br>"
-                    "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>3</span>. Copy the content of \"rscu_scripts.r\" and paste it into Rstudio or Rgui to execute")
-                self.startButtonStatusSig.emit(
-                    [
-                        self.pushButton,
-                        self.progressBar,
-                        "except",
-                        self.exportPath,
-                        self.qss_file,
-                        self])
+            if self.dict_args["plot_exe"] == "ggplot (R)":
+                rscriptPath = self.rscu2fig()
+                subprocess.call("%s --vanilla %s"%(self.RscriptPath, rscriptPath), shell=True)
+                self.progressSig.emit(100)
+                if not os.path.exists(self.RSCUpath):
+                    self.warning_signal.emit("No RSCU figure generated! The R packages \"ggplot2\" or \"ggpubr\" may not be installed properly. You may:<br>"
+                        "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>1</span>. Install \"ggplot2\" and \"ggpubr\" manually, restart PhyloSuite and try again<br>"
+                        "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>2</span>. Execute \"rscu_scripts.r\" script: <span style='font-weight:600; color:#ff0000;'>Rscript rscu_scripts.r</span><br>"
+                        "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>3</span>. Copy the content of \"rscu_scripts.r\" and paste it into Rstudio or Rgui to execute")
+                    self.startButtonStatusSig.emit(
+                        [
+                            self.pushButton,
+                            self.progressBar,
+                            "except",
+                            self.exportPath,
+                            self.qss_file,
+                            self])
+                else:
+                    self.startButtonStatusSig.emit(
+                        [
+                            self.pushButton,
+                            self.progressBar,
+                            "stop",
+                            self.exportPath,
+                            self.qss_file,
+                            self])
+                if os.path.exists(self.exportPath + os.sep + "Rplots.pdf"):
+                    os.remove(self.exportPath + os.sep + "Rplots.pdf")
             else:
-                self.startButtonStatusSig.emit(
-                    [
-                        self.pushButton,
-                        self.progressBar,
-                        "stop",
-                        self.exportPath,
-                        self.qss_file,
-                        self])
-            if os.path.exists(self.exportPath + os.sep + "Rplots.pdf"):
-                os.remove(self.exportPath + os.sep + "Rplots.pdf")
+                self.plotly_rscu()
+                self.progressSig.emit(100)
+                if not os.path.exists(self.RSCUpath):
+                    self.warning_signal.emit(
+                        "No RSCU figure generated! The R packages \"ggplot2\" or \"ggpubr\" may not be installed properly. You may:<br>"
+                        "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>1</span>. Install \"ggplot2\" and \"ggpubr\" manually, restart PhyloSuite and try again<br>"
+                        "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>2</span>. Execute \"rscu_scripts.r\" script: <span style='font-weight:600; color:#ff0000;'>Rscript rscu_scripts.r</span><br>"
+                        "&nbsp;&nbsp;&nbsp;<span style='font-weight:600'>3</span>. Copy the content of \"rscu_scripts.r\" and paste it into Rstudio or Rgui to execute")
+                    self.startButtonStatusSig.emit(
+                        [
+                            self.pushButton,
+                            self.progressBar,
+                            "except",
+                            self.exportPath,
+                            self.qss_file,
+                            self])
+                else:
+                    self.startButtonStatusSig.emit(
+                        [
+                            self.pushButton,
+                            self.progressBar,
+                            "stop",
+                            self.exportPath,
+                            self.qss_file,
+                            self])
             self.focusSig.emit(self.exportPath)
             time_end = datetime.datetime.now()
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
-            with open(self.exportPath + os.sep + "summary.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
+            with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
+                f.write("If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
         except BaseException:
             self.exceptionInfo = ''.join(
                 traceback.format_exception(
@@ -233,9 +289,19 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
                 value = obj.value()
                 self.DrawRSCUfig_settings.setValue(name, value)
             if isinstance(obj, QPushButton):
-                if name in ["pushButton_color", "pushButton_color_2", "pushButton_color_3", "pushButton_color_4"]:
+                if name in ["pushButton_color", "pushButton_color_2",
+                            "pushButton_color_3", "pushButton_color_4",
+                            "pushButton_color_5", "pushButton_color_6",
+                            "pushButton_color_7", "pushButton_color_8",
+                            ]:
                     color = obj.palette().color(1)
                     self.DrawRSCUfig_settings.setValue(name, color.name())
+            # if isinstance(obj, QTabWidget):
+            #     value = obj.currentIndex()
+            #     self.DrawRSCUfig_settings.setValue(name, value)
+            if isinstance(obj, QLineEdit):
+                value = obj.text()
+                self.DrawRSCUfig_settings.setValue(name, value)
 
     def guiRestore(self):
 
@@ -260,20 +326,39 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
                             dict_inputs[i] = os.path.splitext(os.path.basename(i))[0]
                     self.inputListWidget_3(dict_inputs)
             if isinstance(obj, QSpinBox):
-                value = self.DrawRSCUfig_settings.value(name, 8)
+                value = self.DrawRSCUfig_settings.value(name, obj.value())
                 obj.setValue(int(value))
             if isinstance(obj, QDoubleSpinBox):
                 value = self.DrawRSCUfig_settings.value(name, None)
                 if value:
                     obj.setValue(float(value))
             if isinstance(obj, QPushButton):
-                if obj in [self.pushButton_color, self.pushButton_color_2, self.pushButton_color_3, self.pushButton_color_4]:
-                    dict_ini_colors = {"pushButton_color":"#6598C9", "pushButton_color_2":"#CB4A28", "pushButton_color_3":"#9AC664", "pushButton_color_4":"#7F5499"}
+                if obj in [self.pushButton_color, self.pushButton_color_2,
+                           self.pushButton_color_3, self.pushButton_color_4,
+                           self.pushButton_color_5, self.pushButton_color_6,
+                           self.pushButton_color_7, self.pushButton_color_8,
+                           ]:
+                    dict_ini_colors = {"pushButton_color":"#6598C9",
+                                       "pushButton_color_2":"#CB4A28",
+                                       "pushButton_color_3":"#9AC664",
+                                       "pushButton_color_4":"#7F5499",
+                                       "pushButton_color_5":"#6060C6",
+                                       "pushButton_color_6":"#69D1B1",
+                                       "pushButton_color_7":"#222a2a",
+                                       "pushButton_color_8":"#750d86",
+                                       }
                     ini_color = dict_ini_colors[name]
                     color = self.DrawRSCUfig_settings.value(name, ini_color)
                     obj.setStyleSheet("background-color:%s"%color)
                     obj.setText(color)
                     obj.clicked.connect(self.changePbColor)
+            # if isinstance(obj, QTabWidget):
+            #     value = int(self.DrawRSCUfig_settings.value(name, 0))
+            #     obj.setCurrentIndex(value)
+            #     self.judgeRinstallation(value)
+            if isinstance(obj, QLineEdit):
+                value = self.DrawRSCUfig_settings.value(name, obj.text())
+                obj.setText(value)
 
     def runProgress(self, num):
         oldValue = self.progressBar.value()
@@ -321,6 +406,9 @@ class DrawRSCUfig(QDialog, Ui_RSCUfig, object):
     def inputListWidget_3(self, dict_items):
         if not dict_items:
             return
+        # 自动根据文件数调整参数
+
+        self.autoParameters(len(dict_items))
         self.listWidget_3.clear()
         for num, i in enumerate(dict_items):
             if os.path.exists(i):
@@ -377,11 +465,10 @@ p <- ggplot(data = {self.Order_name}, mapping = aes(x = x{self.Order_name}, y = 
         self.allfignum = "p" + ",p".join(allfig)
         self.str_matrix = ",".join(["1"]*len(self.dict_args["dict_files_title"]) + ["%.2f" %(1/self.dict_args["height proportion"])])  # (1,1,1,0.5)
         self.nrow = str(len(self.dict_args["dict_files_title"]) + 1)
-        self.RSCUpath = os.path.normpath(self.exportPath + os.sep + "RSCU.pdf").replace("\\", "/")
         script += '''
 library("ggpubr")
 pall <- ggarrange({self.allfignum}, heights=c({self.str_matrix}), ncol=1, nrow={self.nrow}, align ="v")
-pdf("{self.RSCUpath}",width={self.dict_args[Figure width]},height={self.dict_args[Figure height]}) ## 如果觉得比例不合适，可以适当调整width和height的大小。
+pdf("{self.RSCUpath}",width={self.dict_args[Figure width]},height={self.dict_args[Figure height]}) 
 pall
 dev.off() 
 '''.format(self=self)
@@ -435,3 +522,232 @@ dev.off()
             self,
             "Warning",
             "<p style='line-height:25px; height:25px'>%s</p>" % text)
+
+    def add_fig_to_row(self, figall, fig, row_, col_, hover_text):
+        # add all the traces to appropriate subplot
+        for f in fig.data:
+            # manually modify hover
+            f["hovertemplate"] = hover_text
+            figall.add_trace(f, row=row_, col=col_)
+        # in order to make layout set here work in final figure
+        fig.for_each_trace(lambda trace_: trace_.update(xaxis=f"x{row_}", yaxis=f"y{row_}"))
+        fig.layout[f"xaxis{row_}"] = fig.layout.pop("xaxis")
+        fig.layout[f"yaxis{row_}"] = fig.layout.pop("yaxis")
+        fig.layout[f"xaxis{row_}"]["anchor"] = f"y{row_}"
+        fig.layout[f"yaxis{row_}"]["anchor"] = f"x{row_}"
+        fig.layout[f"yaxis{row_}"].pop("domain")  # otherwise it will affect figall's domain
+        figall.update_layout(fig.layout)
+        return figall
+
+    def plotly_rscu(self):
+        '''
+        TODO: space, offset, hover, color?, text family？ size? bar width?
+        spacing 调好了图会比较好看
+        每副正图需要215的高度？
+        space 好像也最好跟着图的数量增加而改变
+        :return:
+        '''
+        files, titles = [], []
+        for file in self.dict_args["dict_files_title"]:
+            files.append(file)
+            titles.append(self.dict_args["dict_files_title"][file])
+        fig_n = len(files)
+        space_figs = self.dict_args["Figure interval"]
+        y_offset = self.dict_args["RSCU offset"]
+        text_size = self.dict_args["font size"] - 1
+        width_ = self.dict_args["Figure width plotly"]
+        height_ = self.dict_args["Figure height plotly"]
+        bottom2fig_ratio = 1/self.dict_args["height proportion"]
+        row_heights_ = [1 / (fig_n + bottom2fig_ratio)] * fig_n + [
+            1 / (fig_n + bottom2fig_ratio) * bottom2fig_ratio]  # [1/2.5]*2 + [1/2.5*0.5] = [0.4, 0.4, 0.2]
+
+        # subplots figure...
+        figall = make_subplots(rows=fig_n + 1, row_heights=row_heights_, vertical_spacing=space_figs,
+                               subplot_titles=titles)
+        self.progressSig.emit(5)
+        for num, file in enumerate(files):
+            row_ = num + 1
+            rscu = pd.read_csv(file)
+            rscu = rscu.astype({"Fill": "category"})
+            rscu = rscu.astype({"aaRatio": "object"})
+            # change nan to str to avoid nan text
+            rscu.loc[rscu["aaRatio"].isna(), "aaRatio"] = ""
+            max_rscu = rscu.groupby(by=["AA"]).sum().max()["RSCU"]
+            color_map = {i+1: self.dict_args["Color of stacks"][i] for i in range(8)}
+            fig = px.bar(rscu,
+                         x="AA",
+                         y="RSCU",
+                         color="Fill",
+                         barmode='stack',
+                         text="aaRatio",
+                         custom_data=["AA", "RSCU", "Codon"],
+                         color_discrete_map=color_map)
+            # set x text order
+            fig.update_layout(xaxis={'categoryorder': 'array',
+                                     'categoryarray': self.dict_args["Order of x-axis"]})
+            # show text to outside
+            fig.update_traces(textposition='outside')
+            if row_ != fig_n:
+                fig.update_xaxes(showline=True,
+                                 linewidth=1,
+                                 linecolor="black",
+                                 ticks="outside",
+                                 tickangle=0,
+                                 title=None,
+                                 showticklabels=False)
+            else:
+                fig.update_xaxes(showline=True,
+                                 linewidth=1,
+                                 linecolor="black",
+                                 ticks="outside",
+                                 title=None)
+            # set y range
+            fig.update_yaxes(showline=True,
+                             linewidth=1,
+                             linecolor="black",
+                             ticks="outside",
+                             range=[0, max_rscu + y_offset])
+            # add all the traces to appropriate subplot
+            figall = self.add_fig_to_row(figall,
+                                         fig,
+                                         row_,
+                                         1,
+                                         "AA=%{x}<br>RSCU=%{y}<br>Codon=%{customdata[2]}<extra></extra>")
+            # for f in fig.data:
+            #     # manually modify hover
+            #     f["hovertemplate"] = "AA=%{x}<br>RSCU=%{y}<br>Codon=%{customdata[2]}<extra></extra>"
+            #     figall.add_trace(f, row=row_, col=1)
+            # # in order to make layout set here work in final figure
+            # fig.for_each_trace(lambda trace_: trace_.update(xaxis=f"x{row_}",
+            #                                                 yaxis=f"y{row_}"))
+            # fig.layout[f"xaxis{row_}"] = fig.layout.pop("xaxis")
+            # fig.layout[f"yaxis{row_}"] = fig.layout.pop("yaxis")
+            # fig.layout[f"xaxis{row_}"]["anchor"] = f"y{row_}"
+            # fig.layout[f"yaxis{row_}"]["anchor"] = f"x{row_}"
+            # fig.layout[f"yaxis{row_}"].pop("domain")  # otherwise it will affect figall's domain
+            # figall.update_layout(fig.layout)
+            self.progressSig.emit(5 + 80*row_/fig_n)
+        fig_bottom = px.bar(rscu,
+                            x="AA",
+                            y="Equality",
+                            color="Fill",
+                            barmode='stack',
+                            text="Codon",
+                            custom_data=['AA', "Codon"],
+                            color_discrete_map=color_map)
+        # set x text order
+        fig_bottom.update_layout(xaxis={'categoryorder': 'array',
+                                        'categoryarray': self.dict_args["Order of x-axis"]})
+        # show text to inside
+        fig_bottom.update_traces(textposition='inside')
+        bottom_row = fig_n + 1
+        # add all the traces to appropriate subplot
+        figall = self.add_fig_to_row(figall,
+                                     fig_bottom,
+                                     bottom_row,
+                                     1,
+                                     "AA=%{x}<br>Codon=%{customdata[1]}<extra></extra>")
+        # for f in fig_bottom.data:
+        #     # manually modify hover
+        #     f["hovertemplate"] = "AA=%{x}<br>Codon=%{customdata[1]}<extra></extra>"
+        #     figall.add_trace(f, row=bottom_row, col=1)
+        # # in order to make layout set here work in final figure
+        # fig_bottom.for_each_trace(lambda trace_: trace_.update(xaxis=f"x{bottom_row}", yaxis=f"y{bottom_row}"))
+        # fig_bottom.layout[f"xaxis{bottom_row}"] = fig_bottom.layout.pop("xaxis")
+        # fig_bottom.layout[f"yaxis{bottom_row}"] = fig_bottom.layout.pop("yaxis")
+        # fig_bottom.layout[f"xaxis{bottom_row}"]["anchor"] = f"y{bottom_row}"
+        # fig_bottom.layout[f"yaxis{bottom_row}"]["anchor"] = f"x{bottom_row}"
+        # fig_bottom.layout[f"yaxis{bottom_row}"].pop("domain")  # otherwise it will affect figall's domain
+        # figall.update_layout(fig_bottom.layout)
+        self.progressSig.emit(95)
+
+        # 设置整体的layout
+        dict_layout = {"barmode": "stack",
+                        "autosize": False,
+                        "showlegend": False,
+                        "plot_bgcolor": "white",
+                        "paper_bgcolor": "white",
+                        "uniformtext_minsize": text_size,
+                        "uniformtext_mode": "show",
+                        "width": width_,
+                        "height": height_}
+        # 最下面的图注单独设置
+        dict_layout[f"yaxis{fig_n + 1}"] = {"title": None, "showticklabels": False}
+        dict_layout[f"xaxis{fig_n + 1}"] = {"title": None, "showticklabels": False}
+        figall.update_layout(dict_layout)
+        # adjust title of each sub-figure
+        figall.for_each_annotation(lambda x: x.update(x=0,
+                                                      align="left",
+                                                      xanchor="left",
+                                                      font={"size": self.dict_args["font size"],
+                                                            "family": self.dict_args["font family"],
+                                                            "color": "black"}))
+        # set all the bar width
+        figall.for_each_trace(lambda trace_: trace_.update(width=self.dict_args["bar width"]))
+        self.progressSig.emit(98)
+        # figall.show()
+        # print(figall)
+        plotly.io.write_image(figall, self.RSCUpath, format='pdf')
+        figall.write_html(self.RSCUhtml)
+
+    def judgeRinstallation(self, index):
+        tab_text = self.tabWidget.tabText(index)
+        if tab_text == "ggplot (R)":
+            RscriptPath = self.factory.programIsValid("RscriptPath", mode="tool")
+            if RscriptPath:
+                self.RscriptPath = RscriptPath
+            else:
+                reply = QMessageBox.information(
+                    self,
+                    "Information",
+                    "<p style='line-height:25px; height:25px'>Please install Rscript and reopen the window.</p>",
+                    QMessageBox.Ok,
+                    QMessageBox.Cancel)
+                if reply == QMessageBox.Ok:
+                    self.close()
+                    self.setting = Setting(self)
+                    self.setting.display_table(self.setting.listWidget.item(1))
+                    # 隐藏？按钮
+                    self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
+                    self.setting.exec_()
+                else:
+                    self.tabWidget.setCurrentIndex(0)
+
+    def setFont(self):
+        family = self.lineEdit.text()
+        size = int(self.lineEdit_2.text())
+        font, ok = QFontDialog.getFont(QFont(family, size), self)
+        if ok:
+            family_ = font.family()
+            size_ = str(font.pointSize())
+            self.lineEdit.setText(family_)
+            self.lineEdit_2.setText(size_)
+
+    def autoParameters(self, file_n):
+        if file_n == 1:
+            self.spinBox_7.setValue(410)
+            self.doubleSpinBox.setValue(0.11)
+        elif file_n == 2:
+            self.spinBox_7.setValue(620)
+            self.doubleSpinBox.setValue(0.07)
+        elif file_n == 3:
+            self.spinBox_7.setValue(820)
+            self.doubleSpinBox.setValue(0.05)
+        elif file_n == 4:
+            self.spinBox_7.setValue(1040)
+            self.doubleSpinBox.setValue(0.035)
+        elif file_n == 5:
+            self.spinBox_7.setValue(1240)
+            self.doubleSpinBox.setValue(0.03)
+        elif file_n == 6:
+            self.spinBox_7.setValue(1440)
+            self.doubleSpinBox.setValue(0.025)
+        elif file_n == 7:
+            self.spinBox_7.setValue(1640)
+            self.doubleSpinBox.setValue(0.020)
+        elif file_n == 8:
+            self.spinBox_7.setValue(1840)
+            self.doubleSpinBox.setValue(0.015)
+        elif file_n == 9:
+            self.spinBox_7.setValue(2040)
+            self.doubleSpinBox.setValue(0.015)

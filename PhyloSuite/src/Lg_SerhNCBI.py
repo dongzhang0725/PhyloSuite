@@ -329,7 +329,9 @@ In case of excessive usage of the E-utilities, NCBI will attempt to contact a us
             if isinstance(obj, QLineEdit):
                 if name == "lineEdit":
                     self.completer_texts = self.serhNCBI_settings.value(
-                        name, [])  # get stored value from registry
+                        name, ["Monogenea[ORGN] AND (mitochondrion[TITL] OR mitochondrial[TITL]) AND 10000:50000[SLEN]"])  # get stored value from registry
+                    if not self.completer_texts: # avoid trouble
+                        self.completer_texts = ["Monogenea[ORGN] AND (mitochondrion[TITL] OR mitochondrial[TITL]) AND 10000:50000[SLEN]"]
                     self.setLCompleter()
             if isinstance(obj, QSpinBox):
                 if name == "spinBox":

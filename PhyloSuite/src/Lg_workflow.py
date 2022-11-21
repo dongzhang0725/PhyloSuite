@@ -643,7 +643,8 @@ class WorkFlow(QDialog, Ui_WorkFlow, object):
     def get_inputs(self, software_widget):
         exportPath = software_widget.exe_window.exportPath
         if software_widget.softWare == "MAFFT":
-            return [exportPath + os.sep + i for i in os.listdir(exportPath) if (i != "summary.txt") and (not re.search(r"^PhyloSuite\w+\.log$", i))]
+            return glob.glob(exportPath + os.sep + "*_mafft.[!log]*")
+            # [exportPath + os.sep + i for i in os.listdir(exportPath) if (i not in ["summary and citation.txt", "removed_seqs", "summary.txt"]) and (not re.search(r"^PhyloSuite\w+\.log$", i))]
         elif software_widget.softWare == "MACSE":
             return glob.glob(exportPath + os.sep + "*_NT_removed_chars.*")
         elif software_widget.softWare == "Gblocks":

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'F:\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite\uifiles\MrBayes.ui'
+# Form implementation generated from reading ui file 'D:\works\ZD\phylosuite\uifiles\MrBayes.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -231,7 +231,7 @@ class Ui_MrBayes(object):
         self.spinBox_6.setSizePolicy(sizePolicy)
         self.spinBox_6.setMinimum(1)
         self.spinBox_6.setMaximum(99999999)
-        self.spinBox_6.setProperty("value", 100)
+        self.spinBox_6.setProperty("value", 1000)
         self.spinBox_6.setObjectName("spinBox_6")
         self.gridLayout_4.addWidget(self.spinBox_6, 0, 3, 1, 1)
         self.label_4 = QtWidgets.QLabel(self.groupBox_5)
@@ -443,8 +443,8 @@ class Ui_MrBayes(object):
         self.label_4.setText(_translate("MrBayes", "Number of Chains:"))
         self.label_6.setToolTip(_translate("MrBayes", "Type of consensus tree"))
         self.label_6.setText(_translate("MrBayes", "Contype:"))
-        self.comboBox_8.setItemText(0, _translate("MrBayes", "Halfcompat"))
-        self.comboBox_8.setItemText(1, _translate("MrBayes", "Allcompat"))
+        self.comboBox_8.setItemText(0, _translate("MrBayes", "Allcompat"))
+        self.comboBox_8.setItemText(1, _translate("MrBayes", "Halfcompat"))
         self.label_7.setToolTip(_translate("MrBayes", "Format of consensus tree"))
         self.label_7.setText(_translate("MrBayes", "Conformat:"))
         self.comboBox_9.setItemText(0, _translate("MrBayes", "Simple"))

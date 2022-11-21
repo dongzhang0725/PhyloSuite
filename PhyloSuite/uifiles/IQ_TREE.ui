@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>849</width>
-    <height>553</height>
+    <width>742</width>
+    <height>578</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,8 +30,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>831</width>
-        <height>535</height>
+        <width>724</width>
+        <height>560</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout">
@@ -264,179 +264,199 @@
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="1,1">
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_2">
-              <item>
-               <widget class="QLabel" name="label_22">
-                <property name="font">
-                 <font>
-                  <pointsize>10</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>Code Table:</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="comboBox_9">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>114</width>
-                  <height>26</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>26</height>
-                 </size>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>1 The standard code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>2 Vertebrate mitochondrial code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>3 The Yeast Mitochondrial Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>4 Mold, Protozoan, and Coelenterate Mitochondrial code and Mycoplasma/Spiroplasma code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>5 Invertebrate mitochondrial</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>6 The Ciliate, Dasycladacean and Hexamita Nuclear Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>9 Echinoderm and Flatworm mitochondrial code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>10 The Euplotid Nuclear Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>11 The Bacterial, Archaeal and Plant Plastid Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>12 The Alternative Yeast Nuclear Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>13 Ascidian mitochondrial code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>14 Alternative flatworm mitochondrial code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>16 Chlorophycean Mitochondrial Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>21 Trematode Mitochondrial Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>22 Scenedesmus obliquus Mitochondrial Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>23 Thraustochytrium Mitochondrial Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>24 Pterobranchia Mitochondrial Code</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>25 Candidate Division SR1 and Gracilibacteria Code</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-             </layout>
+           <layout class="QGridLayout" name="gridLayout_4" columnstretch="1,7,1,2" columnminimumwidth="0,0,0,0">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_22">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Code Table:</string>
+              </property>
+             </widget>
             </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <item row="0" column="1">
+             <widget class="QComboBox" name="comboBox_9">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>114</width>
+                <height>26</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>26</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true"/>
+              </property>
               <item>
-               <widget class="QCheckBox" name="checkBox_9">
-                <property name="text">
-                 <string>Outgroup (s):</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
+               <property name="text">
+                <string>1 The standard code</string>
+               </property>
               </item>
               <item>
-               <widget class="CheckableComboBox" name="comboBox_10">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>95</width>
-                  <height>26</height>
-                 </size>
-                </property>
-               </widget>
+               <property name="text">
+                <string>2 Vertebrate mitochondrial code</string>
+               </property>
               </item>
-             </layout>
+              <item>
+               <property name="text">
+                <string>3 The Yeast Mitochondrial Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>4 Mold, Protozoan, and Coelenterate Mitochondrial code and Mycoplasma/Spiroplasma code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>5 Invertebrate mitochondrial</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>6 The Ciliate, Dasycladacean and Hexamita Nuclear Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>9 Echinoderm and Flatworm mitochondrial code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>10 The Euplotid Nuclear Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>11 The Bacterial, Archaeal and Plant Plastid Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>12 The Alternative Yeast Nuclear Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>13 Ascidian mitochondrial code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>14 Alternative flatworm mitochondrial code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>16 Chlorophycean Mitochondrial Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>21 Trematode Mitochondrial Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>22 Scenedesmus obliquus Mitochondrial Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>23 Thraustochytrium Mitochondrial Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>24 Pterobranchia Mitochondrial Code</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>25 Candidate Division SR1 and Gracilibacteria Code</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QLabel" name="label_27">
+              <property name="font">
+               <font>
+                <pointsize>10</pointsize>
+               </font>
+              </property>
+              <property name="text">
+               <string>Threads:</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="3">
+             <widget class="QComboBox" name="comboBox_6">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>13</width>
+                <height>26</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QCheckBox" name="checkBox_9">
+              <property name="text">
+               <string>Outgroup(s):</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1" colspan="3">
+             <widget class="CheckableComboBox" name="comboBox_10">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>95</width>
+                <height>26</height>
+               </size>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
             <item>
-             <widget class="QLabel" name="label_14">
+             <widget class="QCheckBox" name="checkBox_10">
               <property name="text">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click &lt;a href=&quot;http://www.iqtree.org/doc/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt; to learn more about &lt;span style=&quot; font-weight:600; color:#ff0000;&quot;&gt;IQ-TREE&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-              <property name="openExternalLinks">
-               <bool>true</bool>
+               <string>fast search to resemble FastTree</string>
               </property>
              </widget>
             </item>
@@ -454,21 +474,42 @@
              </spacer>
             </item>
             <item>
-             <widget class="QLabel" name="label_3">
+             <widget class="QLabel" name="label_14">
               <property name="text">
-               <string>Demo:</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click &lt;a href=&quot;http://www.iqtree.org/doc/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt; to learn more about &lt;span style=&quot; font-weight:600; color:#ff0000;&quot;&gt;IQ-TREE&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="openExternalLinks">
+               <bool>true</bool>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="ClickedLableGif" name="label">
-              <property name="toolTip">
-               <string>Brief example</string>
-              </property>
-              <property name="text">
-               <string/>
+             <widget class="Line" name="line_2">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
               </property>
              </widget>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+               <widget class="QLabel" name="label_3">
+                <property name="text">
+                 <string>Demo:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="ClickedLableGif" name="label">
+                <property name="toolTip">
+                 <string>Brief example</string>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -496,53 +537,6 @@
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QComboBox" name="comboBox_7">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>13</width>
-              <height>26</height>
-             </size>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="2">
-           <widget class="QLabel" name="label_27">
-            <property name="font">
-             <font>
-              <pointsize>10</pointsize>
-             </font>
-            </property>
-            <property name="text">
-             <string>Threads:</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="3">
-           <widget class="QComboBox" name="comboBox_6">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>13</width>
-              <height>26</height>
-             </size>
             </property>
            </widget>
           </item>
@@ -687,6 +681,22 @@
             </item>
            </layout>
           </item>
+          <item row="0" column="1" colspan="3">
+           <widget class="QComboBox" name="comboBox_7">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>13</width>
+              <height>26</height>
+             </size>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -711,35 +721,19 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
-           <widget class="QComboBox" name="comboBox_8">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_36">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
             </property>
-            <property name="minimumSize">
-             <size>
-              <width>13</width>
-              <height>26</height>
-             </size>
+            <property name="toolTip">
+             <string>Maximum iterations</string>
             </property>
-            <item>
-             <property name="text">
-              <string>Ultrafast</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Standard</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>None</string>
-             </property>
-            </item>
+            <property name="text">
+             <string>Max. iter.:</string>
+            </property>
            </widget>
           </item>
           <item row="0" column="2">
@@ -776,8 +770,24 @@
             </property>
            </widget>
           </item>
+          <item row="1" column="4" colspan="2">
+           <widget class="QCheckBox" name="checkBox_6">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="text">
+             <string>SH-aLRT branch test | replicates:</string>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
           <item row="0" column="4">
            <widget class="QCheckBox" name="checkBox_5">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
             <property name="toolTip">
              <string>Write bootstrap trees to .ufboot file</string>
             </property>
@@ -785,29 +795,7 @@
              <string>Create .ufboot file</string>
             </property>
             <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="5" colspan="2">
-           <widget class="QCheckBox" name="checkBox_7">
-            <property name="text">
-             <string>Approximate Bayes test</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_36">
-            <property name="font">
-             <font>
-              <pointsize>10</pointsize>
-             </font>
-            </property>
-            <property name="toolTip">
-             <string>Maximum iterations</string>
-            </property>
-            <property name="text">
-             <string>Max. iter.:</string>
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -833,6 +821,44 @@
             </property>
            </widget>
           </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="comboBox_8">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>13</width>
+              <height>26</height>
+             </size>
+            </property>
+            <item>
+             <property name="text">
+              <string>Ultrafast</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Standard</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>None</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="0" column="5" colspan="2">
+           <widget class="QCheckBox" name="checkBox_7">
+            <property name="text">
+             <string>Approximate Bayes test</string>
+            </property>
+           </widget>
+          </item>
           <item row="1" column="2">
            <widget class="QLabel" name="label_37">
             <property name="font">
@@ -845,38 +871,6 @@
             </property>
             <property name="text">
              <string>Minimum cor. coef.:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3">
-           <widget class="QDoubleSpinBox" name="doubleSpinBox">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>Minimum correlation coefficient</string>
-            </property>
-            <property name="minimum">
-             <double>0.900000000000000</double>
-            </property>
-            <property name="maximum">
-             <double>0.990000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>0.010000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="4" colspan="2">
-           <widget class="QCheckBox" name="checkBox_6">
-            <property name="text">
-             <string>SH-aLRT branch test | replicates:</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -899,6 +893,28 @@
             </property>
             <property name="singleStep">
              <number>100</number>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string>Minimum correlation coefficient</string>
+            </property>
+            <property name="minimum">
+             <double>0.900000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>0.990000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.010000000000000</double>
             </property>
            </widget>
           </item>

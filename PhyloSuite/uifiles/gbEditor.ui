@@ -22,8 +22,23 @@
   <property name="sizeGripEnabled">
    <bool>true</bool>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
+  <layout class="QGridLayout" name="gridLayout_3">
+   <property name="leftMargin">
+    <number>5</number>
+   </property>
+   <property name="topMargin">
+    <number>5</number>
+   </property>
+   <property name="rightMargin">
+    <number>5</number>
+   </property>
+   <property name="bottomMargin">
+    <number>5</number>
+   </property>
+   <property name="spacing">
+    <number>3</number>
+   </property>
+   <item row="0" column="0">
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -51,28 +66,21 @@
        <bool>true</bool>
       </attribute>
      </widget>
-     <widget class="QTextBrowser" name="textBrowser">
+     <widget class="QPlainTextEdit" name="plainTextEdit_gb">
+      <property name="font">
+       <font>
+        <family>Courier New</family>
+       </font>
+      </property>
       <property name="autoFillBackground">
-       <bool>true</bool>
-      </property>
-      <property name="tabChangesFocus">
-       <bool>true</bool>
-      </property>
-      <property name="undoRedoEnabled">
-       <bool>true</bool>
-      </property>
-      <property name="readOnly">
-       <bool>false</bool>
-      </property>
-      <property name="openExternalLinks">
        <bool>true</bool>
       </property>
      </widget>
     </widget>
    </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
+   <item row="1" column="0">
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="0">
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
         <widget class="QCheckBox" name="checkBox">
@@ -80,12 +88,15 @@
           <string>Set NCR threshold (intergenic region &gt; ? bp):</string>
          </property>
          <property name="checked">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QSpinBox" name="spinBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -105,43 +116,54 @@
        </item>
       </layout>
      </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_2">
-       <property name="text">
-        <string>Validate</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../myRes.qrc">
-         <normaloff>:/picture/resourses/valid_shield-512.png</normaloff>:/picture/resourses/valid_shield-512.png</iconset>
-       </property>
-      </widget>
+     <item row="0" column="1" rowspan="2">
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QPushButton" name="pushButton_2">
+         <property name="text">
+          <string>Validate</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../myRes.qrc">
+           <normaloff>:/picture/resourses/valid_shield-512.png</normaloff>:/picture/resourses/valid_shield-512.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QPushButton" name="pushButton">
+         <property name="text">
+          <string>Find</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../myRes.qrc">
+           <normaloff>:/picture/resourses/Spotlight_OS_X.svg.png</normaloff>:/picture/resourses/Spotlight_OS_X.svg.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QPushButton" name="pushButton_7">
+         <property name="toolTip">
+          <string>Predict unrecognized tRNAs using ARWEN</string>
+         </property>
+         <property name="text">
+          <string>Predict tRNA (LEU and SER)</string>
+         </property>
+         <property name="icon">
+          <iconset resource="../myRes.qrc">
+           <normaloff>:/picture/resourses/original.png</normaloff>:/picture/resourses/original.png</iconset>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
-      <widget class="QPushButton" name="pushButton">
+     <item row="1" column="0">
+      <widget class="QPushButton" name="pushButton_rmv">
        <property name="text">
-        <string>Find</string>
+        <string>Remove all IDs with no annotation</string>
        </property>
        <property name="icon">
         <iconset resource="../myRes.qrc">
-         <normaloff>:/picture/resourses/Spotlight_OS_X.svg.png</normaloff>:/picture/resourses/Spotlight_OS_X.svg.png</iconset>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="pushButton_7">
-       <property name="toolTip">
-        <string>Predict unrecognized tRNAs using ARWEN</string>
-       </property>
-       <property name="text">
-        <string>Predict tRNA (LEU and SER)</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../myRes.qrc">
-         <normaloff>:/picture/resourses/original.png</normaloff>:/picture/resourses/original.png</iconset>
+         <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
        </property>
       </widget>
      </item>
