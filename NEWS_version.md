@@ -1,6 +1,6 @@
 # Release Note
 
-## PhyloSuite v1.2.3pre1 (2022-11-20, Sunday)
+## PhyloSuite v1.2.3pre2 (2022-11-20, Sunday)
 + Added a protein database to the download function via IDs
 + fixed the “memory error” bug for MrBayes and sped up the summary function
 + fixed a bug that prevented setting-up PhyloSuite in Linux
@@ -16,8 +16,11 @@
 + added a function to keep the sequence name in trimAl
 + added plugins to draw figures
 + added 11 tree-based analyes packaged into the new “TreeSuite” funtion
-  <strong>If you are chinese user and cannot download the packages below, please visite http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#3-Download-links-for-users-in-China</strong>
+<strong>If you are chinese user and cannot download the packages below, please visite http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#Chinese_download_link</strong>
 
+## PhyloSuite v1.2.3pre1 (2022-11-16, Wednesday)
++ Optimized some functions
++ Speed up some analyses
 
 ## PhyloSuite v1.2.2 (2020-08-06, Thursday)
 + Fixed some bugs in MACSE, PartitionFinder, MrBayes and IQ-TREE plugins
