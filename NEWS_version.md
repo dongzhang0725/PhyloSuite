@@ -1,10 +1,12 @@
 # Release Note
 
-## PhyloSuite v1.2.3pre2 (2022-11-20, Sunday)
+## PhyloSuite v1.2.3pre3 (2022-11-20, Sunday)
 + Added a protein database to the download function via IDs
-+ fixed the “memory error” bug for MrBayes and sped up the summary function
++ fixed the “memory error” bug for MrBayes
 + fixed a bug that prevented setting-up PhyloSuite in Linux
 + fixed a bug for automatically checking the update function
++ fixed a bug that wrongly detected linked/unlinked branch lengths for IQ-TREE and MrBayes
++ optimized the progress bar of ModelFinder
 + added the –leavegappyregion option to MAFFT
 + added a function for split codon sites to the concatenation function
 + optimized the get taxonomy from NCBI function
@@ -16,7 +18,10 @@
 + added a function to keep the sequence name in trimAl
 + added plugins to draw figures
 + added 11 tree-based analyes packaged into the new “TreeSuite” funtion
-<strong>If you are chinese user and cannot download the packages below, please visite http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#Chinese_download_link</strong>
++ added all-in-one PhyloSuite virtual environment version, available at https://hub.docker.com/repository/docker/dongzhang0725/phylosuite/tags. For configuration, see http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#4-Install-all-in-one-version-of-virtual-environment.
++ speeded up several functions, such as extraction, codon alignment using MAFFT, sequence format conversion, concatenation and summarization function in MrBayes
+
+<strong>If you are chinese user and cannot download the packages below, please visite http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#Chinese_download_link </strong>
 
 ## PhyloSuite v1.2.3pre1 (2022-11-16, Wednesday)
 + Optimized some functions
