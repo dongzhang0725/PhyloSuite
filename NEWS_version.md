@@ -1,5 +1,11 @@
 # Release Note
 
+## PhyloSuite v1.2.3 (2023-02-10, Friday)
++ Added the citation for the newest PhyloSuite (v1.2.3) paper (iMeta, doi: https://doi.org/10.1002/imt2.87)
++ Optimized the progress bar for ModelFinder
++ Fixed some bugs in several functions, such as the "configure NCBI taxonomic database", etc.
++ Added optimal partitioning strategy and models summary for PartitionFinder2 and ModelFinder
+
 ## PhyloSuite v1.2.3pre3 (2022-11-20, Sunday)
 + Added a protein database to the download function via IDs
 + fixed the “memory error” bug for MrBayes
