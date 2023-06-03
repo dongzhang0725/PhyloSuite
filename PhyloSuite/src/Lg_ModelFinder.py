@@ -76,9 +76,10 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         # File only, no fallback to registry or or.
         self.modelfinder_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.textEdit.dblclicked.connect(self.popupPartitionEditor)
         self.partitioneditor = PartitionEditor(mode="MF", parent=self)
@@ -349,7 +350,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                                             silence=True)
             if softWare in ["BEAST1 (NUC)", "BEAST2 (NUC)", "BEAST (AA)"]:
                 str1 = self.description + " " + self.parseResults() +\
-                    "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n" \
+                    f"\n\nIf you use PhyloSuite v1.2.3, please cite:\n{self.factory.get_PS_citation()}\n\n" \
                     "If you use ModelFinder, please cite:\n" + self.reference + \
                     "\n\nhttps://justinbagley.rbind.io/2016/10/11/setting-dna-substitution-models-beast/\nDetails for setting substitution models in %s\n" % softWare
                 array = [[i] for i in str1.split(
@@ -359,7 +360,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             else:
                 with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                     f.write(self.description + " " + self.parseResults() +
-                            "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                            f"\n\nIf you use PhyloSuite v1.2.3, please cite:\n{self.factory.get_PS_citation()}\n\n"
                             "If you use ModelFinder, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -738,9 +739,13 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
     def run_MF(self):
         rgx_test_model = re.compile(r"^ModelFinder will test (\d+) \w+ models")
         rgx_part_model = re.compile(r"^Loading (\d+) partitions\.\.\.")
+        rgx_merge_model = re.compile(r"(?m)^Merging models to increase model fit \(about (\d+) total partition schemes\)\.\.\.")
+        rgx_merge_num = re.compile(r"(?m)^ *(\d+) +[^ ]+ +\d+\.\d+ +[^ ]+")
         rgx_finished = re.compile(r"^Date and Time:")
         self.totleModels = None
         self.totlePartitions_2 = None
+        self.part_scheme_num = None
+        self.rgx_model_num = 0
         list_partition_names = []  # 存放partition的名字
         num = 0  # partition出现的次数，当num等于2倍partition的个数的时候，就完成
         is_error = False  ##判断是否出了error
@@ -754,6 +759,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                 if out_line == "" and self.MF_popen.poll() is not None:
                     break
                 list_outline = out_line.strip().split()
+                if rgx_merge_num.search(out_line):
+                    self.rgx_model_num = int(rgx_merge_num.search(out_line).group(1))
                 if rgx_test_model.search(out_line):
                     self.totleModels = int(
                         rgx_test_model.search(out_line).group(1))
@@ -764,6 +771,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                         int(rgx_part_model.search(out_line).group(1))
                     self.progressSig.emit(5)
                     self.workflow_progress.emit(5)
+                elif rgx_merge_model.search(out_line):
+                    self.part_scheme_num = int(rgx_merge_model.search(out_line).group(1)) + self.rgx_model_num
                 elif self.totleModels and (len(list_outline) == 7) and list_outline[0].isdigit() and list_outline[3].isdigit():
                     # 普通模式
                     model_num = int(list_outline[0])
@@ -782,10 +791,16 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                         if i in out_line:
                             num += 1
                             self.progressSig.emit(
-                                5 + num * 90 / self.totlePartitions_2)
+                                5 + num * 25 / self.totlePartitions_2)
                             self.workflow_progress.emit(
-                                5 + num * 90 / self.totlePartitions_2)
+                                5 + num * 25 / self.totlePartitions_2)
                     # print(num, self.totlePartitions_2)
+                elif self.part_scheme_num and rgx_merge_num.search(out_line):
+                    merge_num = int(rgx_merge_num.search(out_line).group(1))
+                    self.progressSig.emit(
+                        30 + merge_num * 65 / self.part_scheme_num)
+                    self.workflow_progress.emit(
+                        30 + merge_num * 65 / self.part_scheme_num)
                 elif rgx_finished.search(out_line):
                     self.progressSig.emit(100)
                     self.workflow_progress.emit(100)

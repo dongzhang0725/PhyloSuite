@@ -225,9 +225,10 @@ class WorkFlow(QDialog, Ui_WorkFlow, object):
         # File only, no fallback to registry or or.
         self.workflow_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         ###software path
         settingPath = self.thisPath + '/settings/setting_settings.ini'
         self.settings_ini = QSettings(settingPath, QSettings.IniFormat)
@@ -932,9 +933,12 @@ class WorkFlow(QDialog, Ui_WorkFlow, object):
 </head>
 <body>
 <div><span style="color:red; font-weight:bold;">PhyloSuite</span> (Zhang et al., 2020) was used to conduct, manage and streamline the analyses with the help of several plug-in programs: <br> ''' + self.report.replace("\n", "<br>") + "<br><br><font style='font-weight:bold; font-size:18px'>References</font>" + \
-  "<br>Zhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable" \
+  "<br>1. Zhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable" \
   " desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular " \
-  "Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096." + self.reference_report.replace("\n", "<br>") + "<br><br>" + self.time_used_des.replace("\n", "<br>") + self.exe_time_count.replace("\n", "<br>") + "<br>" + '''</div>
+  "Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.<br>" \
+  "2. Xiang, Chuan‐Yu, Fangluan Gao, Ivan Jakovlić, Hong‐Peng Lei, Ye Hu, Hong Zhang, " \
+  "Hong Zou, Gui‐Tang Wang, and Dong Zhang, Using PhyloSuite for molecular phylogeny and " \
+  "tree‐based analyses. iMeta, 2023. e87. DOI: https://doi.org/10.1002/imt2.87." + self.reference_report.replace("\n", "<br>") + "<br><br>" + self.time_used_des.replace("\n", "<br>") + self.exe_time_count.replace("\n", "<br>") + "<br>" + '''</div>
 </body>
 </html>'''
         self.dict_reports["reports"] = report_html

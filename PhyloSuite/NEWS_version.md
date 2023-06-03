@@ -1,10 +1,18 @@
 # Release Note
 
-## PhyloSuite v1.2.3pre1 (2022-11-20, Sunday)
+## PhyloSuite v1.2.3 (2023-02-10, Friday)
++ Added the citation for the newest PhyloSuite (v1.2.3) paper (iMeta, doi: https://doi.org/10.1002/imt2.87)
++ Optimized the progress bar for ModelFinder
++ Fixed some bugs in several functions, such as the "configure NCBI taxonomic database", etc.
++ Added optimal partitioning strategy and models summary for PartitionFinder2 and ModelFinder
+
+## PhyloSuite v1.2.3pre3 (2022-11-20, Sunday)
 + Added a protein database to the download function via IDs
-+ fixed the “memory error” bug for MrBayes and sped up the summary function
++ fixed the “memory error” bug for MrBayes
 + fixed a bug that prevented setting-up PhyloSuite in Linux
 + fixed a bug for automatically checking the update function
++ fixed a bug that wrongly detected linked/unlinked branch lengths for IQ-TREE and MrBayes
++ optimized the progress bar of ModelFinder
 + added the –leavegappyregion option to MAFFT
 + added a function for split codon sites to the concatenation function
 + optimized the get taxonomy from NCBI function
@@ -16,8 +24,14 @@
 + added a function to keep the sequence name in trimAl
 + added plugins to draw figures
 + added 11 tree-based analyes packaged into the new “TreeSuite” funtion
-  <strong>If you are chinese user and cannot download the packages below, please visite http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#3-Download-links-for-users-in-China</strong>
++ added all-in-one PhyloSuite virtual environment version, available at https://hub.docker.com/repository/docker/dongzhang0725/phylosuite/tags. For configuration, see http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#4-Install-all-in-one-version-of-virtual-environment.
++ speeded up several functions, such as extraction, codon alignment using MAFFT, sequence format conversion, concatenation and summarization function in MrBayes
 
+<strong>If you are chinese user and cannot download the packages below, please visite http://phylosuite.jushengwu.com/dongzhang0725.github.io/installation/#Chinese_download_link </strong>
+
+## PhyloSuite v1.2.3pre1 (2022-11-16, Wednesday)
++ Optimized some functions
++ Speed up some analyses
 
 ## PhyloSuite v1.2.2 (2020-08-06, Thursday)
 + Fixed some bugs in MACSE, PartitionFinder, MrBayes and IQ-TREE plugins

@@ -32,7 +32,7 @@ import platform
 # from src.Lg_settings import Setting
 from src.Lg_NCBI_DB import LG_NCBIdb
 from src.plugins import dict_plugin_settings
-from src.preset_values import init_sequence_type, preset_workflow
+from src.preset_values import init_sequence_type, preset_workflow, qss
 from uifiles.Ui_NCBI_db import Ui_NCBI_DB
 
 
@@ -211,7 +211,7 @@ class Factory_sub(object):
         return flag
 
     def get_PS_version(self):
-        with open(self.thisPath + os.sep + "NEWS_version.md", encoding="utf-8") as f:
+        with open(self.src_path + os.sep + "NEWS_version.md", encoding="utf-8") as f:
             content = f.read()
             current_version = re.search(
                 r"## *PhyloSuite v([^ ]+?) \(", content)
@@ -254,6 +254,10 @@ class Factory_sub(object):
         self.NCBIdb_window.setWindowFlags(self.NCBIdb_window.windowFlags() |
                                           Qt.WindowMinMaxButtonsHint)
         self.NCBIdb_window.show()
+
+    def NCBI_tax_db_is_installed(self):
+        db_file = f"{self.thisPath}{os.sep}db{os.sep}NCBI{os.sep}taxa.sqlite"
+        return os.path.exists(db_file)
 
     def get_OS_bit(self):
         # 有时候用户下载的是32位版本的phylosuite
@@ -309,6 +313,50 @@ class Factory_sub(object):
                 url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_linux/master/update_linux.zip"
         return url
 
+    def get_this_path(self, path):
+        # 先判断path，不行就用home
+        if os.access(path, os.W_OK):
+            return path
+        else:
+            run_path = os.path.join(os.environ.get('HOME', os.path.expanduser('~')), 'PhyloSuite_home')
+            os.makedirs(run_path, exist_ok=True)
+            return run_path
+
+    def set_qss(self, object, noset=False):
+        qss_file = self.thisPath + os.sep + 'style.qss'
+        if os.path.exists(qss_file) and os.access(qss_file, os.R_OK) and os.access(qss_file, os.W_OK):
+            with open(qss_file, encoding="utf-8", errors='ignore') as f:
+                qss_content = f.read()
+        else:
+            qss_content = qss
+        if not noset:
+            object.setStyleSheet(qss_content)
+        return qss_content
+
+    def checkNCBIdb(self, parent):
+        if not self.NCBI_tax_db_is_installed():
+            reply = QMessageBox.information(
+                parent,
+                "Information",
+                "<p style='line-height:25px; height:25px'>NCBI taxonomy database is not downloaded, "
+                "which may affect several functions. Do you wish to install now?</p>",
+                QMessageBox.Ok,
+                QMessageBox.Ignore)
+            if reply == QMessageBox.Ok:
+                return True
+            else:
+                return False
+
+    def get_PS_citation(self):
+        return "1. Zhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, "\
+                "and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular "\
+                "sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, "\
+                "2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"\
+                "2. Xiang, Chuan‐Yu, Fangluan Gao, Ivan Jakovlić, Hong‐Peng Lei, Ye Hu, Hong Zhang, Hong Zou, "\
+                "Gui‐Tang Wang, and Dong Zhang, Using PhyloSuite for molecular phylogeny and tree‐based analyses. "\
+                "iMeta, 2023. e87. DOI: https://doi.org/10.1002/imt2.87."
+
+
 class Factory(QObject, Factory_sub, object):
 
     def __init__(self, parent=None):
@@ -316,6 +364,8 @@ class Factory(QObject, Factory_sub, object):
         thisPath = os.path.dirname(os.path.abspath(os.path.dirname(sys.argv[0])))  #上一级目录
         thisPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__))) if not os.path.exists(
             thisPath + os.sep + "style.qss") else thisPath
+        self.src_path = thisPath
+        thisPath = self.get_this_path(thisPath)
         QSettings.setDefaultFormat(QSettings.IniFormat)
         # print(QSettings().fileName()) # get the default path of ini file
         self.path_settings = QSettings()
@@ -1352,16 +1402,30 @@ class Factory(QObject, Factory_sub, object):
                     list_msa = []
                     model = ["", None]
                     mf_part_model = None
+                    mf_part_text = ""
                     for i in os.listdir(subResults):
                         if "best_scheme.nex" in i:
                             mf_part_model = subResults + os.sep + i
+                            # judge link or unlink
+                            log = f"{subResults}{os.sep}PhyloSuite_ModelFinder.log"
+                            if os.path.exists(log):
+                                with open(log) as f:
+                                    content = f.read()
+                            else:
+                                content = ""
+                            rgx = re.compile(r"(?sm)^=+Commands=+\n.+?(-sp|-Q) +\".+?=+")
+                            if content and rgx.search(content):
+                                mf_part_text = "mf_part_model_unlink"
+                            else:
+                                mf_part_text = "mf_part_model"
                         elif os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FA", ".FAS", ".FASTA", ".NEX", ".NEXUS",
                                                                 ".NXS", ".ALN"]:
                             list_msa.append(subResults + os.sep + i)
                         elif os.path.splitext(i)[1].upper() == ".IQTREE":
                             model = ["MB_normal", subResults + os.sep + i]
                     model = [
-                        "mf_part_model", mf_part_model] if mf_part_model else model
+                        mf_part_text, mf_part_model] if mf_part_model else model
+                    list_msa = sorted(list_msa, key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
                     input_MSA = list_msa[0] if list_msa else None
                     if (model != ["", None]) or input_MSA:
                         dict_subResults[
@@ -1483,6 +1547,7 @@ class Factory(QObject, Factory_sub, object):
                     input_MSAs = [subResults + os.sep + i for i in os.listdir(subResults) if
                                   os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FA", ".FAS", ".FASTA", ".NEX", ".NEXUS",
                                                                      ".ALN"]]
+                    input_MSAs = sorted(input_MSAs, key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
                     input_MSA = input_MSAs[0] if input_MSAs else None
                     list_input_model_file = [subResults + os.sep + i for i in os.listdir(subResults) if
                                              os.path.splitext(i)[1].upper() == ".IQTREE"]
@@ -1504,6 +1569,16 @@ class Factory(QObject, Factory_sub, object):
                         input_model = rgx_model.search(model_content).group(1)
                     else:
                         input_model = None
+                    # judge link or unlink
+                    log = f"{subResults}{os.sep}PhyloSuite_ModelFinder.log"
+                    if os.path.exists(log):
+                        with open(log) as f:
+                            content = f.read()
+                    else:
+                        content = ""
+                    rgx = re.compile(r"(?sm)^=+Commands=+\n.+?(-sp|-Q) +\".+?=+")
+                    if content and rgx.search(content):
+                        input_model = f"**UNLINK**{input_model}" if input_model else input_model
                     if input_model or input_MSA:
                         dict_subResults[
                             os.path.normpath(subResults)] = [input_MSA, input_model]
@@ -1846,16 +1921,30 @@ class Factory(QObject, Factory_sub, object):
                 list_msa = []
                 model = ["", None]
                 mf_part_model = None
+                mf_part_text = ""
                 for i in os.listdir(resultsPath):
                     if "best_scheme.nex" in i:
                         mf_part_model = resultsPath + os.sep + i
+                        # judge link or unlink
+                        log = f"{resultsPath}{os.sep}PhyloSuite_ModelFinder.log"
+                        if os.path.exists(log):
+                            with open(log) as f:
+                                content = f.read()
+                        else:
+                            content = ""
+                        rgx = re.compile(r"(?sm)^=+Commands=+\n.+?(-sp|-Q) +\".+?=+")
+                        if content and rgx.search(content):
+                            mf_part_text = "mf_part_model_unlink"
+                        else:
+                            mf_part_text = "mf_part_model"
                     elif os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FA", ".FAS", ".FASTA", ".NEX", ".NEXUS",
                                                             ".NXS", ".ALN"]:
                         list_msa.append(resultsPath + os.sep + i)
                     elif os.path.splitext(i)[1].upper() == ".IQTREE":
                         model = ["MB_normal", resultsPath + os.sep + i]
                 model = [
-                    "mf_part_model", mf_part_model] if mf_part_model else model
+                    mf_part_text, mf_part_model] if mf_part_model else model
+                list_msa = sorted(list_msa, key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
                 input_MSA = list_msa[0] if list_msa else None
                 if (model != ["", None]) or input_MSA: autoInputs = [[input_MSA], model]
             if resultsParentName == "PartFind_results":
@@ -1924,6 +2013,7 @@ class Factory(QObject, Factory_sub, object):
                               os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FA", ".FAS", ".FASTA", ".NEX",
                                                                  ".NEXUS",
                                                                  ".ALN"]]
+                input_MSAs = sorted(input_MSAs, key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
                 input_MSA = input_MSAs[0] if input_MSAs else None
                 list_input_model_file = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
                                          os.path.splitext(i)[1].upper() == ".IQTREE"]
@@ -1945,7 +2035,18 @@ class Factory(QObject, Factory_sub, object):
                     input_model = rgx_model.search(model_content).group(1)
                 else:
                     input_model = None
-                if input_model or input_MSA: autoInputs = [input_MSA, input_model]
+                # judge link or unlink
+                log = f"{resultsPath}{os.sep}PhyloSuite_ModelFinder.log"
+                if os.path.exists(log):
+                    with open(log) as f:
+                        content = f.read()
+                else:
+                    content = ""
+                rgx = re.compile(r"(?sm)^=+Commands=+\n.+?(-sp|-Q) +\".+?=+")
+                if content and rgx.search(content):
+                    input_model = f"**UNLINK**{input_model}" if input_model else input_model
+                if input_model or input_MSA:
+                    autoInputs = [input_MSA, input_model]
             if resultsParentName == "PartFind_results":
                 input_MSAs = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
                               os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP"]]
@@ -2100,8 +2201,12 @@ class Factory(QObject, Factory_sub, object):
     def programIsValid(self, program, mode="settings"):
         # 由存的文件里面读取
         if program == "python27":
-            PyPath = self.settings_ini.value('python27', "python")
-            PyPath = "python" if not PyPath else PyPath  # 有时候路径为空
+            if "PY27" in os.environ:
+                PyPath = os.environ["PY27"]
+            else:
+                PyPath = "python"
+            PyPath = self.settings_ini.value('python27', PyPath)
+            # PyPath = "python" if not PyPath else PyPath  # 有时候路径为空
             try:
                 popen = subprocess.Popen(
                     "%s -V" % PyPath, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
@@ -2159,8 +2264,13 @@ class Factory(QObject, Factory_sub, object):
                 return "succeed" if mode == "settings" else TSpath
         elif program == "PF2":
             PFpath = self.settings_ini.value('PF2', "")
-            PFpath = self.getDefaultpluginPath("PF2") if \
-                not PFpath else PFpath
+            # PFpath = self.getDefaultpluginPath("PF2") if \
+            #     not PFpath else PFpath
+            if not PFpath:
+                if "PF2" in os.environ:
+                    PFpath = os.environ["PF2"]
+                else:
+                    PFpath = self.getDefaultpluginPath("PF2")
             if PFpath:
                 pf_compiled = PFpath + os.sep + "PartitionFinder.exe" if platform.system().lower() == "windows" else \
                     PFpath + os.sep + "PartitionFinder"
@@ -2276,7 +2386,11 @@ class Factory(QObject, Factory_sub, object):
             #         self.settings_ini.setValue("java", javaPath)  ##设置一遍，不然workflow报错
             #         return "succeed" if mode == "settings" else javaPath
         elif program == "macse":
-            MACSEpath = self.settings_ini.value('macse', "")
+            if "MACSE" in os.environ:
+                MACSEpath = os.environ["MACSE"]
+            else:
+                MACSEpath = ""
+            MACSEpath = self.settings_ini.value('macse', MACSEpath)
             if not MACSEpath:
                 # 自动判断下是否存在于环境变量
                 if platform.system().lower() == "windows":
@@ -2308,8 +2422,12 @@ class Factory(QObject, Factory_sub, object):
             if shutil.which(trimAlpath):
                 return "succeed" if mode == "settings" else trimAlpath
         elif program == "perl":
-            PERLPath = self.settings_ini.value('perl', "perl")
-            PERLPath = "perl" if not PERLPath else PERLPath  # 有时候路径为空
+            if "PERLx" in os.environ:
+                PERLPath = os.environ["PERLx"]
+            else:
+                PERLPath = "perl"
+            PERLPath = self.settings_ini.value('perl', PERLPath)
+            # PERLPath = "perl" if not PERLPath else PERLPath  # 有时候路径为空
             # try:
             #     popen = subprocess.Popen(
             #         "%s -version" % PERLPath, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
@@ -2572,6 +2690,24 @@ class Factory(QObject, Factory_sub, object):
 
     def init_check(self, parent):
         try:
+            # 初始化extract settings
+            GenBankExtract_settings = QSettings(
+                self.thisPath + '/settings/GenBankExtract_settings.ini', QSettings.IniFormat)
+            GenBankExtract_settings.setFallbacksEnabled(False)
+            dict_gbExtract_set = GenBankExtract_settings.value("set_version", None)
+            if not dict_gbExtract_set:
+                GenBankExtract_settings.setValue("set_version", init_sequence_type)
+            else:
+                # 如果没有预设的类型，就加上
+                flag = False
+                for seq_type in init_sequence_type:
+                    if seq_type not in dict_gbExtract_set:
+                        flag = True
+                        dict_gbExtract_set[seq_type] = init_sequence_type[seq_type]
+                    if seq_type == "general" and "extract all features" not in dict_gbExtract_set[seq_type]:
+                        dict_gbExtract_set[seq_type]["extract all features"] = True
+                if flag:
+                    GenBankExtract_settings.setValue("set_version", dict_gbExtract_set)
             # 删掉插件不合格的路径
             for i in ["python27", "mafft", "PF2", "gblocks", "iq-tree", "MrBayes", "tbl2asn", "RscriptPath", "mpi",
                       "perl", "java", "macse", "trimAl", "HmmCleaner"] + list(dict_plugin_settings.keys()):
@@ -2615,24 +2751,6 @@ class Factory(QObject, Factory_sub, object):
                     if remainingStr.startswith("_GenBank_File"):
                         data_settings.setValue(key, mainwindow_settings.value(key))
                         mainwindow_settings.remove(key)
-            # 初始化extract settings
-            GenBankExtract_settings = QSettings(
-                self.thisPath + '/settings/GenBankExtract_settings.ini', QSettings.IniFormat)
-            GenBankExtract_settings.setFallbacksEnabled(False)
-            dict_gbExtract_set = GenBankExtract_settings.value("set_version", None)
-            if not dict_gbExtract_set:
-                GenBankExtract_settings.setValue("set_version", init_sequence_type)
-            else:
-                # 如果没有预设的类型，就加上
-                flag = False
-                for seq_type in init_sequence_type:
-                    if seq_type not in dict_gbExtract_set:
-                        flag = True
-                        dict_gbExtract_set[seq_type] = init_sequence_type[seq_type]
-                    if seq_type == "general" and "extract all features" not in dict_gbExtract_set[seq_type]:
-                        dict_gbExtract_set[seq_type]["extract all features"] = True
-                if flag:
-                    GenBankExtract_settings.setValue("set_version", dict_gbExtract_set)
             # 初始化workflow设置
             workflow_settings = QSettings(
                 self.thisPath +
@@ -2674,7 +2792,14 @@ class Factory(QObject, Factory_sub, object):
             if not dict_backColor:
                 Seq_viewer_setting.setValue("background colors", ini_back_colors)
             # 初始化parse ANNT的settings
-            init_value2 = {'tRNA Abbreviation': [['tRNA-Val', 'V'], ['tRNA-Tyr', 'Y'], ['tRNA-Trp', 'W'], ['tRNA-Thr', 'T'], ['tRNA-Ser', 'S'], ['tRNA-Pro', 'P'], ['tRNA-Phe', 'F'], ['tRNA-Met', 'M'], ['tRNA-Lys', 'K'], ['tRNA-Leu', 'L'], ['tRNA-Ile', 'I'], ['tRNA-His', 'H'], ['tRNA-Gly', 'G'], ['tRNA-Glu', 'E'], ['tRNA-Gln', 'Q'], ['tRNA-Cys', 'C'], ['tRNA-Asp', 'D'], ['tRNA-Asn', 'N'], ['tRNA-Arg', 'R'], ['tRNA-Ala', 'A']], 'Protein Gene Full Name': [['atp6', 'ATP synthase F0 subunit 6'], ['atp8', 'ATP synthase F0 subunit 8'], ['cox1', 'cytochrome c oxidase subunit 1'], ['cox2', 'cytochrome c oxidase subunit 2'], ['cox3', 'cytochrome c oxidase subunit 3'], ['cytb', 'cytochrome b'], ['nad1', 'NADH dehydrogenase subunit 1'], ['nad2', 'NADH dehydrogenase subunit 2'], ['nad3', 'NADH dehydrogenase subunit 3'], ['nad4', 'NADH dehydrogenase subunit 4'], ['nad4L', 'NADH dehydrogenase subunit 4L'], ['nad5', 'NADH dehydrogenase subunit 5'], ['nad6', 'NADH dehydrogenase subunit 6']], 'Name From Word': [['trnY(gta)', 'tRNA-Tyr(gta)'], ['trnY', 'tRNA-Tyr(gta)'], ['trnW(tca)', 'tRNA-Trp(tca)'], ['trnW', 'tRNA-Trp(tca)'], ['trnV(tac)', 'tRNA-Val(tac)'], ['trnV', 'tRNA-Val(tac)'], ['trnT(tgt)', 'tRNA-Thr(tgt)'], ['trnT', 'tRNA-Thr(tgt)'], ['trnR(tcg)', 'tRNA-Arg(tcg)'], ['trnR', 'tRNA-Arg(tcg)'], ['trnQ(ttg)', 'tRNA-Gln(ttg)'], ['trnQ', 'tRNA-Gln(ttg)'], ['trnP(tgg)', 'tRNA-Pro(tgg)'], ['trnP', 'tRNA-Pro(tgg)'], ['trnN(gtt)', 'tRNA-Asn(gtt)'], ['trnN', 'tRNA-Asn(gtt)'], ['trnM(cat)', 'tRNA-Met(cat)'], ['trnM', 'tRNA-Met(cat)'], ['trnK(ctt)', 'tRNA-Lys(ctt)'], ['trnK', 'tRNA-Lys(ctt)'], ['trnI(gat)', 'tRNA-Ile(gat)'], ['trnI', 'tRNA-Ile(gat)'], ['trnH(gtg)', 'tRNA-His(GTG)'], ['trnH', 'tRNA-His(gtg)'], ['trnG(tcc)', 'tRNA-Gly(tcc)'], ['trnG', 'tRNA-Gly(tcc)'], ['trnF(gaa)', 'tRNA-Phe(gaa)'], ['trnF', 'tRNA-Phe(gaa)'], ['trnE(ttc)', 'tRNA-Glu(ttc)'], ['trnE', 'tRNA-Glu(ttc)'], ['trnD(gtc)', 'tRNA-Asp(gtc)'], ['trnD', 'tRNA-Asp(gtc)'], ['trnC(gca)', 'tRNA-Cys(gca)'], ['trnC', 'tRNA-Cys(gca)'], ['trnA(tgc)', 'tRNA-Ala(tgc)'], ['trnA', 'tRNA-Ala(tgc)'], ['tRNA-Val', 'tRNA-Val(tac)'], ['tRNA-Tyr', 'tRNA-Tyr(gta)'], ['tRNA-Trp', 'tRNA-Trp(tca)'], [
+            init_value2 = {'tRNA Abbreviation': [['tRNA-Val', 'V'], ['tRNA-Tyr', 'Y'], ['tRNA-Trp', 'W'],
+                                                 ['tRNA-Thr', 'T'], ['tRNA-Ser', 'S'], ['tRNA-Pro', 'P'],
+                                                 ['tRNA-Phe', 'F'], ['tRNA-Met', 'M'], ['tRNA-Lys', 'K'],
+                                                 ['tRNA-Leu', 'L'], ['tRNA-Ile', 'I'], ['tRNA-His', 'H'],
+                                                 ['tRNA-Gly', 'G'], ['tRNA-Glu', 'E'], ['tRNA-Gln', 'Q'],
+                                                 ['tRNA-Cys', 'C'], ['tRNA-Asp', 'D'], ['tRNA-Asn', 'N'],
+                                                 ['tRNA-Arg', 'R'], ['tRNA-Ala', 'A']],
+                           'Protein Gene Full Name': [['atp6', 'ATP synthase F0 subunit 6'], ['atp8', 'ATP synthase F0 subunit 8'], ['cox1', 'cytochrome c oxidase subunit 1'], ['cox2', 'cytochrome c oxidase subunit 2'], ['cox3', 'cytochrome c oxidase subunit 3'], ['cytb', 'cytochrome b'], ['nad1', 'NADH dehydrogenase subunit 1'], ['nad2', 'NADH dehydrogenase subunit 2'], ['nad3', 'NADH dehydrogenase subunit 3'], ['nad4', 'NADH dehydrogenase subunit 4'], ['nad4L', 'NADH dehydrogenase subunit 4L'], ['nad5', 'NADH dehydrogenase subunit 5'], ['nad6', 'NADH dehydrogenase subunit 6']], 'Name From Word': [['trnY(gta)', 'tRNA-Tyr(gta)'], ['trnY', 'tRNA-Tyr(gta)'], ['trnW(tca)', 'tRNA-Trp(tca)'], ['trnW', 'tRNA-Trp(tca)'], ['trnV(tac)', 'tRNA-Val(tac)'], ['trnV', 'tRNA-Val(tac)'], ['trnT(tgt)', 'tRNA-Thr(tgt)'], ['trnT', 'tRNA-Thr(tgt)'], ['trnR(tcg)', 'tRNA-Arg(tcg)'], ['trnR', 'tRNA-Arg(tcg)'], ['trnQ(ttg)', 'tRNA-Gln(ttg)'], ['trnQ', 'tRNA-Gln(ttg)'], ['trnP(tgg)', 'tRNA-Pro(tgg)'], ['trnP', 'tRNA-Pro(tgg)'], ['trnN(gtt)', 'tRNA-Asn(gtt)'], ['trnN', 'tRNA-Asn(gtt)'], ['trnM(cat)', 'tRNA-Met(cat)'], ['trnM', 'tRNA-Met(cat)'], ['trnK(ctt)', 'tRNA-Lys(ctt)'], ['trnK', 'tRNA-Lys(ctt)'], ['trnI(gat)', 'tRNA-Ile(gat)'], ['trnI', 'tRNA-Ile(gat)'], ['trnH(gtg)', 'tRNA-His(GTG)'], ['trnH', 'tRNA-His(gtg)'], ['trnG(tcc)', 'tRNA-Gly(tcc)'], ['trnG', 'tRNA-Gly(tcc)'], ['trnF(gaa)', 'tRNA-Phe(gaa)'], ['trnF', 'tRNA-Phe(gaa)'], ['trnE(ttc)', 'tRNA-Glu(ttc)'], ['trnE', 'tRNA-Glu(ttc)'], ['trnD(gtc)', 'tRNA-Asp(gtc)'], ['trnD', 'tRNA-Asp(gtc)'], ['trnC(gca)', 'tRNA-Cys(gca)'], ['trnC', 'tRNA-Cys(gca)'], ['trnA(tgc)', 'tRNA-Ala(tgc)'], ['trnA', 'tRNA-Ala(tgc)'], ['tRNA-Val', 'tRNA-Val(tac)'], ['tRNA-Tyr', 'tRNA-Tyr(gta)'], ['tRNA-Trp', 'tRNA-Trp(tca)'], [
                 'tRNA-Thr', 'tRNA-Thr(tgt)'], ['tRNA-Pro', 'tRNA-Pro(tgg)'], ['tRNA-Phe', 'tRNA-Phe(gaa)'], ['tRNA-Met', 'tRNA-Met(cat)'], ['tRNA-Lys', 'tRNA-Lys(ctt)'], ['tRNA-Ile', 'tRNA-Ile(gat)'], ['tRNA-His', 'tRNA-His(GTG)'], ['tRNA-Gly', 'tRNA-Gly(tcc)'], ['tRNA-Glu', 'tRNA-Glu(ttc)'], ['tRNA-Gln', 'tRNA-Gln(ttg)'], ['tRNA-Cys', 'tRNA-Cys(gca)'], ['tRNA-Asp', 'tRNA-Asp(gtc)'], ['tRNA-Asn', 'tRNA-Asn(gtt)'], ['tRNA-Arg', 'tRNA-Arg(tcg)'], ['tRNA-Ala', 'tRNA-Ala(tgc)'], ['small subunit ribosomal RNA', '12S'], ['small ribosomal RNA subunit RNA', '12S'], ['small ribosomal RNA', '12S'], ['s-rRNA', '12S'], ['ribosomal RNA small subunit', '12S'], ['ribosomal RNA large subunit', '16S'], ['large subunit ribosomal RNA', '16S'], ['large ribosomal RNA subunit RNA', '16S'], ['large ribosomal RNA', '16S'], ['l-rRNA', '16S'], ['cytochrome c oxidase subunit III', 'COX3'], ['cytochrome c oxidase subunit II', 'COX2'], ['cytochrome c oxidase subunit I', 'COX1'], ['cytochrome c oxidase subunit 3', 'COX3'], ['cytochrome c oxidase subunit 2', 'COX2'], ['cytochrome c oxidase subunit 1', 'COX1'], ['cytochrome b', 'CYTB'], ['ND6', 'NAD6'], ['ND5', 'NAD5'], ['ND4L', 'NAD4L'], ['ND4', 'NAD4'], ['ND3', 'NAD3'], ['ND2', 'NAD2'], ['ND1', 'NAD1'], ['NADH dehydrogenase subunit5', 'NAD5'], ['NADH dehydrogenase subunit 6', 'NAD6'], ['NADH dehydrogenase subunit 5', 'NAD5'], ['NADH dehydrogenase subunit 4L', 'NAD4L'], ['NADH dehydrogenase subunit 4', 'NAD4'], ['NADH dehydrogenase subunit 3', 'NAD3'], ['NADH dehydrogenase subunit 2', 'NAD2'], ['NADH dehydrogenase subunit 1', 'NAD1'], ['CYT B', 'CYTB'], ['COXIII', 'COX3'], ['COXII', 'COX2'], ['COXI', 'COX1'], ['COIII', 'COX3'], ['COII', 'COX2'], ['COI', 'COX1'], ['COB', 'CYTB'], ['CO3', 'COX3'], ['CO2', 'COX2'], ['CO1', 'COX1'], ['ATPase subunit 6', 'ATP6'], ['ATPASE8', 'ATP8'], ['ATPASE6', 'ATP6'], ['ATPASE 8', 'ATP8'], ['ATPASE 6', 'ATP6'], ['ATP synthase F0 subunit 6', 'ATP6'], ['16s rRNA', '16S'], ['16S subunit RNA', '16S'], ['16S ribosomal RNA', '16S'], ['16S rRNA', '16S'], ['12s rRNA', '12S'], ['12S subunit RNA', '12S'], ['12S ribosomal RNA', '12S'], ['12S rRNA', '12S'], ['12S Ribosomal RNA', '12S']]}
             parseANNT_settings = QSettings(
                 self.thisPath +
@@ -2867,7 +2992,7 @@ class Factory(QObject, Factory_sub, object):
 
     def checkUpdates(self, updateSig, exceptSig, mode="check", parent=None):
         try:
-            with open(self.thisPath + os.sep + "NEWS_version.md", encoding="utf-8") as f:
+            with open(self.src_path + os.sep + "NEWS_version.md", encoding="utf-8") as f:
                 content = f.read()
                 current_version = re.search(
                     r"## *PhyloSuite v([^ ]+?) \(", content).group(1)
@@ -3076,13 +3201,27 @@ class Factory(QObject, Factory_sub, object):
     #     return thisPath
 
     def init_popen(self, commands):
+        '''
+        shell=True 会导致windows的那种杀进程方式杀不掉
+        You're getting 2 processes because you have shell=True.
+        The extra process with the /bin/sh is the shell that you requested.
+        The answer by Bryant Hansen on this StackOverflow question appears to make the killing of the sub processes work
+        https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
+        Parameters
+        ----------
+        commands
+
+        Returns
+        -------
+
+        '''
         startupINFO = None
         if platform.system().lower() == "windows":
             startupINFO = subprocess.STARTUPINFO()
             startupINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             startupINFO.wShowWindow = subprocess.SW_HIDE
             popen = subprocess.Popen(
-                commands, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupINFO, shell=True)
+                commands, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupINFO, shell=False)
         else:
             popen = subprocess.Popen(
                 commands, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupINFO, shell=True,
@@ -3315,6 +3454,11 @@ class Factory(QObject, Factory_sub, object):
             screen = QApplication.desktop().screenNumber(
                 QApplication.desktop().cursor().pos())
             centerPoint = QApplication.desktop().screenGeometry(screen).center()
+            frameGm.moveCenter(centerPoint)
+            window.move(frameGm.topLeft())
+        else:
+            frameGm = window.frameGeometry()
+            centerPoint = QDesktopWidget().availableGeometry().center()
             frameGm.moveCenter(centerPoint)
             window.move(frameGm.topLeft())
 
@@ -3862,6 +4006,7 @@ class Parsefmt(object):
             handle = open(file, encoding="utf-8", errors='ignore')
         except:
             handle = file
+        seq_name = "no_name"
         for line in handle:
             line = line.strip()
             if line.startswith(">"):

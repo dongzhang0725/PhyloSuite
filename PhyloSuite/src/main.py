@@ -124,8 +124,9 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.mainwindow_settings.setFallbacksEnabled(False)
         self.setupUi(self)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            qss_file = f.read()
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     qss_file = f.read()
+        qss_file = self.factory.set_qss(self, noset=True)
         # 统一界面字体
         QSettings.setDefaultFormat(QSettings.IniFormat)
         font_settings = QSettings()
@@ -1141,6 +1142,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             # self.seqViewer.setWindowModality(Qt.ApplicationModal)
             self.seqViewer.show()
         elif os.path.splitext(filePath)[1].upper() in [".TREEFILE", ".NWK", ".TRE"]:
+            set_NCBI_db = self.factory.checkNCBIdb(self)
+            if set_NCBI_db:
+                self.updateTaxonomyDB()
+                return
             tre = self.factory.read_tree(filePath, parent=self)
             if tre:
                 tre.show(name="PhyloSuite-ETE", parent=self)
@@ -1947,6 +1952,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
     @pyqtSlot()
     def on_TreeAnnotation_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
+        set_NCBI_db = self.factory.checkNCBIdb(self)
+        if set_NCBI_db:
+            self.updateTaxonomyDB()
+            return
         GUI_TIMEOUT = None
         # autoInputs = self.factory.init_judge(mode="format conversion", filePath=filePath, parent=self)
         scene = _TreeScene()
@@ -2481,7 +2490,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
 
     def guiRestore(self):
         # Restore geometry
-        self.resize(self.mainwindow_settings.value('size', QSize(1195, 650)))
+        self.resize(self.mainwindow_settings.value('size', QSize(1250, 750)))
         self.factory.centerWindow(self)
         if self.width() < 1120:
             self.resize(QSize(1195, 650))
@@ -3633,7 +3642,7 @@ NC_034937.1
 
     def removeOldApp(self):
         ##删除更新留下的旧文件
-        self.factory.remove_old_files(self.thisPath)
+        self.factory.remove_old_files(self.factory.src_path)
         ##导入新的设置的旧文件
         self.factory.remove_old_files(self.thisPath + os.sep + "settings")
         self.factory.remove_old_files(self.thisPath + os.sep + "plugins")
@@ -3846,7 +3855,7 @@ NC_034937.1
         if qtext.strip() == "XML":
             fileName = QFileDialog.getSaveFileName(
                 self, "PhyloSuite", "PhyloSuite_citation", "XML Format(*.xml)")
-            xml_path = self.thisPath + os.sep + "PhyloSuite_citation.xml"
+            xml_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation.xml"
             if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(xml_path)):
                 shutil.copy(xml_path, fileName[0])
                 QMessageBox.information(
@@ -3856,7 +3865,7 @@ NC_034937.1
         elif qtext.strip() == "RIS":
             fileName = QFileDialog.getSaveFileName(
                 self, "PhyloSuite", "PhyloSuite_citation", "RIS Format(*.ris)")
-            ris_path = self.thisPath + os.sep + "PhyloSuite_citation.ris"
+            ris_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation.ris"
             if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(ris_path)):
                 shutil.copy(ris_path, fileName[0])
                 QMessageBox.information(
@@ -3866,7 +3875,37 @@ NC_034937.1
         elif qtext.strip() == "ENW":
             fileName = QFileDialog.getSaveFileName(
                 self, "PhyloSuite", "PhyloSuite_citation", "ENW Format(*.enw)")
-            ris_path = self.thisPath + os.sep + "PhyloSuite_citation.enw"
+            ris_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation.enw"
+            if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(ris_path)):
+                shutil.copy(ris_path, fileName[0])
+                QMessageBox.information(
+                    self,
+                    "PhyloSuite",
+                    "<p style='line-height:25px; height:25px'>File saved successfully!</p>")
+        elif qtext.strip() == "XML_imeta":
+            fileName = QFileDialog.getSaveFileName(
+                self, "PhyloSuite", "PhyloSuite_citation_iMeta", "XML Format(*.xml)")
+            xml_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation_imeta.xml"
+            if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(xml_path)):
+                shutil.copy(xml_path, fileName[0])
+                QMessageBox.information(
+                    self,
+                    "PhyloSuite",
+                    "<p style='line-height:25px; height:25px'>File saved successfully!</p>")
+        elif qtext.strip() == "RIS_imeta":
+            fileName = QFileDialog.getSaveFileName(
+                self, "PhyloSuite", "PhyloSuite_citation_iMeta", "RIS Format(*.ris)")
+            ris_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation_imeta.ris"
+            if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(ris_path)):
+                shutil.copy(ris_path, fileName[0])
+                QMessageBox.information(
+                    self,
+                    "PhyloSuite",
+                    "<p style='line-height:25px; height:25px'>File saved successfully!</p>")
+        elif qtext.strip() == "ENW_imeta":
+            fileName = QFileDialog.getSaveFileName(
+                self, "PhyloSuite", "PhyloSuite_citation_iMeta", "ENW Format(*.enw)")
+            ris_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation_imeta.enw"
             if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(ris_path)):
                 shutil.copy(ris_path, fileName[0])
                 QMessageBox.information(

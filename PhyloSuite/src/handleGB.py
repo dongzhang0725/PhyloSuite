@@ -810,13 +810,16 @@ class SeqGrab(object):  # 统计序列
         codon_ffds_site = []
         # judge first codon site
         AAs = [str(Seq("".join([i, list_codon[1], list_codon[2]])).translate(table=code_table)) for i in nuc]
-        if len(set(AAs)) == 1: codon_ffds_site.append(0)
+        if len(set(AAs)) == 1:
+            codon_ffds_site.append(0)
         # judge second codon site
         AAs = [str(Seq("".join([list_codon[0], i, list_codon[2]])).translate(table=code_table)) for i in nuc]
-        if len(set(AAs)) == 1: codon_ffds_site.append(1)
+        if len(set(AAs)) == 1:
+            codon_ffds_site.append(1)
         # judge third codon site
         AAs = [str(Seq("".join([list_codon[0], list_codon[1], i])).translate(table=code_table)) for i in nuc]
-        if len(set(AAs)) == 1: codon_ffds_site.append(2)
+        if len(set(AAs)) == 1:
+            codon_ffds_site.append(2)
         return codon_ffds_site
 
     def extract_ffds1(self, code_table):
@@ -844,14 +847,16 @@ class SeqGrab(object):  # 统计序列
         dict_ffds = {} # {'TCT': [3], 'TCC': [3]}
         for codon in codons:
             codon_ffds_site = self.judge_ddfs(list(codon), code_table)
-            if codon_ffds_site: dict_ffds[codon] = codon_ffds_site
+            if codon_ffds_site:
+                dict_ffds[codon] = codon_ffds_site
         # print(dict_ffds)
-        ffds = ""
+        ffds = []
         if len(self.sequence)%3 == 0:
             for a, b, c in zip(*[iter(self.sequence)]*3):
                 codon_ = "".join([a, b, c])
-                if codon_ in dict_ffds: ffds += "".join([codon_[site] for site in dict_ffds[codon_]])
-        return ffds
+                if codon_ in dict_ffds:
+                    ffds.append("".join([codon_[site] for site in dict_ffds[codon_]]))
+        return "".join(ffds)
 
 
 class CodonBias(object):
@@ -1015,21 +1020,24 @@ class CodonBias(object):
 
 
 class Order2itol(object):
-    def __init__(self, dict_order, dict_args):
+    def __init__(self, dict_order=None, dict_args=None):
         self.dict_args = dict_args
         self.dict_order = dict_order
-        self.align_order()
-        self.number_NCR()
-        self.exec()
-        self.make_header()
+        if dict_order and dict_args:
+            self.align_order()
+            self.number_NCR()
+            self.exec()
+            self.make_header()
 
-    def align_order(self):
+    def align_order(self, dict_order=None):
+        self.dict_order = dict_order if dict_order else self.dict_order
         for i in self.dict_order:
             list_order = self.dict_order[i]
             for num, j in enumerate(list_order):
                 if self.dict_args["start_gene_with"] in j:
                     self.dict_order[i] = list_order[num:] + list_order[:num]
                     break
+        return self.dict_order
 
     def number_NCR(self):
         list_dict_order = list(self.dict_order.keys())
@@ -4032,6 +4040,7 @@ class GBextract(object):
         filesPath = self.factory.creat_dirs(self.exportPath + os.sep + 'files')
         with open(filesPath + os.sep + 'linear_order.txt', 'w', encoding="utf-8") as f:
             t = "\t"
+            self.dict_order = Order2itol(dict_args=self.dict_args).align_order(self.dict_order)
             linear_order = "\n".join([f">{species}\n{t.join(self.dict_order[species])}"
                                       for species in self.dict_order])
             f.write(linear_order)
@@ -5506,18 +5515,25 @@ class DetermineCopyGeneParallel(object):
                                                     total, queue)) for spe in dict_gene_order]
             pool.close()
             # count = 0
+            error = False
             for item in r:
                 item.wait(timeout=9999)  # Without a timeout, you can't interrupt this.
-                spe, spe_copied_genes = item.get()
-                # new_dict_GO[spe] = list_new_GOs
-                dict_spe_copied_genes[spe] = spe_copied_genes
-                # result_array += list_array
-                # count += 1
-                # if progressSig:
-                #     if timer.elapsed()>500: # 必须过一段时间再发送，不然报错
-                #         progressSig.emit(5 + (count/total)*90)
-                #         timer.restart()
-                # print(f"{spe}, {count}/{total} finished !")
+                result = item.get()
+                if result:
+                    spe, spe_copied_genes = result
+                    # new_dict_GO[spe] = list_new_GOs
+                    dict_spe_copied_genes[spe] = spe_copied_genes
+                    # result_array += list_array
+                    # count += 1
+                    # if progressSig:
+                    #     if timer.elapsed()>500: # 必须过一段时间再发送，不然报错
+                    #         progressSig.emit(5 + (count/total)*90)
+                    #         timer.restart()
+                    # print(f"{spe}, {count}/{total} finished !")
+                else:
+                    error = True
+            if error and exception_signal:
+                exception_signal.emit(f"Error happened, check {work_dir}/log.txt")
         except:
             exceptionInfo = ''.join(
                 traceback.format_exception(
@@ -5804,6 +5820,7 @@ class DetermineCopyGeneParallel(object):
                         rep_name = target_gene.replace("trn", "")
                         target_name = rep_name if rep_name in list_new_GOs else f"-{rep_name}"
                         # print(list_new_GOs, target_name, target_gene)
+                        # print(spe, list_new_GOs, target_name)
                         target_gene_index = list_new_GOs.index(target_name)
                         list_new_GOs[target_gene_index] = list_new_GOs[target_gene_index].split("_copy")[0]
                         list_copied_genes = [target_gene] + list_copied_gene_names
@@ -5828,6 +5845,7 @@ class DetermineCopyGeneParallel(object):
             exceptionInfo = ''.join(
                 traceback.format_exception(
                     *sys.exc_info()))
+            # print(spe, list_new_GOs, target_name)
             self.save2log(f"{work_dir}/log.txt", exceptionInfo)
 
     def send_progress(self, work_dir, total, queue):

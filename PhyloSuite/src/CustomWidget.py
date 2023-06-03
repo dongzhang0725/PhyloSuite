@@ -4120,6 +4120,177 @@ class MyCopiedTableView(QTableView):
                             old_array[index.row() + row][index.column() + col] = value
                             self.model().dataChanged.emit(index, index)
 
+class MyImgTableModel(QAbstractTableModel):
+    def __init__(self, datain, headerdata, parent=None):
+        """
+        Args:
+            datain: a list of lists\n
+            headerdata: a list of strings
+        """
+        QAbstractTableModel.__init__(self, parent)
+        self.parent = parent
+        self.arraydata = datain
+        self.header = headerdata
+        self.dataChanged.connect(self.init_tableview)
+        self.layoutChanged.connect(self.init_tableview)
+        self.init_tableview()
+        self.parent.doubleClicked.connect(self.handle_itemclicked)
+
+    def handle_itemclicked(self, index):
+        tableview = self.sender()
+        model = tableview.model()
+        text = index.data(Qt.DisplayRole)
+        if text and (re.search("^#[0-9ABCDEFabcdef]{6}$", str(text)) or (text == "None color")):
+            text = text if text != "None color" else "#000000"
+            color = QColorDialog.getColor(QColor(text), self.parent)
+            if color.isValid():
+                model.setData(index, color.name(), Qt.BackgroundRole)
+
+    def init_tableview(self):
+        self.parent.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents),
+        # self.parent.horizontalHeader().setStretchLastSection(True)
+        self.parent.verticalHeader().setVisible(False)
+
+    def rowCount(self, parent):
+        return len(self.arraydata)
+
+    def columnCount(self, parent):
+        return len(self.arraydata[0]) if self.arraydata else 0
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        try:
+            value = self.arraydata[index.row()][index.column()]
+        except:
+            print(index.column(), index.row(), self.arraydata)
+        if role in [Qt.EditRole, Qt.DisplayRole]:
+            if type(value) == QFont:
+                family_ = value.family()
+                size_ = str(value.pointSize())
+                italic = "italic, " if value.italic() else ""
+                bold = "bold, " if value.bold() else ""
+                return f"{family_}, {italic}{bold}{size_}"
+            else:
+                return value
+        elif role == Qt.BackgroundRole and \
+                ((type(value)==str and re.search("^#[0-9ABCDEFabcdef]{6}$", str(value))) \
+                 or (value == "None color")):
+            if value == "None color":
+                return None
+            else:
+                return QColor(value)
+        elif role == Qt.ToolTipRole:
+            return value
+        elif role == Qt.TextAlignmentRole:
+            return Qt.AlignCenter
+        elif not (role == Qt.DisplayRole or role == Qt.EditRole):
+            return None
+
+    def headerData(self, number, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.header[number]
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return str(number + 1)
+        return None
+
+    def setData(self, index, value, role):
+        if not index.isValid():
+            return False
+        if role in [Qt.EditRole, Qt.BackgroundRole, Qt.DisplayRole]:
+            if self.arraydata[index.row()][index.column()] != value:
+                self.arraydata[index.row()][index.column()] = value
+                self.dataChanged.emit(index, index)
+        return True
+
+    def flags(self, index):
+        if index.column() == 0:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        else:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+
+class MyTaxTableModel2(MyImgTableModel):
+    def __init__(self, datain, headerdata, parent=None, header_state=None):
+        """
+        Args:
+            datain: a list of lists\n
+            headerdata: a list of strings
+        """
+        MyImgTableModel.__init__(self, datain, headerdata, parent)
+        self.parent = parent
+        self.dataChanged.connect(lambda : [self.init_tableview(),
+                                           self.set_example_text()])
+        self.parent.lineEdit.textChanged.connect(self.showGenusName)
+        self.parent.spinBox.valueChanged.connect(self.changeGenusName)
+        self.parent.pushButton_6.clicked.connect(self.get_taxonomy)
+        from src.factory import Factory
+        self.factory = Factory()
+        self.set_example_text()
+
+        self.parent.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.parent.customContextMenuRequested.connect(self.popup)
+        # header
+        dict_cols = {i:False for i in range(1, len(self.header))} if not header_state else header_state
+        self.hheader = CheckBoxHeader(parent=self.parent, checked_cols=dict_cols) # list(range(1,len(self.header))))
+        self.hheader.setMinimumSectionSize(150)
+        self.parent.setHorizontalHeader(self.hheader)
+        self.headerDataChanged.connect(lambda oritation, index1, index2: self.hheader.isOn.update({index1: False}))
+        self.parent.horizontalHeader().sectionDoubleClicked.connect(self.changeHorizontalHeader)
+        self.init_tableview()
+
+    def fetchIncludedTax(self):
+        return [self.header[0]] + [i for num,i in enumerate(self.header[1:]) if self.hheader.isOn[num+1]]
+
+    def fetchIncludedArray(self):
+        checked_nums = [0] + [num+1 for num,i in enumerate(self.header[1:]) if self.hheader.isOn[num+1]]
+        return [list(map(j.__getitem__, checked_nums)) for j in self.arraydata]
+
+    def changeHorizontalHeader(self, index):
+        oldHeader = self.headerData(index, Qt.Horizontal, role=Qt.DisplayRole)
+        newHeader, ok = QInputDialog.getText(self.parent,
+                                             'Change header label for column %d' % index,
+                                             'Header:',
+                                             QLineEdit.Normal,
+                                             oldHeader)
+        if ok:
+            self.header[index] = newHeader
+            self.setHeaderData(index, Qt.Horizontal, newHeader, role=Qt.EditRole)
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        value = self.arraydata[index.row()][index.column()]
+        if role in [Qt.EditRole, Qt.DisplayRole]:
+            return value
+        elif role == Qt.BackgroundRole and index.column() != 0:
+            if value:
+                return QColor(self.colourPicker(value))
+        # elif role == Qt.ForegroundRole:
+        #     return QColor("#d8d8d8")
+        elif role == Qt.ToolTipRole:
+            return value
+        elif role == Qt.TextAlignmentRole:
+            return Qt.AlignCenter
+        elif not (role == Qt.DisplayRole or role == Qt.EditRole):
+            return None
+
+    def sort(self, Ncol, order):
+        """
+        Sort table by given column number.
+        """
+        self.layoutAboutToBeChanged.emit()
+        self.arraydata = sorted(self.arraydata, key=operator.itemgetter(Ncol))
+        if order == Qt.DescendingOrder:
+            self.arraydata.reverse()
+        self.layoutChanged.emit()
+
+    def flags(self, index):
+        if index.column() in [0]:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable
+        else:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsUserCheckable
+
+
 def showERROR():
     errmsg = traceback.format_exc()
     QMessageBox.warning(QWidget(), '请确认', errmsg,

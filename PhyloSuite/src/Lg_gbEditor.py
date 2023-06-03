@@ -106,9 +106,10 @@ class Lg_ReANNT(QDialog, Ui_tRNA_ANNT, object):
         self.predict_signal = predict_signal
         self.totaltRNA = unRecognisetRNA.count(">")
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 信号和槽
         self.progressSig.connect(self.normProgress)
         self.close_sig.connect(self.closeWindow)
@@ -240,9 +241,10 @@ class GbEditor(QDialog, Ui_GBeditor, object):
         self.predict_signal.connect(self.reANNT_validate)
         self.exception_signal.connect(lambda x: self.factory.popupException(self, x))
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.installEventFilter(self)
         self.guiRestore()
         self.checkBox.toggled.connect(self.askRemoveMisc)

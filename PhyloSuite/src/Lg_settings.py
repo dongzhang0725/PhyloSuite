@@ -48,9 +48,10 @@ class LG_exePath(QDialog, Ui_ExePath, object):
         self.flag = flag
         self.target = " ".join(target) if type(target) == list else target
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.pushButton.setFocus()
         self.lineEdit.installEventFilter(self)
         self.label_4.linkActivated.connect(self.exe_link)
@@ -236,9 +237,10 @@ class LG_PF2_exePath(QDialog, Ui_PF2ExePath, object):
         if placeholdertext:
             self.lineEdit_3.setPlaceholderText(placeholdertext)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         country = self.factory.path_settings.value("country", "UK")
         url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/" if \
             country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/"
@@ -352,9 +354,10 @@ class Setting(QDialog, Ui_Settings, object):
                                     parent=self)
         iniCheckWorker.start()
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # self.factory.init_check(self)
         ##信号槽
         self.comboBox.currentTextChanged.connect(self.judgeSettings)
@@ -637,7 +640,7 @@ class Setting(QDialog, Ui_Settings, object):
                 "Please Wait", "Importing...", parent=self, busy=True)
             self.progressDialog.show()
             zipWorker = WorkThread(
-                lambda: self.factory.unzipFolder(fileName[0], self.thisPath),
+                lambda: self.factory.unzipFolder(fileName[0], self.factory.src_path),
                 parent=self)
             zipWorker.start()
             zipWorker.finished.connect(lambda: [self.progressDialog.close(), QMessageBox.information(

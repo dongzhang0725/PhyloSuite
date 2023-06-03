@@ -20,12 +20,15 @@ class LG_NCBIdb(QDialog, Ui_NCBI_DB, object):
         self.parent = parent
         self.db_file = db_file
         self.db_path = db_path
+        os.makedirs(self.db_path, exist_ok=True)
         self.thisPath = thisPath
         self.setupUi(self)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        qss_file = self.thisPath + os.sep + 'style.qss'
+        if os.path.exists(qss_file) and os.access(qss_file, os.R_OK) and os.access(qss_file, os.W_OK):
+            with open(qss_file, encoding="utf-8", errors='ignore') as f:
+                qss_content = f.read()
+            self.setStyleSheet(qss_content)
         self.pushButton.setFocus()
         self.lineEdit.installEventFilter(self)
         # self.label_4.linkActivated.connect(self.exe_link)

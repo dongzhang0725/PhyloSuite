@@ -248,9 +248,10 @@ class CompareTable(QDialog, Ui_compareTable, object):
         # File only, no fallback to registry or or.
         self.CompareTable_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
         self.exception_signal.connect(self.popupException)
@@ -362,7 +363,7 @@ class CompareTable(QDialog, Ui_compareTable, object):
             biopython_ref = "Cock, P.J., Antao, T., Chang, J.T., Chapman, B.A., Cox, C.J., Dalke, A., Friedberg, I., Hamelryck, T., Kauff, F., Wilczynski, B., et al. (2009). Biopython: freely available Python tools for computational molecular biology and bioinformatics. Bioinformatics 25, 1422-1423."
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
-            ps_cite = "If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n"
+            ps_cite = f"If you use PhyloSuite v1.2.3, please cite:\n{self.factory.get_PS_citation()}\n\n"
             text = ps_cite + self.time_used_des if not self.checkBox.isChecked() else description + "\n\n" + ps_cite + "If you use MAFFT, please cite:\n%s\n\nIf you use Biopython, please cite:\n%s\n\n"%(mafft_ref, biopython_ref) + self.time_used_des
             with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(text)

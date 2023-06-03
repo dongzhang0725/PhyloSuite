@@ -31,9 +31,10 @@ class Colorset(QDialog, Ui_color_editor, object):
         # File only, no fallback to registry or or.
         self.color_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
 

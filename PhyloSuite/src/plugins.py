@@ -19,7 +19,7 @@ dict_url = {
                 "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_win.zip",
                 "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-win64.zip",
                 "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mrbayes-win.zip",
-                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win64.zip",
+                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/PartitionFinder_win64.zip",
                 "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder.zip",
                 "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse.jar.zip",
                 "trimAl": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/trimal.zip",
@@ -28,7 +28,7 @@ dict_url = {
                 "ASTRAL": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
                 "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
                 "FastTree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/FastTree_win.zip",
-                "plot engine": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/plot_engine_Win64.zip"
+                "plot engine": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/plot_engine_Win64.zip"
             },
             "Gitlab": {
                 "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-win64.zip",
@@ -93,7 +93,7 @@ dict_url = {
                 "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_win.zip",
                 "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-win32.zip",
                 "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mrbayes-win.zip",
-                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win32.zip",
+                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/PartitionFinder_win32.zip",
                 "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder.zip",
                 "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse.jar.zip",
                 "trimAl": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/trimal.zip",
@@ -102,7 +102,7 @@ dict_url = {
                 "ASTRAL": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
                 "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
                 "FastTree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/FastTree_win.zip",
-                "plot engine": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/plot_engine_Win32.zip"
+                "plot engine": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/plot_engine_Win32.zip"
             },
             "Gitlab": {
                 "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-win32.zip",
@@ -169,14 +169,14 @@ dict_url = {
                 "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_OSX_0.91b.zip",
                 "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-mac64.zip",
                 "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mrbayes-mac64.zip",
-                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_mac.zip",
+                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/PartitionFinder_mac.zip",
                 "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder.zip",
                 "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse.jar.zip",
                 "CodonW": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MacOSCodonW.zip",
                 "ASTRAL": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_mac.zip",
                 "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_mac.zip",
                 "FastTree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/FastTree_mac.zip",
-                "plot engine": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/plot_engine_Mac.zip"
+                "plot engine": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/plot_engine_Mac.zip"
             },
             "Gitlab": {
                 "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-mac64.zip",

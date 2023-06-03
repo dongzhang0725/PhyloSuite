@@ -33,9 +33,10 @@ class SeqViewSettings(QDialog, Ui_seqViewSetting):
         # File only, no fallback to registry or or.
         self.Seq_viewer_setting.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.display_font = self.Seq_viewer_setting.value("display font")
         self.refreshFont(self.display_font)
         self.dict_foreColor = self.Seq_viewer_setting.value("foreground colors")
@@ -160,9 +161,10 @@ class Seq_viewer(QMainWindow, Ui_Seq_viewer, object):
         # File only, no fallback to registry or or.
         self.Seq_viewer_setting.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.exception_signal.connect(self.popupException)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         # undoView = QUndoView(self.undoStack)
@@ -229,16 +231,24 @@ class Seq_viewer(QMainWindow, Ui_Seq_viewer, object):
         initial_file = os.path.splitext(file)[0]
         NameAndFilter = QFileDialog.getSaveFileName(self,
                                                              "Choose file and format", initial_file,
-                                                             "Fasta Format (*.fas);;Phylip Format (*.phy);;"
-                                                             "Nexus Format (*.nex);;")
+                                                             "Fasta Format (*.fas);;"
+                                                             "Phylip Format (*.phy);;"
+                                                             "Nexus Format (*.nex);;"
+                                                             "Csv Format (*.csv);;")
         if NameAndFilter[0]:
-            dict_fmt = {"Fasta Format (*.fas)": "export_fas",
-                        "Phylip Format (*.phy)": "export_phylip",
-                        "Nexus Format (*.nex)": "export_nex",
-                        "": "export_fas"}
-            dict_args = {"userSave": NameAndFilter[0], dict_fmt[NameAndFilter[1]]: True}
-            convertfmt = Convertfmt(**dict_args)
-            convertfmt.generate_each(dict_taxon, file)
+            if NameAndFilter[1] != "Csv Format (*.csv)":
+                dict_fmt = {"Fasta Format (*.fas)": "export_fas",
+                            "Phylip Format (*.phy)": "export_phylip",
+                            "Nexus Format (*.nex)": "export_nex",
+                            "": "export_fas"}
+                dict_args = {"userSave": NameAndFilter[0], dict_fmt[NameAndFilter[1]]: True}
+                convertfmt = Convertfmt(**dict_args)
+                convertfmt.generate_each(dict_taxon, file)
+            else:
+                array = [[spe] + list(seq) for spe,seq in dict_taxon.items()]
+                self.factory.write_csv_file(NameAndFilter[0],
+                                            array,
+                                            silence=True)
             QMessageBox.information(
                 self,
                 "Information",

@@ -70,9 +70,10 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         # File only, no fallback to registry or or.
         self.gblocks_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
         # 判断程序的版本
@@ -258,7 +259,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                                                                                            self.time_used)
             with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                        f"\n\nIf you use PhyloSuite v1.2.3, please cite:\n{self.factory.get_PS_citation()}\n\n"
                         "If you use Gblocks, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:

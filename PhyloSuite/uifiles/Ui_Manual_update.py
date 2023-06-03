@@ -30,7 +30,6 @@ class Ui_Manual_update(object):
         self.lineEdit = QtWidgets.QLineEdit(Manual_update)
         self.lineEdit.setDragEnabled(True)
         self.lineEdit.setReadOnly(True)
-        self.lineEdit.setPlaceholderText("")
         self.lineEdit.setObjectName("lineEdit")
         self.gridLayout.addWidget(self.lineEdit, 1, 1, 1, 1)
         self.toolButton_3 = QtWidgets.QToolButton(Manual_update)
@@ -68,7 +67,8 @@ class Ui_Manual_update(object):
         _translate = QtCore.QCoreApplication.translate
         Manual_update.setWindowTitle(_translate("Manual_update", "Update manually"))
         self.label_3.setText(_translate("Manual_update", "<html><head/><body><p>You can download the latest update package from <a href=\"http://phylosuite.jushengwu.com/updates/update.zip\"><span style=\" text-decoration: underline; color:#0000ff;\">here</span></a>, and then specify the path below.</p></body></html>"))
-        self.label.setText(_translate("Manual_update", "Database path:"))
+        self.label.setText(_translate("Manual_update", "Update file path:"))
+        self.lineEdit.setPlaceholderText(_translate("Manual_update", "~/update_xxx.zip"))
         self.pushButton.setText(_translate("Manual_update", "Ok"))
         self.pushButton_2.setText(_translate("Manual_update", "Cancel"))
 

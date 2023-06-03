@@ -163,7 +163,7 @@ class UpdateAPP(QDialog):
     def __init__(self, parent=None):
         super(UpdateAPP, self).__init__(parent)
         self.factory = Factory()
-        self.rootPath = self.factory.thisPath
+        self.rootPath = self.factory.src_path
         #os.path.dirname(os.path.realpath(__file__))
         # self.totalSize = totalSize if totalSize else "42389760"
         # self.verticalLayout = QVBoxLayout(self)

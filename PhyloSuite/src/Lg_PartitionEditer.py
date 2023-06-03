@@ -24,9 +24,10 @@ class PartitionEditor(QDialog, Ui_Partition_editor, object):
         self.thisPath = self.factory.thisPath
         super(PartitionEditor, self).__init__(parent)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.resize(400, 600)
         self.setWindowFlags(
                     self.windowFlags() | Qt.WindowMinMaxButtonsHint)

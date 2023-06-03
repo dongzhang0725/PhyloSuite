@@ -42,9 +42,10 @@ class Lg_addFiles(QDialog, Ui_addFile, object):
         # self.close() 不能在信号槽里面
         self.fastaDownloadFinishedSig.connect(self.parent.setTreeViewFocus)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.setupUi(self)
         self.guiRestore()
         self.exception_signal.connect(self.popupException)

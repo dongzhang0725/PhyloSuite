@@ -27,9 +27,10 @@ class LG_Manual_update(QDialog, Ui_Manual_update, object):
                                     f'href="{update_path}"',
                                     self.label_3.text()))
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.pushButton.setFocus()
         self.lineEdit.installEventFilter(self)
         # self.label_4.linkActivated.connect(self.exe_link)

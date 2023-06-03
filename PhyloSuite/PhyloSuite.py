@@ -8,16 +8,19 @@ import sys
 import traceback
 from copy import deepcopy
 
-from PyQt5.QtGui import QPixmap, QFont, QIcon
-
 thisPath = os.path.abspath(os.path.dirname(sys.argv[0]))
 thisPath = os.path.abspath(os.path.dirname(__file__)) if not os.path.exists(thisPath + os.sep + "style.qss") else thisPath
 sys.path.append(thisPath)
+
+from PyQt5.QtGui import QPixmap, QFont, QIcon
 from PyQt5.QtCore import QSettings, Qt, QCoreApplication
 from PyQt5.QtWidgets import QApplication, QDialog, QMessageBox, QSplashScreen
 from src.Launcher import Launcher
 from src.factory import QSingleApplication, Factory
 from src.main import MyMainWindow
+
+# judge permission of thisPath
+thisPath = Factory().get_this_path(thisPath)
 
 def start():
     if platform.system().lower() == "windows":
@@ -25,13 +28,14 @@ def start():
     app = QSingleApplication(sys.argv)
     splash = QSplashScreen(
         QPixmap(":/picture/resourses/start.jpg"))
-    with open(thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-        qss_file = f.read()
+    # with open(thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+    #     qss_file = f.read()
     if platform.system().lower() == "darwin":
         splash.setWindowFlags(Qt.Window)
     font_size = 13 if platform.system().lower() == "windows" else 15
     splash.setFont(QFont('Arial', font_size))
-    splash.setStyleSheet(qss_file)
+    # splash.setStyleSheet(qss_file)
+    Factory().set_qss(splash)
     icon = QIcon(":/picture/resourses/windowIcon.png")
     splash.setWindowIcon(icon)
     splash.show()
@@ -48,7 +52,8 @@ def start():
     path_settings.setValue("thisPath", thisPath)
     os.chdir(thisPath)
     dialog = QDialog()
-    dialog.setStyleSheet(qss_file)
+    # dialog.setStyleSheet(qss_file)
+    Factory().set_qss(dialog)
     # 异常处理
     def handle_exception(exc_type, exc_value, exc_traceback):
         rgx = re.compile(r'PermissionError.+?[\'\"](.+\.csv)[\'\"]')
@@ -84,8 +89,11 @@ def start():
         thisPath + '/settings/launcher_settings.ini', QSettings.IniFormat)
     launcher_settings.setFallbacksEnabled(False)
     not_exe_lunch = launcher_settings.value("ifLaunch", "false")
+    # docker版本运行，bash脚本里面会有export PWD_，检测到这个以后，就会按那个PWD_来
+    default_workplace = f"{thisPath}{os.sep}myWorkPlace" if "PWD_" not in os.environ else \
+        f"{os.environ['PWD_']}{os.sep}myWorkPlace"
     workPlace = launcher_settings.value(
-        "workPlace", [thisPath + os.sep + "myWorkPlace"])
+        "workPlace", [default_workplace])
     # 删除无效的路径
     workPlace_copy = deepcopy(workPlace)
     for num,i in enumerate(workPlace_copy):
@@ -97,7 +105,7 @@ def start():
                 workPlace[num] = os.path.abspath(i)
     # 如果workPlace被删干净了
     if not workPlace:
-        workPlace = [thisPath + os.sep + "myWorkPlace"]
+        workPlace = [default_workplace]
     # 重新保存下路径
     if len(workPlace) > 15:
         workPlace = workPlace[:15]  # 只保留15个工作区

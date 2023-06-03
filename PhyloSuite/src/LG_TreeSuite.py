@@ -56,9 +56,10 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
         # File only, no fallback to registry or or.
         self.TreeSuite_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         ## 自动导入树和MSA文件
         if autoInputs:
             trees, alns = autoInputs
@@ -703,7 +704,7 @@ import pandas as pd
 
 df = pd.read_csv(r"{self.exportPath}{os.sep}plot_data.tsv", sep="\\t")
 df = df.assign(file=df.loc[:, "Tree"] + " & " + df.loc[:, "Alignment"])
-fig = px.scatter(df, x="Partristic distance", y="Pairwise difference",
+fig = px.scatter(df, x="Patristic distance", y="Pairwise difference",
                  facet_col="file", trendline="ols",
                  facet_col_wrap={self.kwargs["col_num"]},
                  facet_col_spacing={self.kwargs["col_space"]},
@@ -769,7 +770,7 @@ fig.write_html(r"{self.kwargs["html"]}")
     def saturation(self, tre_msa, export_path, sep="\t", suffix="tsv"):
         if sep== "\\t":
             sep = "\t"
-        list_out = [["Tree", "Alignment", "Species1", "Species2", "Partristic distance",
+        list_out = [["Tree", "Alignment", "Species1", "Species2", "Patristic distance",
                               "Pairwise difference", "Pairwise identity"]]
         if not self.make_plot:
             list_regression = [["Tree", "Alignment", "Slope", "Intercept", "r square",
