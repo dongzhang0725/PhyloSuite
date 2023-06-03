@@ -656,7 +656,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/Menu/resourses/Menu/echarts-tree.png",
                                                        "TreeSuite")
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/Menu/resourses/Menu/tree_structure.png",
-                                                       "iTOL annotator")
+                                                       "iTOL editor")
         self.phylogeny_widget.DropDownMenu.tableWidget.itemClicked.connect(self.popFunction)
         self.mitogenome_widget._creatMenu(self)
         if platform.system().lower() == "windows":
@@ -1993,7 +1993,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         filePath, workPath = self.fetchWorkPath(mode="all")
         # GUI_TIMEOUT = None
         # autoInputs = self.factory.init_judge(mode="tree suite", filePath=filePath, parent=self)
-        self.iTOL_editor = iTOL_editor(workPath=workPath,
+        self.iTOL_editor = Itol_editor(workPath=workPath,
                                    focusSig=self.focusSig,
                                    parent=self)
         self.iTOL_editor.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.iTOL_editor.windowFlags())
@@ -3237,7 +3237,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             self.on_TreeAnnotation_triggered()
         elif item.text() == "TreeSuite":
             self.on_TreeSuite_triggered()
-        elif item.text() == "iTOL annotator":
+        elif item.text() == "iTOL editor":
             self.on_iTOL_editor_triggered()
         elif item.text() == "Parse Annotation":
             self.on_ParseANNT_triggered()

@@ -4291,6 +4291,79 @@ class MyTaxTableModel2(MyImgTableModel):
             return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsUserCheckable
 
 
+class MyTableView(QTableView):
+
+    def __init__(self, parent=None):
+        super(MyTableView, self).__init__(parent)
+        self.setStyleSheet("QTableView::item:selected {background: #a6e4ff; color: black; border: 0px;}")
+        # self.resize(800, 600)
+        # self.setContextMenuPolicy(Qt.ActionsContextMenu)# 右键菜单
+        # self.setEditTriggers(self.NoEditTriggers)# 禁止编辑
+        # self.addAction(QAction("复制", self, triggered=self.copyData))
+        # self.myModel = QStandardItemModel()# model
+        # self.setModel(self.myModel)
+
+    def keyPressEvent(self, event):
+        super(MyTableView, self).keyPressEvent(event)
+        # Ctrl + C
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_C:
+            self.copyData()
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_V:
+            self.pastData()
+
+    def copyData(self):
+        rows = set()
+        cols = set()
+        for index in self.selectedIndexes():# 得到所有选择的
+            rows.add(index.row())
+            cols.add(index.column())
+        if (not rows) or (not cols):
+            return
+        minrow = min(rows)
+        maxrow = max(rows)
+        mincol = min(cols)
+        maxcol = max(cols)
+        # print(mrow, mcol)
+        arrays = [
+            ["" for _ in range(mincol, maxcol+1)
+             ] for _ in range(minrow, maxrow+1)
+        ]# 创建二维数组
+        # print(arrays, minrow, maxrow, mincol, maxcol)
+        # 填充数据
+        for index in self.selectedIndexes():# 遍历所有选择的
+            arrays[index.row()-minrow][index.column()-mincol] = index.data()
+        # print(arrays)
+        data = ""# 最后的结果
+        for row in arrays:
+            data += "\t".join(row) + "\n"
+        # print(data)
+        QApplication.clipboard().setText(data)# 复制到剪贴板中
+        QMessageBox.information(self, "Information", "Data copied")
+
+    def pastData(self):
+        old_array = self.model().arraydata
+        old_col = len(old_array[0])
+        old_row = len(old_array)
+        text = QApplication.clipboard().text()
+        array = [row.split("\t") for row in text.split("\n")]
+        if array:
+            reply = QMessageBox.information(
+                self,
+                "Confirmation",
+                "<p style='line-height:25px; height:25px'>Are you sure that you want to paste the data here? "
+                "The old data will be replaced!</p>",
+                QMessageBox.Ok,
+                QMessageBox.Cancel)
+            if reply == QMessageBox.Ok:
+                indices = self.selectedIndexes()
+                index = indices[0]
+                for row, list_row in enumerate(array):
+                    for col, value in enumerate(list_row):
+                        if ((index.row() + row + 1) <= old_row) and ((index.column() + col + 1 <= old_col)):
+                            old_array[index.row() + row][index.column() + col] = value
+                            self.model().dataChanged.emit(index, index)
+
+
 def showERROR():
     errmsg = traceback.format_exc()
     QMessageBox.warning(QWidget(), '请确认', errmsg,

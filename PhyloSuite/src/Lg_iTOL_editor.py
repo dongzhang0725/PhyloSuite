@@ -31,6 +31,9 @@ from multiprocessing.pool import ApplyResult
 from uifiles.Ui_iTOLAnnotation import Ui_annotation_editor
 
 class Itol_editor(QDialog, Ui_annotation_editor, object):
+    # 用于flowchart自动popup combobox等操作
+    showSig = pyqtSignal(QDialog)
+    closeSig = pyqtSignal(str, str)
 
     def __init__(
             self,

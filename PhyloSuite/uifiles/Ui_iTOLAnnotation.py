@@ -1,0 +1,122 @@
+# -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'D:\works\ZD\phylosuite\PhyloSuite_dev\PhyloSuite\uifiles\iTOLAnnotation.ui'
+#
+# Created by: PyQt5 UI code generator 5.10.1
+#
+# WARNING! All changes made in this file will be lost!
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+class Ui_annotation_editor(object):
+    def setupUi(self, annotation_editor):
+        annotation_editor.setObjectName("annotation_editor")
+        annotation_editor.resize(684, 442)
+        self.verticalLayout = QtWidgets.QVBoxLayout(annotation_editor)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.gridLayout_4 = QtWidgets.QGridLayout()
+        self.gridLayout_4.setObjectName("gridLayout_4")
+        self.gridLayout_2 = QtWidgets.QGridLayout()
+        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.label_2 = QtWidgets.QLabel(annotation_editor)
+        self.label_2.setObjectName("label_2")
+        self.gridLayout_2.addWidget(self.label_2, 0, 0, 1, 1)
+        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.gridLayout_2.addItem(spacerItem, 0, 1, 1, 1)
+        self.gridLayout_4.addLayout(self.gridLayout_2, 0, 0, 1, 1)
+        self.gridLayout_3 = QtWidgets.QGridLayout()
+        self.gridLayout_3.setObjectName("gridLayout_3")
+        self.label_3 = QtWidgets.QLabel(annotation_editor)
+        self.label_3.setObjectName("label_3")
+        self.gridLayout_3.addWidget(self.label_3, 0, 0, 1, 1)
+        self.lineEdit_3 = QtWidgets.QLineEdit(annotation_editor)
+        self.lineEdit_3.setObjectName("lineEdit_3")
+        self.gridLayout_3.addWidget(self.lineEdit_3, 0, 1, 1, 1)
+        self.pushButton_3 = QtWidgets.QPushButton(annotation_editor)
+        self.pushButton_3.setText("")
+        self.pushButton_3.setObjectName("pushButton_3")
+        self.gridLayout_3.addWidget(self.pushButton_3, 0, 2, 1, 1)
+        self.gridLayout_4.addLayout(self.gridLayout_3, 1, 0, 1, 1)
+        self.tableView = MyTableView(annotation_editor)
+        self.tableView.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.tableView.setObjectName("tableView")
+        self.gridLayout_4.addWidget(self.tableView, 2, 0, 1, 1)
+        self.gridLayout = QtWidgets.QGridLayout()
+        self.gridLayout.setObjectName("gridLayout")
+        self.lineEdit_2 = QtWidgets.QLineEdit(annotation_editor)
+        self.lineEdit_2.setReadOnly(True)
+        self.lineEdit_2.setObjectName("lineEdit_2")
+        self.gridLayout.addWidget(self.lineEdit_2, 1, 1, 1, 1)
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setSpacing(0)
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.spinBox = QtWidgets.QSpinBox(annotation_editor)
+        self.spinBox.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.spinBox.setMaximum(9999999)
+        self.spinBox.setProperty("value", 1)
+        self.spinBox.setObjectName("spinBox")
+        self.horizontalLayout.addWidget(self.spinBox)
+        self.label_4 = QtWidgets.QLabel(annotation_editor)
+        self.label_4.setObjectName("label_4")
+        self.horizontalLayout.addWidget(self.label_4)
+        self.gridLayout.addLayout(self.horizontalLayout, 0, 0, 1, 1)
+        self.lineEdit = QtWidgets.QLineEdit(annotation_editor)
+        self.lineEdit.setReadOnly(True)
+        self.lineEdit.setObjectName("lineEdit")
+        self.gridLayout.addWidget(self.lineEdit, 0, 1, 1, 1)
+        self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_4.setObjectName("horizontalLayout_4")
+        self.pushButton_6 = QtWidgets.QPushButton(annotation_editor)
+        self.pushButton_6.setObjectName("pushButton_6")
+        self.horizontalLayout_4.addWidget(self.pushButton_6)
+        self.label_5 = QtWidgets.QLabel(annotation_editor)
+        self.label_5.setObjectName("label_5")
+        self.horizontalLayout_4.addWidget(self.label_5)
+        self.gridLayout.addLayout(self.horizontalLayout_4, 1, 0, 1, 1)
+        self.gridLayout_4.addLayout(self.gridLayout, 3, 0, 1, 1)
+        self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
+        self.label = QtWidgets.QLabel(annotation_editor)
+        self.label.setObjectName("label")
+        self.horizontalLayout_3.addWidget(self.label)
+        spacerItem1 = QtWidgets.QSpacerItem(138, 21, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_3.addItem(spacerItem1)
+        self.pushButton_2 = QtWidgets.QPushButton(annotation_editor)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":/ete icons/add-icon.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.pushButton_2.setIcon(icon)
+        self.pushButton_2.setObjectName("pushButton_2")
+        self.horizontalLayout_3.addWidget(self.pushButton_2)
+        self.pushButton = QtWidgets.QPushButton(annotation_editor)
+        self.pushButton.setObjectName("pushButton")
+        self.horizontalLayout_3.addWidget(self.pushButton)
+        self.gridLayout_4.addLayout(self.horizontalLayout_3, 4, 0, 1, 1)
+        self.verticalLayout.addLayout(self.gridLayout_4)
+
+        self.retranslateUi(annotation_editor)
+        QtCore.QMetaObject.connectSlotsByName(annotation_editor)
+
+    def retranslateUi(self, annotation_editor):
+        _translate = QtCore.QCoreApplication.translate
+        annotation_editor.setWindowTitle(_translate("annotation_editor", "Annotation editor"))
+        self.label_2.setText(_translate("annotation_editor", "iTOL annotation"))
+        self.label_3.setText(_translate("annotation_editor", "Choose the treefile"))
+        self.label_4.setText(_translate("annotation_editor", "st/nd/rd/th word is Genus name in the example name:"))
+        self.pushButton_6.setText(_translate("annotation_editor", "Fetch taxonomy"))
+        self.label_5.setText(_translate("annotation_editor", "Extracted Genus name in example:"))
+        self.label.setText(_translate("annotation_editor", "Double click to modify data | Data can be pasted from or copied to Excel"))
+        self.pushButton_2.setText(_translate("annotation_editor", "Add column"))
+        self.pushButton.setText(_translate("annotation_editor", "Create"))
+
+from src.CustomWidget import MyTableView
+from uifiles import myRes_rc
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    annotation_editor = QtWidgets.QDialog()
+    ui = Ui_annotation_editor()
+    ui.setupUi(annotation_editor)
+    annotation_editor.show()
+    sys.exit(app.exec_())
+
