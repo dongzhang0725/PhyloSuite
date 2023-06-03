@@ -654,6 +654,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                                                        "Tree annotation")
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/Menu/resourses/Menu/echarts-tree.png",
                                                        "TreeSuite")
+        self.phylogeny_widget.DropDownMenu.addMenuItem(":/Menu/resourses/Menu/echarts-tree.png",
+                                                       "iTOL annotation")
         self.phylogeny_widget.DropDownMenu.tableWidget.itemClicked.connect(self.popFunction)
         self.mitogenome_widget._creatMenu(self)
         if platform.system().lower() == "windows":
@@ -1984,6 +1986,12 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.TreeSuite.show()
         if (not autoInputs) and (not self.factory.autoInputDisbled()):
             self.TreeSuite.popupAutoDec(init=True)
+
+    @pyqtSlot()
+    def on_iTOLAnnotation_triggered(self):
+        filePath, workPath = self.fetchWorkPath(mode="all")
+        self.iTOLAnnotation = iTOLAnnotation(workPath=workPath,
+                                             )
 
     @pyqtSlot()
     def on_actionASTRAL_triggered(self):
