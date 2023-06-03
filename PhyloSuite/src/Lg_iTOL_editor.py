@@ -28,13 +28,13 @@ import subprocess
 import platform
 from multiprocessing.pool import ApplyResult
 
-from uifiles.Ui_iTOL_editor import Ui_iTOL_edotor
+from uifiles.Ui_iTOLAnnotation import Ui_annotation_editor
 
-class Itol_editor(QDialog, Ui_iTOL_edotor, object):
+class Itol_editor(QDialog, Ui_annotation_editor, object):
 
     def __init__(
             self,
-            autoInputs=None,
+            # autoInputs=None,
             workPath=None,
             focusSig=None,
             parent=None):
@@ -45,7 +45,7 @@ class Itol_editor(QDialog, Ui_iTOL_edotor, object):
         self.thisPath = self.factory.thisPath
         self.workPath = workPath
         self.focusSig = focusSig
-        self.autoInputs = autoInputs
+        # self.autoInputs = autoInputs
         self.setupUi(self)
         # 保存设置
         self.Itol_editor_settings = QSettings(
@@ -60,7 +60,7 @@ class Itol_editor(QDialog, Ui_iTOL_edotor, object):
         self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
-        self.tax_model = MyTaxTableModel2(array, header, parent=self.tableView, dialog=self)
+        # self.tax_model = MyTaxTableModel2(array, header, parent=self.tableView, dialog=self)
         #
 
 
