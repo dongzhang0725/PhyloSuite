@@ -509,11 +509,7 @@ class MrBayes(QDialog, Ui_MrBayes, object):
                 try:
                     self.worker.stopWork()
                     if platform.system().lower() in ["windows", "darwin"]:
-                        # os.killpg(os.getpgid(self.mb_popen.pid), signal.SIGTERM)
                         self.mb_popen.kill()
-                        # self.mb_popen.terminate()
-                        # os.kill(self.mb_popen.pid, signal.SIGTERM)
-                        # subprocess.run(["taskkill", "/F", "/T", "/PID", str(self.mb_popen.pid)])  # 终止进程
                     else:
                         os.killpg(os.getpgid(self.mb_popen.pid), signal.SIGTERM)
                     self.mb_popen = None
