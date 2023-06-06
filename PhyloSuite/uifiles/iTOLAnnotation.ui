@@ -6,22 +6,22 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>684</width>
-    <height>489</height>
+    <width>681</width>
+    <height>566</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Annotation editor</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
-    <layout class="QGridLayout" name="gridLayout_4">
+  <layout class="QGridLayout" name="gridLayout_7">
+   <item row="0" column="0">
+    <layout class="QGridLayout" name="gridLayout_6">
      <item row="0" column="0">
-      <layout class="QGridLayout" name="gridLayout_2">
+      <layout class="QGridLayout" name="gridLayout_4">
        <item row="0" column="0">
         <widget class="QLabel" name="label_2">
          <property name="text">
-          <string>iTOL annotation</string>
+          <string>iTOL editor</string>
          </property>
         </widget>
        </item>
@@ -37,6 +37,102 @@
           </size>
          </property>
         </spacer>
+       </item>
+      </layout>
+     </item>
+     <item row="4" column="0">
+      <widget class="QGroupBox" name="groupBox">
+       <property name="title">
+        <string>iTOL annotation</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="checkBox">
+          <property name="text">
+           <string>lineage colored range</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QCheckBox" name="checkBox_4">
+          <property name="text">
+           <string>lineage color</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="4">
+         <widget class="QPushButton" name="pushButton_13">
+          <property name="text">
+           <string>create</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QCheckBox" name="checkBox_3">
+          <property name="text">
+           <string>lineage colored text</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QCheckBox" name="checkBox_2">
+          <property name="text">
+           <string>lineage colored strip</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="0" column="0">
+        <widget class="QSpinBox" name="spinBox">
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="maximum">
+          <number>9999999</number>
+         </property>
+         <property name="value">
+          <number>1</number>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1" colspan="2">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>st/nd/rd/th word is Genus name in the example name:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="3">
+        <widget class="QLineEdit" name="lineEdit">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="3">
+        <widget class="QLineEdit" name="lineEdit_2">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QPushButton" name="pushButton_6">
+         <property name="text">
+          <string>Fetch taxonomy</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Extracted Genus name in example:</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
@@ -61,86 +157,16 @@
        </item>
       </layout>
      </item>
-     <item row="2" column="0">
-      <widget class="MyTableView" name="tableView">
-       <property name="sizeAdjustPolicy">
-        <enum>QAbstractScrollArea::AdjustToContents</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="lineEdit_2">
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
+     <item row="5" column="0">
+      <layout class="QGridLayout" name="gridLayout_5">
        <item row="0" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <property name="spacing">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="QSpinBox" name="spinBox">
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-           </property>
-           <property name="maximum">
-            <number>9999999</number>
-           </property>
-           <property name="value">
-            <number>1</number>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_4">
-           <property name="text">
-            <string>st/nd/rd/th word is Genus name in the example name:</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLineEdit" name="lineEdit">
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout_4">
-         <item>
-          <widget class="QPushButton" name="pushButton_6">
-           <property name="text">
-            <string>Fetch taxonomy</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_5">
-           <property name="text">
-            <string>Extracted Genus name in example:</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-      </layout>
-     </item>
-     <item row="4" column="0">
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <item>
         <widget class="QLabel" name="label">
          <property name="text">
           <string>Double click to modify data | Data can be pasted from or copied to Excel</string>
          </property>
         </widget>
        </item>
-       <item>
+       <item row="0" column="1">
         <spacer name="horizontalSpacer">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -153,7 +179,7 @@
          </property>
         </spacer>
        </item>
-       <item>
+       <item row="0" column="2">
         <widget class="QPushButton" name="pushButton_2">
          <property name="text">
           <string>Add column</string>
@@ -164,7 +190,7 @@
          </property>
         </widget>
        </item>
-       <item>
+       <item row="0" column="3">
         <widget class="QPushButton" name="pushButton">
          <property name="text">
           <string>Create</string>
@@ -172,6 +198,13 @@
         </widget>
        </item>
       </layout>
+     </item>
+     <item row="2" column="0">
+      <widget class="MyTableView" name="tableView">
+       <property name="sizeAdjustPolicy">
+        <enum>QAbstractScrollArea::AdjustToContents</enum>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
@@ -181,7 +214,7 @@
   <customwidget>
    <class>MyTableView</class>
    <extends>QTableView</extends>
-   <header>src.CustomWidget.h</header>
+   <header>.CustomWidgets.h</header>
   </customwidget>
  </customwidgets>
  <resources>
