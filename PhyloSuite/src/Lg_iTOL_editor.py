@@ -66,6 +66,27 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
         # self.tax_model = MyTaxTableModel2(array, header, parent=self.tableView, dialog=self)
         #
 
+    @pyqtSlot()
+    def on_pushButton_3_clicked(self):
+        pass
+
+    def init_table(self, list_leaves, list_inner_nodes):
+        header = ["Node ID", "Genus", "Subfamily", "Family", "Order", "Subclass", "Class", "Phylum"]
+        array = [[node.id] + [""]*7 for node in list_leaves + list_inner_nodes]
+        # editor = QDialog(self)
+        # editor.ui = Ui_annotation_editor_tax.Ui_annotation_editor()
+        # editor.ui.setupUi(editor)
+        # editor.ui.label_2.setText(f"{type}:")
+        model = MyTaxTableModel(array, header, parent=self.tableView, dialog=self)
+        self.tableView.setModel(model)
+        self.pushButton.clicked.connect(lambda: [self.checkboxes_action(editor)])
+
+        # add column
+        self.pushButton_2.clicked.connect(lambda : [model.header.append(f"Taxonomy{len(model.header)}"),
+                                                         model.headerDataChanged.emit(Qt.Horizontal, len(model.header)-1, len(model.header)-1),
+                                                         setattr(model, "arraydata", [row + [""] for row in model.arraydata]),
+                                                         model.dataChanged.emit(model.index(0, 0), model.index(0, 0)),
+                                                         self.tableView.scrollTo(model.index(0, len(model.header)-1))])
 
     @pyqtSlot()
     def on_pushButton_2_clicked(self):
@@ -340,9 +361,135 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
         taxWorker.start()
 
 
+    def checkboxes_action(self):
+        dict_parameters = {"hasRange": self.checkBox.isChecked(),
+                           "hasStrip": self.checkBox_2.isChecked(),
+                           "hasText": self.checkBox_3.isChecked(),
+                           "hasColor": self.checkBox_4.isChecked()
+                           }
+        if True in dict_parameters.values():
+            options = QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly
+            directory = QFileDialog.getExistingDirectory(self, "Choose folder", options=options)
+            if directory:
+                dict_parameters["directory"] = directory
+                array = self.tableView.model().fetchIncludedArray()
+                list_tax = self.tableView.model().fetchIncludedTax()
+                dict_color = self.tableView.model().get_colors()
+                dict_parameters["array"] = array
+                dict_parameters["list_tax"] = list_tax
+                dict_parameters["dict_color"] = dict_color
+                self.itol_generater(**dict_parameters)
+                QMessageBox.information(self, "File Created", f"File saved successfully")
+        else:
+            QMessageBox.information(self, "Information", f"Please select iTOL "
+                                                         f"annotation type first!")
+
+    def itol_generater(self,
+                       list_tax=None,
+                       array=None,
+                       dict_color=None,
+                       directory=None,
+                       hasRange=None,
+                       hasStrip=None,
+                       hasText=None,
+                       hasColor=None,
+                       ):
+        if hasRange:
+            for num, tax in enumerate(list_tax[1:]):
+                list_itol_range = [f'''TREE_COLORS
+SEPARATOR COMMA
+DATA''']
+                for line in array:
+                    tax_name = line[num + 1]
+                    list_itol_range.append(f"{line[0]},range,{dict_color[tax_name]},{tax_name}")
+                file_path = f"{directory}{os.sep}itol_range_{tax}.txt"
+                if os.path.exists(file_path):
+                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                                 QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        with open(file_path, "w", errors="ignore") as f:
+                            f.write("\n".join(list_itol_range))
+                else:
+                    with open(file_path, "w", errors="ignore") as f:
+                        f.write("\n".join(list_itol_range))
+        if hasStrip:
+            for num,tax in enumerate(list_tax[1:]):
+                list_tax_ = list(set([line[num+1] for line in array]))
+                tab_ = "\t"
+                list_itol_strip = [f'''DATASET_COLORSTRIP
+SEPARATOR	TAB
+DATASET_LABEL	color_strip_{tax}
+COLOR	#ff0000
+COLOR_BRANCHES	1
+STRIP_WIDTH	25
+LEGEND_TITLE	{tax}
+LEGEND_SHAPES	{tab_.join(["RE"]*len(list_tax_))}
+LEGEND_COLORS	{tab_.join([dict_color[tax] for tax in list_tax_])}
+LEGEND_LABELS	{tab_.join(list_tax_)}
+DATA''']
+                for line in array:
+                    tax_name = line[num+1]
+                    list_itol_strip.append(f"{line[0]}\t{dict_color[tax_name]}\t{tax_name}")
+                # print("\n".join(list_itol_strip))
+                file_path = f"{directory}{os.sep}itol_color_strip_{tax}.txt"
+                if os.path.exists(file_path):
+                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                                 QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        with open(file_path, "w", errors="ignore") as f:
+                            f.write("\n".join(list_itol_strip))
+                else:
+                    with open(file_path, "w", errors="ignore") as f:
+                        f.write("\n".join(list_itol_strip))
+        if hasText:
+            for num, tax in enumerate(list_tax[1:]):
+                list_itol_text = [f'''DATASET_TEXT
+SEPARATOR COMMA
+DATASET_LABEL,{tax} text
+COLOR,#ff0000
+MARGIN,0
+SHOW_INTERNAL,0
+LABEL_ROTATION,0
+ALIGN_TO_TREE,0
+SIZE_FACTOR,1
+DATA''']
+                for line in array:
+                    tax_name = line[num + 1]
+                    list_itol_text.append(f"{line[0]},{tax_name},-1,{dict_color[tax_name]},bold,2,0")
+                file_path = f"{directory}{os.sep}itol_{tax}_text.txt"
+                if os.path.exists(file_path):
+                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                                 QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        with open(file_path, "w", errors="ignore") as f:
+                            f.write("\n".join(list_itol_text))
+                else:
+                    with open(file_path, "w", errors="ignore") as f:
+                        f.write("\n".join(list_itol_text))
+        if hasColor:
+            for num, tax in enumerate(list_tax[1:]):
+                list_itol_color = [f'''TREE_COLORS
+SEPARATOR COMMA
+DATA''']
+                for line in array:
+                    tax_name = line[num + 1]
+                    list_itol_color.append(f"{line[0]},label,{dict_color[tax_name]},normal,1")
+                    # print("\n".join(list_itol_strip))
+                file_path = f"{directory}{os.sep}itol_color_{tax}.txt"
+                if os.path.exists(file_path):
+                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                                 QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        with open(file_path, "w", errors="ignore") as f:
+                            f.write("\n".join(list_itol_color))
+                else:
+                    with open(file_path, "w", errors="ignore") as f:
+                        f.write("\n".join(list_itol_color))
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    ui = ASTRAL()
+    ui = Itol_editor()
     ui.show()
     sys.exit(app.exec_())
