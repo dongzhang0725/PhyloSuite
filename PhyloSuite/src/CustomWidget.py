@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import platform
+import random
 import re
 from collections import OrderedDict
 from PyQt5.QtCore import *
@@ -4255,6 +4256,216 @@ class MyTaxTableModel2(MyImgTableModel):
         if ok:
             self.header[index] = newHeader
             self.setHeaderData(index, Qt.Horizontal, newHeader, role=Qt.EditRole)
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        value = self.arraydata[index.row()][index.column()]
+        if role in [Qt.EditRole, Qt.DisplayRole]:
+            return value
+        elif role == Qt.BackgroundRole and index.column() != 0:
+            if value:
+                return QColor(self.colourPicker(value))
+        # elif role == Qt.ForegroundRole:
+        #     return QColor("#d8d8d8")
+        elif role == Qt.ToolTipRole:
+            return value
+        elif role == Qt.TextAlignmentRole:
+            return Qt.AlignCenter
+        elif not (role == Qt.DisplayRole or role == Qt.EditRole):
+            return None
+
+    def sort(self, Ncol, order):
+        """
+        Sort table by given column number.
+        """
+        self.layoutAboutToBeChanged.emit()
+        self.arraydata = sorted(self.arraydata, key=operator.itemgetter(Ncol))
+        if order == Qt.DescendingOrder:
+            self.arraydata.reverse()
+        self.layoutChanged.emit()
+
+    def flags(self, index):
+        if index.column() in [0]:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable
+        else:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsUserCheckable
+
+class MyTaxTableModel(MyImgTableModel):
+    def __init__(self, datain, headerdata, parent=None, dialog=None, header_state=None):
+        """
+        Args:
+            datain: a list of lists\n
+            headerdata: a list of strings
+        """
+        MyImgTableModel.__init__(self, datain, headerdata, parent)
+        self.dialog = dialog
+        self.dataChanged.connect(lambda : [self.init_tableview(),
+                                           self.set_example_text()])
+        self.dialog.lineEdit.textChanged.connect(self.showGenusName)
+        self.dialog.spinBox.valueChanged.connect(self.changeGenusName)
+        self.dialog.pushButton_6.clicked.connect(self.get_taxonomy)
+        from src.factory import Factory
+        self.factory = Factory()
+        self.set_example_text()
+        self.dict_tax_color = {}
+        self.parent.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.parent.customContextMenuRequested.connect(self.popup)
+        # header
+        # dict_cols = {i:False for i in range(1, len(self.header))} if not header_state else header_state
+        # self.hheader = CheckBoxHeader(parent=self.parent, checked_cols=dict_cols) # list(range(1,len(self.header))))
+        # self.hheader.setMinimumSectionSize(150)
+        # self.parent.setHorizontalHeader(self.hheader)
+        # self.headerDataChanged.connect(lambda oritation, index1, index2: self.hheader.isOn.update({index1: False}))
+        self.parent.horizontalHeader().sectionDoubleClicked.connect(self.changeHorizontalHeader)
+        self.init_tableview()
+
+    def changeHorizontalHeader(self, index):
+        oldHeader = self.headerData(index, Qt.Horizontal, role=Qt.DisplayRole)
+        newHeader, ok = QInputDialog.getText(self.parent,
+                                             'Change header label for column %d' % index,
+                                             'Header:',
+                                             QLineEdit.Normal,
+                                             oldHeader)
+        if ok:
+            self.header[index] = newHeader
+            self.setHeaderData(index, Qt.Horizontal, newHeader, role=Qt.EditRole)
+
+    def fetchIncludedTax(self):
+        return [self.header[0]] + [i for num,i in enumerate(self.header[1:])]
+
+    def fetchIncludedArray(self):
+        # checked_nums = [0] + [num+1 for num,i in enumerate(self.header[1:]) if self.hheader.isOn[num+1]]
+        return self.arraydata # [list(map(j.__getitem__, checked_nums)) for j in self.arraydata]
+
+    def popup(self, qpoint):
+        popMenu = QMenu(self.parent)
+        bgcolor = QAction("Set background color", self,
+                          statusTip="Set background color",
+                          triggered=self.set_bgcolor)
+        fetch_tax = QAction("Fetch taxonomy using information of this column", self,
+                            statusTip="Fetch taxonomy using information of this column",
+                            triggered=lambda : self.get_taxonomy(by="col"))
+        popMenu.addAction(bgcolor)
+        popMenu.addAction(fetch_tax)
+        if self.parent.indexAt(qpoint).isValid():
+            popMenu.exec_(QCursor.pos())
+
+    def set_bgcolor(self):
+        indices = self.parent.selectedIndexes()
+        index = indices[0]
+        if index.column() != 0:
+            tax = index.data(Qt.DisplayRole)
+            color_ = self.dict_tax_color[tax] if tax in self.dict_tax_color else None
+            color = QColorDialog.getColor(QColor(color_))
+            if color.isValid():
+                if color in list(self.dict_tax_color.values()):
+                    reply = QMessageBox.question(
+                        self,
+                        "Confirmation",
+                        "<p style='line-height:25px; height:25px'>This colour has already been used for another "
+                        "taxonomic category, \n"
+                        "are you sure you still want to use it?</p>",
+                        QMessageBox.Yes,
+                        QMessageBox.Cancel)
+                    if reply == QMessageBox.Cancel:
+                        return
+                self.dict_tax_color[tax] = color
+                self.dataChanged.emit(index, index)
+
+    def set_example_text(self):
+        current_text = self.dialog.lineEdit.text()
+        data_text = self.arraydata[0][0]
+        if data_text != current_text:
+            self.dialog.lineEdit.setText(" ".join(re.split(r"[\W|_]", data_text)))
+
+    def changeGenusName(self, value):
+        list_names = re.split(r"[\W|_]", self.dialog.lineEdit.text())
+        index = len(list_names)-1 if value > len(list_names) else value-1
+        genusName = list_names[index]
+        self.dialog.lineEdit_2.setText(genusName)
+
+    def showGenusName(self, text):
+        index = self.dialog.spinBox.value()
+        genusName = re.split(r"[\W|_]", text)[index-1]
+        self.dialog.lineEdit_2.setText(genusName)
+
+    def fetch_tax_by_col(self):
+        indices = self.parent.selectedIndexes()
+        index = indices[0]
+        if index.column() == 0:
+            return
+        LineageNames = [i.upper() for i in self.header[1:]]
+        from ete3 import NCBITaxa
+        ncbi = NCBITaxa()
+        for row in range(len(self.arraydata)):
+            tax = self.index(row, index.column()).data(Qt.DisplayRole)
+            if not tax:
+                continue
+            dict_name_id = ncbi.get_name_translator([tax])
+            if dict_name_id:
+                query_id = dict_name_id[tax][0]
+                lineage_ids = ncbi.get_lineage(query_id)
+                dict_id_rank = ncbi.get_rank(lineage_ids)
+                for id in dict_id_rank:
+                    if dict_id_rank[id].upper() in LineageNames:
+                        col = LineageNames.index(dict_id_rank[id].upper())
+                        self.arraydata[row][col+1] = ncbi.get_taxid_translator([id])[id]
+        self.layoutChanged.emit()
+
+    def get_taxonomy_slot(self):
+        LineageNames = [i.upper() for i in self.header[1:]]
+        from ete3 import NCBITaxa
+        ncbi = NCBITaxa()
+        for row in range(len(self.arraydata)):
+            index = self.dialog.spinBox.value()
+            genusName = re.split(r"[\W|_]", self.arraydata[row][0])[index-1]
+            dict_name_id = ncbi.get_name_translator([genusName])
+            if dict_name_id:
+                query_id = dict_name_id[genusName][0]
+                lineage_ids = ncbi.get_lineage(query_id)
+                dict_id_rank = ncbi.get_rank(lineage_ids)
+                for id in dict_id_rank:
+                    if dict_id_rank[id].upper() in LineageNames:
+                        col = LineageNames.index(dict_id_rank[id].upper())
+                        self.arraydata[row][col+1] = ncbi.get_taxid_translator([id])[id]
+        self.layoutChanged.emit()
+
+    def get_taxonomy(self, by=None):
+        # 进度条
+        self.progressDialog = self.factory.myProgressDialog(
+            "Please Wait", "Finding... \n(note that if you use this function for the first time, \n"
+                           "it will take some time to configure NCBI database)",
+            busy=True, parent=self.dialog)
+        self.progressDialog.show()
+        slot_fun = self.get_taxonomy_slot if by != "col" else self.fetch_tax_by_col
+        from src.factory import WorkThread
+        taxWorker = WorkThread(slot_fun, parent=self)
+        taxWorker.finished.connect(self.progressDialog.close)
+        taxWorker.start()
+
+    def get_colors(self):
+        dict_ = {}
+        for row, list_row in enumerate(self.arraydata):
+            for col, i in enumerate(list_row):
+                if col != 0:
+                    # if self.hheader.isOn[col]:
+                    if i:
+                        dict_[i] = self.index(row, col).data(Qt.BackgroundRole).name()
+        return dict_
+
+    def colourPicker(self, tax):
+
+        colours = list(self.dict_tax_color.values())
+        # 生成不重复的随机颜色
+        if tax in self.dict_tax_color:
+            colour = self.dict_tax_color[tax]
+        else:
+            colour = '#%06X' % random.randint(0, 256 ** 3 - 1)
+            while colour in colours:
+                colour = '#%06X' % random.randint(0, 256 ** 3 - 1)
+            self.dict_tax_color[tax] = colour
+        return colour
 
     def data(self, index, role):
         if not index.isValid():
