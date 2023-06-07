@@ -81,7 +81,7 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
     def input(self, file):
         base = os.path.basename(file)
         self.lineEdit_3.setText(base)
-        self.lineEdit_3.setToolTip(file)
+        self.lineEdit_3.setToolTip(os.path.abspath(file))
         tre = self.factory.read_tree(file)
         list_leaves = tre.get_leaf_names()
         self.init_table(list_leaves)
@@ -224,8 +224,10 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
                     return True
             if event.type() == QEvent.Drop:
                 files = [u.toLocalFile() for u in event.mimeData().urls()]
-                self.input(files[0])
-        # if (event.type() == QEvent.Show) and (obj == self.pushButton.toolButton.menu()):
+                file_f = files[0]
+                self.input(file_f)
+                return True
+                        # if (event.type() == QEvent.Show) and (obj == self.pushButton.toolButton.menu()):
         #     if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+",
         #                  self.dir_action.text()) or self.dir_action.text() == "Output Dir: ":
         #         self.factory.sync_dir(self.dir_action)  ##同步文件夹名字
