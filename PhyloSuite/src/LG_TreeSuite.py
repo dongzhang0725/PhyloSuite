@@ -211,19 +211,21 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
 
     def set_outgroups(self, ete_tre, outgroups):
         if set([i in ete_tre for i in outgroups]) == {True}:
+            ete_tre.unroot()
             outgroup_mca = ete_tre.get_common_ancestor(outgroups)
-            if outgroup_mca == ete_tre:
-                ## 外群的MCA就是根节点
-                ### 先置根一个非外群物种
-                for node in ete_tre.traverse("postorder"):
-                    if node.is_leaf() and (node.name not in outgroups):
-                        break
-                ete_tre.set_outgroup(node)
-                ### 再置根原本的外群
-                outgroup_mca = ete_tre.get_common_ancestor(outgroups)
-                ete_tre.set_outgroup(outgroup_mca)
-            else:
-                ete_tre.set_outgroup(outgroup_mca)
+            ete_tre.set_outgroup(outgroup_mca)
+            # if outgroup_mca == ete_tre:
+            #     ## 外群的MCA就是根节点
+            #     ### 先置根一个非外群物种
+            #     for node in ete_tre.traverse("postorder"):
+            #         if node.is_leaf() and (node.name not in outgroups):
+            #             break
+            #     ete_tre.set_outgroup(node)
+            #     ### 再置根原本的外群
+            #     outgroup_mca = ete_tre.get_common_ancestor(outgroups)
+            #     ete_tre.set_outgroup(outgroup_mca)
+            # else:
+            #     ete_tre.set_outgroup(outgroup_mca)
         return ete_tre
 
     def ctrl_input_widget(self, analysis):
