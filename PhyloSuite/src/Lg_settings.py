@@ -1642,7 +1642,7 @@ class Setting(QDialog, Ui_Settings, object):
             #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
             #     if os.path.exists(zipFile):
             #         os.remove(zipFile)
-            # self.settings.setValue(flag, "")
+            self.settings.setValue(flag, "")
             WorkThread(self.judgePluginInstall, parent=self).start()
             QMessageBox.information(
                 self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")

@@ -28,6 +28,7 @@ dict_url = {
                 "ASTRAL": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
                 "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
                 "FastTree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/FastTree_win.zip",
+                "PAML": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/paml-4.10.6-win.zip",
                 "plot engine": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/plot_engine_Win64.zip"
             },
             "Gitlab": {
@@ -82,6 +83,7 @@ dict_url = {
                 "ASTRAL": "http://phylosuite.jushengwu.com/plugins/ASTRAL_win.zip",
                 "ASTRAL-PRO": "http://phylosuite.jushengwu.com/plugins/ASTRAL_win.zip",
                 "FastTree": "http://phylosuite.jushengwu.com/plugins/FastTree_win.zip",
+                "PAML": "http://phylosuite.jushengwu.com/plugins/paml-4.10.6-win.zip",
                 "plot engine": "http://phylosuite.jushengwu.com/plugins/plot_engine_Win64.zip"
             }
         },
@@ -237,6 +239,7 @@ dict_url = {
 ## zipFileName_win 和 zipFileName_mac 必须保持一致
 ## link_linux和link_mac里面如果有If download failed, 将会显示下载按钮和下载源的combobox，如果没有，将会隐藏他们
 ### 或许改成通过label3来判断？根据它是configure还是download
+## 下面信息比较简略的是以前配置好的插件，如果要新添加插件，需要用类似ASTRAL这样配置的信息
 dict_plugin_settings = {
     "ASTRAL": {
         ### macOSx86bin 下的所有文件都可以在mac里面直接用，但是需要是老的x86的mac，新的mac是arm的。
@@ -383,6 +386,54 @@ dict_plugin_settings = {
         "relative_path_win": "FastTree/FastTree.exe",
         "relative_path_mac": "FastTree/fasttree",
         "relative_path_linux": "FastTree/fasttree",
+    },
+    "PAML": {
+        ### macOSx86bin 下的所有文件都可以在mac里面直接用，但是需要是老的x86的mac，新的mac是arm的。
+        ### 不管什么版本的mac，都可以cd进去make，这样就有可执行文件在bin文件夹里面生成
+        "plugin_name": "PAML", # 必须和键一样
+        "version": "4.10.6",
+        "description": "PAML is a program package for model fitting and phylogenetic tree reconstruction using DNA and protein sequence data.",
+        "label1":"<html><head/><body><p>If you have <span style=\"color:red\">PAML v4.10.6</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>",
+        "label2":"PAML:",
+        "label3":"<html><head/><body><p>If you don\'t have PAML, please <span style=\" font-weight:600; color:#ff0000;\">configure</span>.</p></body></html>",
+        "placeholdertext_win": "C:\\paml-4.10.6-win\\bin\\mcmctree.exe",
+        "placeholdertext_mac": "../paml-4.10.6-win/bin/mcmctree",
+        "placeholdertext_linux": "../paml-4.10.6-win/bin/mcmctree",
+        "target_win": "mcmctree.exe",
+        "target_mac": "mcmctree",
+        "target_linux": "mcmctree",
+        # 如果没有自动下载的链接，就用这个。否则就在Lg_settings里面设置即可
+        "link_mac": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">" \
+                    "If download failed, click " \
+                    "<a href=\"https://github.com/chaoszhang/ASTER/blob/master/tutorial/astral.md\">" \
+                    "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>"
+                    " to download manually and then specify the path as indicated above. " \
+                    "If you are adding PAML to environment variables, when you finish the installation, " \
+                    "you need to close and reopen PhyloSuite to see if it installed successfully" \
+                    " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the PAML executable" \
+                    " file (<span style=\" font-weight:600; color:#ff0000;\">astral</span>) manually (using options above).</p>" \
+                    "</body></html>",
+        "link_linux": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">" \
+                      "If download failed, click " \
+                      "<a href=\"https://github.com/chaoszhang/ASTER/blob/master/tutorial/astral.md\">" \
+                      "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>"
+                      " to download manually and then specify the path as indicated above. " \
+                      "If you are adding PAML to environment variables, when you finish the installation, " \
+                      "you need to close and reopen PhyloSuite to see if it installed successfully" \
+                      " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the PAML executable" \
+                      " file (<span style=\" font-weight:600; color:#ff0000;\">astral</span>) manually (using options above).</p>" \
+                      "</body></html>",
+        # 卸载相关
+        "zipFileName_win": "paml-4.10.6-win.zip",
+        "zipFileName_mac": "paml-4.10.6-win.zip",
+        "zipFolder_win": "paml-4.10.6-win",
+        "zipFolder_mac": "paml-4.10.6-win",
+        ## 用于给glob匹配软件的名字,用于模糊匹配
+        "zipFolderFlag": "paml",
+        # 判断路径相关
+        "relative_path_win": "paml-4.10.6-win/bin/mcmctree.exe",
+        "relative_path_mac": "/paml-4.10.6-win/bin/mcmctree",
+        "relative_path_linux": "/paml-4.10.6-win/bin/mcmctree",
     },
     "mafft": {
         "target_win": "mafft.bat",

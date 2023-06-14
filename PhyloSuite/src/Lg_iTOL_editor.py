@@ -122,10 +122,10 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
         for name, obj in inspect.getmembers(self):
             # if type(obj) is QComboBox:  # this works similar to isinstance, but
             # missed some field... not sure why?
-            if isinstance(obj, QComboBox):
+            if isinstance(obj, QSpinBox):
                 # save combobox selection to registry
-                index = obj.currentIndex()
-                self.Itol_editor_settings.setValue(name, index)
+                value = obj.value()
+                self.Itol_editor_settings.setValue(name, value)
             # if isinstance(obj, QCheckBox):
             #     state = obj.isChecked()
             #     self.Itol_editor_settings.setValue(name, state)
@@ -180,10 +180,10 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
             elif isinstance(obj, QLineEdit):
                 if name == "lineEdit_5" and self.autoInputs:
                     self.input(self.autoInputs, obj)
-            elif isinstance(obj, QDoubleSpinBox):
+            elif isinstance(obj, QSpinBox):
                 ini_float_ = obj.value()
                 float_ = self.Itol_editor_settings.value(name, ini_float_)
-                obj.setValue(float(float_))
+                obj.setValue(float_)
 
     def popupException(self, exception):
         msg = QMessageBox(self)
