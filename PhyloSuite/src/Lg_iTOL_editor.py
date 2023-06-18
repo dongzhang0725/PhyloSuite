@@ -183,7 +183,7 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
             elif isinstance(obj, QSpinBox):
                 ini_float_ = obj.value()
                 float_ = self.Itol_editor_settings.value(name, ini_float_)
-                obj.setValue(float_)
+                obj.setValue(int(float_))
 
     def popupException(self, exception):
         msg = QMessageBox(self)
