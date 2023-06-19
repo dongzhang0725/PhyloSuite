@@ -56,6 +56,7 @@ from src.Lg_extracter import ExtractGB
 from src.Lg_mafft import Mafft
 from src.Lg_Concatenate import Matrix
 from src.Lg_iTOL_editor import Itol_editor
+from src.Lg_MCMCTree import MCMCTree
 import platform
 if platform.system().lower() == "windows":
     ##windows下才导入这个
@@ -657,6 +658,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                                                        "TreeSuite")
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/Menu/resourses/Menu/tree_structure.png",
                                                        "iTOL editor")
+        self.phylogeny_widget.DropDownMenu.addMenuItem(":/Menu/resourses/Menu/tree_structure.png",
+                                                       "MCMCTree")
         self.phylogeny_widget.DropDownMenu.tableWidget.itemClicked.connect(self.popFunction)
         self.mitogenome_widget._creatMenu(self)
         if platform.system().lower() == "windows":
@@ -2001,6 +2004,18 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         # if (not autoInputs) and (not self.factory.autoInputDisbled()):
         #     self.iTOL_editor.popupAutoDec(init=True)
 
+    def on_MCMCTree_triggered(self):
+        filePath, workPath = self.fetchWorkPath(mode="all")
+        # GUI_TIMEOUT = None
+        # autoInputs = self.factory.init_judge(mode="tree suite", filePath=filePath, parent=self)
+        self.MCMCTree = MCMCTree(workPath=workPath,
+                                   focusSig=self.focusSig,
+                                   parent=self)
+        self.MCMCTree.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.MCMCTree.windowFlags())
+        self.MCMCTree.show()
+        # if (not autoInputs) and (not self.factory.autoInputDisbled()):
+        #     self.MCMCTree.popupAutoDec(init=True)
+
     @pyqtSlot()
     def on_actionASTRAL_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
@@ -3239,6 +3254,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             self.on_TreeSuite_triggered()
         elif item.text() == "iTOL editor":
             self.on_iTOL_editor_triggered()
+        elif item.text() == "MCMCTree":
+            self.on_MCMCTree_triggered()
         elif item.text() == "Parse Annotation":
             self.on_ParseANNT_triggered()
         elif item.text() == "Compare Table":
