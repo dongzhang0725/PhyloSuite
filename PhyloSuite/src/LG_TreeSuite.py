@@ -211,7 +211,14 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
 
     def set_outgroups(self, ete_tre, outgroups):
         if set([i in ete_tre for i in outgroups]) == {True}:
-            outgroup_mca = ete_tre.get_common_ancestor(outgroups)
+            ete_tre.unroot()
+            def get_out_mca(tre, out_groups):
+                if len(out_groups) >= 2:
+                    outgroup_mca = tre.get_common_ancestor(out_groups)
+                else:
+                    outgroup_mca = tre.search_nodes(name=out_groups[0])[0]
+                return outgroup_mca
+            outgroup_mca = get_out_mca(ete_tre, outgroups)
             if outgroup_mca == ete_tre:
                 ## 外群的MCA就是根节点
                 ### 先置根一个非外群物种
@@ -220,7 +227,7 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
                         break
                 ete_tre.set_outgroup(node)
                 ### 再置根原本的外群
-                outgroup_mca = ete_tre.get_common_ancestor(outgroups)
+                outgroup_mca = get_out_mca(ete_tre, outgroups)
                 ete_tre.set_outgroup(outgroup_mca)
             else:
                 ete_tre.set_outgroup(outgroup_mca)
