@@ -543,7 +543,7 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QPushButton" name="pushButton_5">
+           <widget class="QPushButton" name="pushButton_15">
             <property name="text">
              <string>Generate</string>
             </property>
@@ -563,7 +563,7 @@
         <item>
          <layout class="QGridLayout" name="gridLayout_11">
           <item row="0" column="0">
-           <widget class="ArrowPushButton" name="pushButton_9">
+           <widget class="ArrowPushButton" name="pushButton_5">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -589,7 +589,7 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="ArrowPushButton" name="pushButton_8">
+           <widget class="ArrowPushButton" name="pushButton_2">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -688,7 +688,7 @@
   <tabstop>lineEdit</tabstop>
   <tabstop>pushButton</tabstop>
   <tabstop>lineEdit_2</tabstop>
-  <tabstop>pushButton_5</tabstop>
+  <tabstop>pushButton_15</tabstop>
  </tabstops>
  <resources/>
  <connections/>

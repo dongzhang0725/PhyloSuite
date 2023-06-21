@@ -2006,10 +2006,11 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
 
     def on_MCMCTree_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
-        # GUI_TIMEOUT = None
+        mcmctreeEXE = self.factory.programIsValid("PAML", mode="tool")
         # autoInputs = self.factory.init_judge(mode="tree suite", filePath=filePath, parent=self)
         self.MCMCTree = MCMCTree(workPath=workPath,
                                    focusSig=self.focusSig,
+                                 mcmctreeEXE=mcmctreeEXE,
                                    parent=self)
         self.MCMCTree.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.MCMCTree.windowFlags())
         self.MCMCTree.show()
