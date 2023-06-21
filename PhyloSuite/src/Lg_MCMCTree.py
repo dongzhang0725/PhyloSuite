@@ -44,6 +44,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
+        self.log_gui = self.gui4Log()
+        self.text_gui = self.gui4Text()
 
     def input(self, file, which):
         base = os.path.basename(file)
@@ -81,9 +83,15 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.ctl_generater()
 
     @pyqtSlot()
+    def on_pushButton_6_clicked(self):
+        """
+        show log
+        """
+        self.log_gui.show()
+
+    @pyqtSlot()
     def on_pushButton_7_clicked(self):
-        ctl = self.ctl_generater()
-        self.showText(ctl.list_mcmctree_ctl)
+        self.text_gui.show()
 
     def showText(self, lst):
         self.tableView_2.setRowCount(len(lst))
@@ -182,6 +190,128 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             self.closeSig.disconnect()
         except:
             pass
+
+    def setWordWrap(self):
+        button = self.sender()
+        if button.isChecked():
+            button.setChecked(True)
+            self.textEdit_log.setLineWrapMode(QTextEdit.WidgetWidth)
+        else:
+            button.setChecked(False)
+            self.textEdit_log.setLineWrapMode(QTextEdit.NoWrap)
+
+    def save_log_to_file(self):
+        content = self.textEdit_log.toPlainText()
+        fileName = QFileDialog.getSaveFileName(
+            self, "MrBayes", "log", "text Format(*.txt)")
+        if fileName[0]:
+            with open(fileName[0], "w", encoding="utf-8") as f:
+                f.write(content)
+
+    def gui4Text(self):
+        dialog = QDialog(self)
+        dialog.resize(800, 500)
+        dialog.setWindowTitle("Preview configurations")
+        para_s, para_ds = self.getParas()
+        model = QStandardItemModel()
+        #print(para_s[15])
+        items_list = [("seed", para_s[15], "-", "-"),
+                      ("ndata", para_s[0], "-", "-"),
+                      ("seqtype", para_s[17], "-", "-"),
+                      ("usedata", para_s[18], "-", "-"),
+                      ("clock", para_s[19], "-", "-"),
+                      ("RootAge <", para_ds[0], "-", "-"),
+                      ("model", para_s[20], "-", "-"),
+                      ("alpha", para_ds[5], "-", "-"),
+                      ("ncatG", para_s[13], "-", "-"),
+                      ("cleandata", para_s[16], "-", "-"),
+                      ("BDparas", para_ds[2], para_ds[3], para_ds[4]),
+                      ("kappa_gamma", para_s[22], para_s[23], "-"),
+                      ("alpha_gamma", para_s[1], para_s[2], "-"),
+                      ("rgene_gamma", para_s[3], para_s[4], para_s[5]),
+                      ("sigma2_gamma", para_s[6], para_s[7], para_s[8]),
+                      ("print", para_s[21], "-", "-"),
+                      ("burnin", para_s[9], "-", "-"),
+                      ("samefreq", para_s[10], "-", "-"),
+                      ("nsample", para_s[12], "-", "-")]
+
+        for row, item in enumerate(items_list):
+            name_item = QStandardItem(item[0])
+            param_item = QStandardItem(str(item[1]))
+            param_item_rd = QStandardItem(str(item[2]))
+            param_item_th = QStandardItem(str(item[3]))
+            model.setItem(row, 0, name_item)
+            model.setItem(row, 1, param_item)
+            model.setItem(row, 2, param_item_rd)
+            model.setItem(row, 3, param_item_th)
+        verticalLayout_2 = QVBoxLayout(dialog)
+        groupBox = QGroupBox("Configuration", dialog)
+        verticalLayout = QVBoxLayout(groupBox)
+        tableView = QTableView(groupBox)
+        tableView.setModel(model)
+        verticalLayout.addWidget(tableView)
+        verticalLayout_2.addWidget(groupBox)
+        gridLayout = QGridLayout()
+        pushButton_2 = QPushButton("Save", dialog)
+        gridLayout.addWidget(pushButton_2, 0, 0, 1, 1)
+        pushButton = QPushButton("Cancel", dialog)
+        gridLayout.addWidget(pushButton, 0, 1, 1, 1)
+        verticalLayout_2.addLayout(gridLayout)
+        pushButton.clicked.connect(dialog.close)
+        pushButton_2.clicked.connect(lambda: self.updateParas(model))
+        dialog.setWindowFlags(
+            dialog.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        return dialog
+
+    def updateParas(self, model):
+        para_s, para_ds = self.getParas()
+        for row in range(model.rowCount()):
+            param_item = model.item(row, 1)
+            if param_item:
+                para_s[row] = float(param_item.text())
+        return para_s, para_ds
+
+    def gui4Log(self):
+        dialog = QDialog(self)
+        dialog.resize(800, 500)
+        dialog.setWindowTitle("Log")
+        gridLayout = QGridLayout(dialog)
+        horizontalLayout_2 = QHBoxLayout()
+        label = QLabel(dialog)
+        label.setText("Log of MCMCTree:")
+        horizontalLayout_2.addWidget(label)
+        spacerItem = QSpacerItem(
+            40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        horizontalLayout_2.addItem(spacerItem)
+        toolButton = QToolButton(dialog)
+        icon2 = QIcon()
+        icon2.addPixmap(
+            QPixmap(":/picture/resourses/interface-controls-text-wrap-512.png"))
+        toolButton.setIcon(icon2)
+        toolButton.setCheckable(True)
+        toolButton.setToolTip("Use Wraps")
+        toolButton.clicked.connect(self.setWordWrap)
+        toolButton.setChecked(True)
+        horizontalLayout_2.addWidget(toolButton)
+        pushButton = QPushButton("Save to file", dialog)
+        icon = QIcon()
+        icon.addPixmap(QPixmap(":/picture/resourses/Save-icon.png"))
+        pushButton.setIcon(icon)
+        pushButton_2 = QPushButton("Close", dialog)
+        icon = QIcon()
+        icon.addPixmap(QPixmap(":/picture/resourses/if_Delete_1493279.png"))
+        pushButton_2.setIcon(icon)
+        self.textEdit_log = QTextEdit(dialog)
+        self.textEdit_log.setReadOnly(True)
+        gridLayout.addLayout(horizontalLayout_2, 0, 0, 1, 2)
+        gridLayout.addWidget(self.textEdit_log, 1, 0, 1, 2)
+        gridLayout.addWidget(pushButton, 2, 0, 1, 1)
+        gridLayout.addWidget(pushButton_2, 2, 1, 1, 1)
+        pushButton.clicked.connect(self.save_log_to_file)
+        pushButton_2.clicked.connect(dialog.close)
+        dialog.setWindowFlags(
+            dialog.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        return dialog
 
     def getParas(self):
         #filename =

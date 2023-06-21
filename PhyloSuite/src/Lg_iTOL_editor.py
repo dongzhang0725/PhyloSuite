@@ -382,7 +382,8 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
         dict_parameters = {"hasRange": self.checkBox.isChecked(),
                            "hasStrip": self.checkBox_2.isChecked(),
                            "hasText": self.checkBox_3.isChecked(),
-                           "hasColor": self.checkBox_4.isChecked()
+                           "hasColor": self.checkBox_4.isChecked(),
+                           "hasLabels": self.checkBox_5.isChecked()
                            }
         if True in dict_parameters.values():
             options = QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly
@@ -410,6 +411,7 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
                        hasStrip=None,
                        hasText=None,
                        hasColor=None,
+                       hasLabels=None,
                        ):
         if hasRange:
             for num, tax in enumerate(list_tax[1:]):
@@ -420,7 +422,7 @@ DATA''']
                     tax_name = line[num + 1]
                     if tax_name:
                         list_itol_range.append(f"{line[0]},range,{dict_color[tax_name]},{tax_name}")
-                file_path = f"{directory}{os.sep}itol_range_{tax}.txt"
+                file_path = f"{directory}{os.sep}itol_{tax}_Color_Range.txt"
                 if os.path.exists(file_path):
                     reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
                                                  QMessageBox.Yes | QMessageBox.No)
@@ -452,7 +454,7 @@ DATA''']
                         if tax_name:
                             list_itol_strip.append(f"{line[0]}\t{dict_color[tax_name]}\t{tax_name}")
                     # print("\n".join(list_itol_strip))
-                    file_path = f"{directory}{os.sep}itol_color_strip_{tax}.txt"
+                    file_path = f"{directory}{os.sep}itol_{tax}_Color_Strip.txt"
                     if os.path.exists(file_path):
                         reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
                                                      QMessageBox.Yes | QMessageBox.No)
@@ -478,7 +480,7 @@ DATA''']
                     tax_name = line[num + 1]
                     if tax_name:
                         list_itol_text.append(f"{line[0]},{tax_name},-1,{dict_color[tax_name]},bold,2,0")
-                file_path = f"{directory}{os.sep}itol_{tax}_text.txt"
+                file_path = f"{directory}{os.sep}itol_{tax}_Text.txt"
                 if os.path.exists(file_path):
                     reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
                                                  QMessageBox.Yes | QMessageBox.No)
@@ -498,7 +500,7 @@ DATA''']
                     if tax_name:
                         list_itol_color.append(f"{line[0]},label,{dict_color[tax_name]},normal,1")
                     # print("\n".join(list_itol_strip))
-                file_path = f"{directory}{os.sep}itol_color_{tax}.txt"
+                file_path = f"{directory}{os.sep}itol_{tax}_Color.txt"
                 if os.path.exists(file_path):
                     reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
                                                  QMessageBox.Yes | QMessageBox.No)
@@ -508,7 +510,25 @@ DATA''']
                 else:
                     with open(file_path, "w", errors="ignore") as f:
                         f.write("\n".join(list_itol_color))
-
+        if hasLabels:
+            for num, tax in enumerate(list_tax[1:]):
+                list_itol_labels = [f'''LABELS
+SEPARATOR COMMA
+DATA''']
+                for line in array:
+                    tax_name = line[num + 1]
+                    if tax_name:
+                        list_itol_labels.append(f"{line[0]},{line[0]}")
+                file_path = f"{directory}{os.sep}itol_{tax}_Labels.txt"
+                if os.path.exists(file_path):
+                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                                 QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        with open(file_path, "w", errors="ignore") as f:
+                            f.write("\n".join(list_itol_labels))
+                else:
+                    with open(file_path, "w", errors="ignore") as f:
+                        f.write("\n".join(list_itol_labels))
 
 
 if __name__ == "__main__":
