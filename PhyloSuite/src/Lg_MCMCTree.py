@@ -67,6 +67,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.pushButton_5.toolButton.setMenu(menu)
         self.pushButton_5.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
+        self.lineEdit.installEventFilter(self)
+        self.lineEdit_2.installEventFilter(self)
 
     def input(self, file, which):
         base = os.path.basename(file)
@@ -554,6 +556,21 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
     def eventFilter(self, obj, event):
         # modifiers = QApplication.keyboardModifiers()
         name = obj.objectName()
+        if isinstance(
+                obj,
+                QLineEdit):
+            if event.type() == QEvent.DragEnter:
+                if event.mimeData().hasUrls():
+                    # must accept the dragEnterEvent or else the dropEvent
+                    # can't occur !!!
+                    event.accept()
+                    return True
+            if event.type() == QEvent.Drop:
+                files = [u.toLocalFile() for u in event.mimeData().urls()]
+                file_f = files[0]
+                which = 3 if name == 'lineEdit_2' else 4
+                self.input(file_f, which=which)
+                return True
         if (event.type() == QEvent.Show) and (obj == self.pushButton_5.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+",
                          self.dir_action.text()) or self.dir_action.text() == "Output Dir: ":
