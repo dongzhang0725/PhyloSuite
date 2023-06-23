@@ -39,7 +39,9 @@
 from __future__ import absolute_import
 from functools import partial
 
+from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QFileDialog
+from ete3 import TextFace
 from six.moves import range
 
 from src.factory import Factory
@@ -181,6 +183,8 @@ class _NodeActions(object):
         else:
             contextMenu.addAction( "Extract", self.set_start_node)
         contextMenu.addAction( "Extract branch lengths", self.extract_branch_len)
+        contextMenu.addAction( "Add calibration", self.add_calibration)
+        contextMenu.addAction( "Remove calibration", self.rm_calibration)
         contextMenu.addAction( "Unroot tree", self.unroot_tree)
 
         if isinstance(self.node, EvolTree):
@@ -316,6 +320,53 @@ class _NodeActions(object):
                                                         "CSV (*.csv)")
             if fname[0]:
                 self.factory.write_csv_file(fname[0], table_, self.scene().view)
+
+    def add_calibration(self):
+        self.calibrate_dialog = QDialog(self.scene().GUI)
+        self.calibrate_dialog.resize(450, 72)
+        self.verticalLayout = QtWidgets.QVBoxLayout(self.calibrate_dialog)
+        self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.label_3 = QtWidgets.QLabel(">", self.calibrate_dialog)
+        self.horizontalLayout.addWidget(self.label_3)
+        self.doubleSpinBox_2 = QtWidgets.QDoubleSpinBox(self.calibrate_dialog)
+        self.horizontalLayout.addWidget(self.doubleSpinBox_2)
+        self.label_4 = QtWidgets.QLabel("100 MYA", self.calibrate_dialog)
+        self.horizontalLayout.addWidget(self.label_4)
+        self.line = QtWidgets.QFrame(self.calibrate_dialog)
+        self.line.setFrameShape(QtWidgets.QFrame.VLine)
+        self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        self.horizontalLayout.addWidget(self.line)
+        self.label_2 = QtWidgets.QLabel("<", self.calibrate_dialog)
+        self.horizontalLayout.addWidget(self.label_2)
+        self.doubleSpinBox = QtWidgets.QDoubleSpinBox(self.calibrate_dialog)
+        self.horizontalLayout.addWidget(self.doubleSpinBox)
+        self.label = QtWidgets.QLabel("100 MYA", self.calibrate_dialog)
+        self.horizontalLayout.addWidget(self.label)
+        self.verticalLayout.addLayout(self.horizontalLayout)
+        self.buttonBox = QtWidgets.QDialogButtonBox(self.calibrate_dialog)
+        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
+        self.verticalLayout.addWidget(self.buttonBox)
+        self.buttonBox.clicked.connect(self.add_calibration_to_node)
+        self.calibrate_dialog.setWindowFlags(
+            self.calibrate_dialog.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        self.calibrate_dialog.show()
+
+    def add_calibration_to_node(self, button):
+        if button.text() == "OK":
+            l = self.doubleSpinBox_2.value()
+            h = self.doubleSpinBox.value()
+            self.node.name = f"'>{l}<{h}'"
+        self.node.add_face(TextFace(self.node.name), column=0, position = "branch-top")
+        self.scene().GUI.redraw()
+        self.calibrate_dialog.close()
+
+    def rm_calibration(self):
+        self.node.name = ""
+        dict_faces = getattr(self.node.faces, "branch-top")
+        setattr(self.node.faces, "branch-top", {})
+        self.scene().GUI.redraw()
+        # self.node.add_face(TextFace(""), column=0, position = "branch-top")
 
     def unroot_tree(self):
         self.scene().tree.unroot()

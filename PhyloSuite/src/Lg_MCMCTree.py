@@ -85,16 +85,16 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         fileName = QFileDialog.getOpenFileName(
             self, "Input tre file", filter="Newick Format(*.nwk *.newick *.tre);;")
         if fileName[0]:
-            self.seqFileName = fileName[0]
-            self.input(self.seqFileName, 4)
+            self.treeFileName = fileName[0]
+            self.input(self.treeFileName, 4)
 
     @pyqtSlot()
     def on_pushButton_3_clicked(self):
         fileName = QFileDialog.getOpenFileName(
             self, "Input alignment file", filter="Phylip Format(*.txt);;")
         if fileName[0]:
-            self.treeFileName = fileName[0]
-            self.input(self.treeFileName, 3)
+            self.seqFileName = fileName[0]
+            self.input(self.seqFileName, 3)
 
     @pyqtSlot()
     def on_pushButton_15_clicked(self):
@@ -129,6 +129,22 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             self.factory.emitCommands(self.logGuiSig, self.commands)
             self.worker = WorkThread(self.run_command, parent=self)
             self.worker.start()
+
+    @pyqtSlot()
+    def on_pushButton_clicked(self):
+        """
+        add calibration
+        """
+        # 判断用户是否导入了树，没有就弹框提示
+        # 如果是无根树提醒用户
+        set_NCBI_db = self.factory.checkNCBIdb(self)
+        if set_NCBI_db:
+            self.updateTaxonomyDB()
+            return
+        tree_path = self.lineEdit.toolTip()
+        tre = self.factory.read_tree(tree_path, parent=self)
+        if tre:
+            tre.show(name="MCMCTREE-ETE", parent=self)
 
     def run_command(self):
         try:
@@ -352,25 +368,25 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         para_s, para_ds = self.getParas()
         model = QStandardItemModel()
         #print(para_s[15])
-        items_list = [("seed", para_s[15], "-", "-"),
+        items_list = [("seed", para_s[13], "-", "-"),
                       ("ndata", para_s[0], "-", "-"),
-                      ("seqtype", para_s[17], "-", "-"),
-                      ("usedata", para_s[18], "-", "-"),
-                      ("clock", para_s[19], "-", "-"),
+                      ("seqtype", para_s[15], "-", "-"),
+                      ("usedata", para_s[16], "-", "-"),
+                      ("clock", para_s[17], "-", "-"),
                       ("RootAge <", para_ds[0], "-", "-"),
-                      ("model", para_s[20], "-", "-"),
-                      ("alpha", para_ds[5], "-", "-"),
-                      ("ncatG", para_s[13], "-", "-"),
-                      ("cleandata", para_s[16], "-", "-"),
-                      ("BDparas", para_ds[2], para_ds[3], para_ds[4]),
-                      ("kappa_gamma", para_s[22], para_s[23], "-"),
+                      ("model", para_s[18], "-", "-"),
+                      ("alpha", para_ds[4], "-", "-"),
+                      ("ncatG", para_s[12], "-", "-"),
+                      ("cleandata", para_s[14], "-", "-"),
+                      ("BDparas", para_ds[1], para_ds[2], para_ds[3]),
+                      ("kappa_gamma", para_s[20], para_s[21], "-"),
                       ("alpha_gamma", para_s[1], para_s[2], "-"),
                       ("rgene_gamma", para_s[3], para_s[4], para_s[5]),
                       ("sigma2_gamma", para_s[6], para_s[7], para_s[8]),
-                      ("print", para_s[21], "-", "-"),
+                      ("print", para_s[19], "-", "-"),
                       ("burnin", para_s[9], "-", "-"),
                       ("samefreq", para_s[10], "-", "-"),
-                      ("nsample", para_s[12], "-", "-")]
+                      ("nsample", para_s[11], "-", "-")]
 
         for row, item in enumerate(items_list):
             name_item = QStandardItem(item[0])
@@ -461,7 +477,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 ds_Values.append(obj.value())
         return s_Values, ds_Values
 
-    def ctl_generater(self, file_path=None):
+    def ctl_generater(self, file_path=None, treefile=None):
         def generate_ctl(seqfile, treefile):
             return f'''          seed = {s_Values[15]}
        seqfile = {seqfile}
@@ -496,7 +512,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
 *** Note: Make your window wider (100 columns) before running the program.'''
         s_Values, ds_Values = self.getParas()
         seqfile = os.path.basename(self.seqFileName)
-        treefile = os.path.basename(self.treeFileName)
+        treefile = os.path.basename(treefile)
         if file_path:
             mcmctree_ctl = generate_ctl(seqfile, treefile)
             with open(file_path, "w", errors="ignore") as f:
@@ -521,14 +537,19 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.output_dir_name = self.factory.fetch_output_dir_name(self.dir_action)
         self.exportPath = self.factory.creat_dirs(self.workPath +
                                                   os.sep + "MCMCTREE_results" + os.sep + self.output_dir_name)
-        ctl_file = f"{self.exportPath}{os.sep}mcmctree.ctl"
-        self.ctl_generater(ctl_file)
         shutil.copy(self.seqFileName, self.exportPath + os.sep + os.path.basename(self.seqFileName))
-        shutil.copy(self.treeFileName, self.exportPath + os.sep + os.path.basename(self.treeFileName))
+        if hasattr(self, "tree_with_tipdate"):
+            treefile = self.exportPath + os.sep + "calibration_tree.nwk"
+            with open(treefile, "w", errors="ignore") as f:
+                f.write(self.tree_with_tipdate)
+        else:
+            treefile = self.exportPath + os.sep + os.path.basename(self.treeFileName)
+            shutil.copy(self.treeFileName, treefile)
+        ctl_file = f"{self.exportPath}{os.sep}mcmctree.ctl"
+        self.ctl_generater(ctl_file, treefile=treefile)
         os.chdir(self.exportPath)
         cmds = f"{self.mcmctreeEXE} {ctl_file}"
         return cmds
-
 
     def eventFilter(self, obj, event):
         # modifiers = QApplication.keyboardModifiers()

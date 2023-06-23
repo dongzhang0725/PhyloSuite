@@ -88,7 +88,8 @@ def show_tree(t, layout=None, tree_style=None, win_name=None, parent=None):
     tree_item.setParentItem(scene.master_item)
     scene.addItem(scene.master_item)
 
-    mainapp = _GUI(scene)
+    mcmctree_flag = True if win_name == "MCMCTREE-ETE" else False
+    mainapp = _GUI(scene, mcmctree_flag)
     if win_name:
         mainapp.setObjectName(win_name)
     mainapp.setParent(parent)

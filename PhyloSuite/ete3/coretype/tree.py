@@ -1353,7 +1353,8 @@ class TreeNode(object):
             else:
                 raise TreeError("Cannot unroot a tree with only two leaves")
 
-    def show(self, layout=None, tree_style=None, name="PhyloSuite_ETE", parent=None):
+    def show(self, layout=None, tree_style=None,
+             name="PhyloSuite_ETE", parent=None):
         """
         Starts an interactive session to visualize current node
         structure using provided layout and TreeStyle.
@@ -1361,7 +1362,9 @@ class TreeNode(object):
         """
         from ..treeview import drawer
         drawer.show_tree(self, layout=layout,
-                         tree_style=tree_style, win_name=name, parent=parent)
+                         tree_style=tree_style,
+                         win_name=name,
+                         parent=parent)
 
     def render(self, file_name, layout=None, w=None, h=None, \
                        tree_style=None, units="px", dpi=90):

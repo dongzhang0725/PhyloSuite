@@ -234,7 +234,7 @@
      <x>0</x>
      <y>0</y>
      <width>1198</width>
-     <height>23</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -302,6 +302,7 @@
    <addaction name="actionsaveSession"/>
    <addaction name="actionload_session"/>
    <addaction name="action_style_brush"/>
+   <addaction name="action_save_to_mcmctree"/>
   </widget>
   <action name="actionOpen">
    <property name="icon">
@@ -659,6 +660,18 @@
    </property>
    <property name="toolTip">
     <string>Load annotation from other tree</string>
+   </property>
+  </action>
+  <action name="action_save_to_mcmctree">
+   <property name="icon">
+    <iconset resource="../../myRes.qrc">
+     <normaloff>:/picture/resourses/all icon.png</normaloff>:/picture/resourses/all icon.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save tree for MCMCTREE</string>
+   </property>
+   <property name="toolTip">
+    <string>Save the tree for MCMCTREE</string>
    </property>
   </action>
  </widget>

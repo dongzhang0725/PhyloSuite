@@ -133,7 +133,7 @@ class _GUI(QMainWindow, Ui_MainWindow):
         self.scene.draw()
         self.view.init_values()
 
-    def __init__(self, scene, *args):
+    def __init__(self, scene, mcmctree_flag=False, *args):
         QMainWindow.__init__(self, *args)
         screenSize = QApplication.primaryScreen().size()
         self.setupUi(self)
@@ -141,7 +141,11 @@ class _GUI(QMainWindow, Ui_MainWindow):
         self.setAcceptDrops(True)
         self.installEventFilter(self)
         self.factory = Factory()
-
+        # mcmctree mode
+        if mcmctree_flag:
+            self.action_save_to_mcmctree.setVisible(True)
+        else:
+            self.action_save_to_mcmctree.setVisible(False)
         # compare mode
         self.compare_mode = False
         self.toolButton.setHidden(True)
@@ -673,6 +677,11 @@ class _GUI(QMainWindow, Ui_MainWindow):
         settings.beginGroup("Transform")
         self.view.setTransform(settings.value("transform"))
         settings.endGroup()
+
+    @QtCore.pyqtSlot()
+    def on_action_save_to_mcmctree_triggered(self):
+        self.parent().tree_with_tipdate = self.scene.tree.write(format=8).replace("NoName", "")
+        self.close()
 
     def load_tree_annotation(self, settings, ts, type="normal"):
         if type != "brush":
