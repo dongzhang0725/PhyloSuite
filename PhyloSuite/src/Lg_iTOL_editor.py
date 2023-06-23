@@ -476,10 +476,12 @@ LABEL_ROTATION,0
 ALIGN_TO_TREE,0
 SIZE_FACTOR,1
 DATA''']
+                list_tax_name = []
                 for line in array:
                     tax_name = line[num + 1]
-                    if tax_name:
+                    if tax_name and (tax_name not in list_tax_name):
                         list_itol_text.append(f"{line[0]},{tax_name},-1,{dict_color[tax_name]},bold,2,0")
+                        list_tax_name.append(tax_name)
                 file_path = f"{directory}{os.sep}itol_{tax}_Text.txt"
                 if os.path.exists(file_path):
                     reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
@@ -511,24 +513,21 @@ DATA''']
                     with open(file_path, "w", errors="ignore") as f:
                         f.write("\n".join(list_itol_color))
         if hasLabels:
-            for num, tax in enumerate(list_tax[1:]):
-                list_itol_labels = [f'''LABELS
+            list_itol_labels = [f'''LABELS
 SEPARATOR COMMA
 DATA''']
-                for line in array:
-                    tax_name = line[num + 1]
-                    if tax_name:
-                        list_itol_labels.append(f"{line[0]},{line[0]}")
-                file_path = f"{directory}{os.sep}itol_{tax}_Labels.txt"
-                if os.path.exists(file_path):
-                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
-                                                 QMessageBox.Yes | QMessageBox.No)
-                    if reply == QMessageBox.Yes:
-                        with open(file_path, "w", errors="ignore") as f:
-                            f.write("\n".join(list_itol_labels))
-                else:
+            for line in array:
+                list_itol_labels.append(f"{line[0]},{line[0]}")
+            file_path = f"{directory}{os.sep}itol_tree_Labels.txt"
+            if os.path.exists(file_path):
+                reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                             QMessageBox.Yes | QMessageBox.No)
+                if reply == QMessageBox.Yes:
                     with open(file_path, "w", errors="ignore") as f:
                         f.write("\n".join(list_itol_labels))
+            else:
+                with open(file_path, "w", errors="ignore") as f:
+                    f.write("\n".join(list_itol_labels))
 
 
 if __name__ == "__main__":
