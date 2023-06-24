@@ -4517,7 +4517,7 @@ class MyTableView(QTableView):
     def keyPressEvent(self, event):
         super(MyTableView, self).keyPressEvent(event)
         # Ctrl + C
-        if event.mmmmmodifiers() == Qt.ControlModifier and event.key() == Qt.Key_C:
+        if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_C:
             self.copyData()
         if event.modifiers() == Qt.ControlModifier and event.key() == Qt.Key_V:
             self.pastData()
