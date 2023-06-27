@@ -413,6 +413,7 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
                        hasColor=None,
                        hasLabels=None,
                        ):
+        overwrite_prompted = False
         if hasRange:
             for num, tax in enumerate(list_tax[1:]):
                 list_itol_range = [f'''TREE_COLORS
@@ -423,15 +424,16 @@ DATA''']
                     if tax_name:
                         list_itol_range.append(f"{line[0]},range,{dict_color[tax_name]},{tax_name}")
                 file_path = f"{directory}{os.sep}itol_{tax}_Color_Range.txt"
-                if os.path.exists(file_path):
-                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                if os.path.exists(file_path) and not overwrite_prompted:
+                    reply = QMessageBox.question(self, "File Exists", f"The file {file_path} already exists. Do you want to overwrite it？",
                                                  QMessageBox.Yes | QMessageBox.No)
-                    if reply == QMessageBox.Yes:
+                    if reply == QMessageBox.No:
                         with open(file_path, "w", errors="ignore") as f:
                             f.write("\n".join(list_itol_range))
                 else:
                     with open(file_path, "w", errors="ignore") as f:
                         f.write("\n".join(list_itol_range))
+                overwrite_prompted = True
         if hasStrip:
             for num,tax in enumerate(list_tax[1:]):
                 list_tax_ = list(set([line[num+1] for line in array]))
@@ -455,8 +457,8 @@ DATA''']
                             list_itol_strip.append(f"{line[0]}\t{dict_color[tax_name]}\t{tax_name}")
                     # print("\n".join(list_itol_strip))
                     file_path = f"{directory}{os.sep}itol_{tax}_Color_Strip.txt"
-                    if os.path.exists(file_path):
-                        reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                    if os.path.exists(file_path) and not overwrite_prompted:
+                        reply = QMessageBox.question(self, "File Exists", f"The file {file_path} already exists. Do you want to overwrite it？",
                                                      QMessageBox.Yes | QMessageBox.No)
                         if reply == QMessageBox.Yes:
                             with open(file_path, "w", errors="ignore") as f:
@@ -464,6 +466,7 @@ DATA''']
                     else:
                         with open(file_path, "w", errors="ignore") as f:
                             f.write("\n".join(list_itol_strip))
+                    overwrite_prompted = True
         if hasText:
             for num, tax in enumerate(list_tax[1:]):
                 list_itol_text = [f'''DATASET_TEXT
@@ -483,8 +486,8 @@ DATA''']
                         list_itol_text.append(f"{line[0]},{tax_name},-1,{dict_color[tax_name]},bold,2,0")
                         list_tax_name.append(tax_name)
                 file_path = f"{directory}{os.sep}itol_{tax}_Text.txt"
-                if os.path.exists(file_path):
-                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                if os.path.exists(file_path) and not overwrite_prompted:
+                    reply = QMessageBox.question(self, "File Exists", f"The file {file_path} already exists. Do you want to overwrite it？",
                                                  QMessageBox.Yes | QMessageBox.No)
                     if reply == QMessageBox.Yes:
                         with open(file_path, "w", errors="ignore") as f:
@@ -492,6 +495,7 @@ DATA''']
                 else:
                     with open(file_path, "w", errors="ignore") as f:
                         f.write("\n".join(list_itol_text))
+                overwrite_prompted = True
         if hasColor:
             for num, tax in enumerate(list_tax[1:]):
                 list_itol_color = [f'''TREE_COLORS
@@ -503,8 +507,8 @@ DATA''']
                         list_itol_color.append(f"{line[0]},label,{dict_color[tax_name]},normal,1")
                     # print("\n".join(list_itol_strip))
                 file_path = f"{directory}{os.sep}itol_{tax}_Color.txt"
-                if os.path.exists(file_path):
-                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                if os.path.exists(file_path) and not overwrite_prompted:
+                    reply = QMessageBox.question(self, "File Exists", f"The file {file_path} already exists. Do you want to overwrite it？",
                                                  QMessageBox.Yes | QMessageBox.No)
                     if reply == QMessageBox.Yes:
                         with open(file_path, "w", errors="ignore") as f:
@@ -512,6 +516,7 @@ DATA''']
                 else:
                     with open(file_path, "w", errors="ignore") as f:
                         f.write("\n".join(list_itol_color))
+                overwrite_prompted = True
         if hasLabels:
             list_itol_labels = [f'''LABELS
 SEPARATOR COMMA
@@ -519,8 +524,8 @@ DATA''']
             for line in array:
                 list_itol_labels.append(f"{line[0]},{line[0]}")
             file_path = f"{directory}{os.sep}itol_tree_Labels.txt"
-            if os.path.exists(file_path):
-                reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+            if os.path.exists(file_path) and not overwrite_prompted:
+                reply = QMessageBox.question(self, "File Exists", f"The file {file_path} already exists. Do you want to overwrite it？",
                                              QMessageBox.Yes | QMessageBox.No)
                 if reply == QMessageBox.Yes:
                     with open(file_path, "w", errors="ignore") as f:
@@ -528,6 +533,7 @@ DATA''']
             else:
                 with open(file_path, "w", errors="ignore") as f:
                     f.write("\n".join(list_itol_labels))
+            overwrite_prompted = True
 
 
 if __name__ == "__main__":

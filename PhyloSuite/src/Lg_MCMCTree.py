@@ -67,15 +67,19 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.pushButton_5.toolButton.setMenu(menu)
         self.pushButton_5.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
+        self.lineEdit.installEventFilter(self)
+        self.lineEdit_2.installEventFilter(self)
 
     def input(self, file, which):
         base = os.path.basename(file)
         if which == 4:
             self.lineEdit.setText(base)
             self.lineEdit.setToolTip(os.path.abspath(file))
+            self.treeFileName = file
         if which == 3:
             self.lineEdit_2.setText(base)
             self.lineEdit_2.setToolTip(os.path.abspath(file))
+            self.seqFileName = file
         """tre = self.factory.read_tree(file)
         list_leaves = tre.get_leaf_names()
         self.init_table(list_leaves)"""
@@ -83,7 +87,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
     @pyqtSlot()
     def on_pushButton_4_clicked(self):
         fileName = QFileDialog.getOpenFileName(
-            self, "Input tre file", filter="Newick Format(*.nwk *.newick *.tre);;")
+            self, "Input tre file", filter="Newick Format(*.nwk *.newick *.tre *.trees);;")
         if fileName[0]:
             self.treeFileName = fileName[0]
             self.input(self.treeFileName, 4)
@@ -101,7 +105,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         s_Values, ds_Values = self.getParas()
         print(f"s_Values:{s_Values}")
         print(f"ds_Values:{ds_Values}")
-        self.ctl_generater()
+        self.ctl_generater(treefile=self.treeFileName)
 
     @pyqtSlot()
     def on_pushButton_6_clicked(self):
@@ -467,7 +471,6 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         return dialog
 
     def getParas(self):
-        #filename =
         s_Values = []
         ds_Values = []
         for name, obj in inspect.getmembers(self):
@@ -479,40 +482,88 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
 
     def ctl_generater(self, file_path=None, treefile=None):
         def generate_ctl(seqfile, treefile):
-            return f'''          seed = {s_Values[15]}
+            s_Values, ds_Values = self.getParas()
+            param_indices = {
+                'seed': 13,
+                'ndata': 0,
+                'seqtype': 15,
+                'usedata': 16,
+                'clock': 17,
+                'RootAge': 0,
+                'model': 18,
+                'alpha': 4,
+                'ncatG': 12,
+                'cleandata': 14,
+                'BDparas': (1, 2, 3),
+                'kappa_gamma': (20, 21),
+                'alpha_gamma': (1, 2),
+                'rgene_gamma': (3, 4, 5),
+                'sigma2_gamma': (6, 7, 8),
+                'print': 19,
+                'burnin': 9,
+                'sampfreq': 10,
+                'nsample': 11
+            }
+
+            ctl_template = '''          seed = {seed}
        seqfile = {seqfile}
       treefile = {treefile}
       mcmcfile = mcmc.txt
        outfile = out.txt
 
-         ndata = {s_Values[0]}
-       seqtype = {s_Values[17]}
-       usedata = {s_Values[18]}
-         clock = {s_Values[19]}
-       RootAge = '<{ds_Values[0]}'
-       
-         model = {s_Values[20]}
-         alpha = {ds_Values[5]}
-         ncatG = {s_Values[13]}
+         ndata = {ndata}
+       seqtype = {seqtype}
+       usedata = {usedata}
+         clock = {clock}
+       RootAge = '<{RootAge}'
 
-     cleandata = {s_Values[16]}
+         model = {model}
+         alpha = {alpha}
+         ncatG = {ncatG}
 
-       BDparas = {ds_Values[2]} {ds_Values[3]} {ds_Values[4]}
-   kappa_gamma = {s_Values[22]} {s_Values[23]}
-   alpha_gamma = {s_Values[1]} {s_Values[2]}
+     cleandata = {cleandata}
 
-   rgene_gamma = {s_Values[3]} {s_Values[4]} {s_Values[5]}
-  sigma2_gamma = {s_Values[6]} {s_Values[7]} {s_Values[8]}
+       BDparas = {BDparas}
+   kappa_gamma = {kappa_gamma}
+   alpha_gamma = {alpha_gamma}
 
-         print = {s_Values[21]}
-        burnin = {s_Values[9]}
-      sampfreq = {s_Values[10]}
-       nsample = {s_Values[12]}
+   rgene_gamma = {rgene_gamma}
+  sigma2_gamma = {sigma2_gamma}
+
+         print = {print}
+        burnin = {burnin}
+      sampfreq = {sampfreq}
+       nsample = {nsample}
 
 *** Note: Make your window wider (100 columns) before running the program.'''
-        s_Values, ds_Values = self.getParas()
-        seqfile = os.path.basename(self.seqFileName)
-        treefile = os.path.basename(treefile)
+
+            ctl_values = {
+                'seqfile': seqfile,
+                'treefile': treefile,
+                'seed': s_Values[param_indices['seed']],
+                'ndata': s_Values[param_indices['ndata']],
+                'seqtype': s_Values[param_indices['seqtype']],
+                'usedata': s_Values[param_indices['usedata']],
+                'clock': s_Values[param_indices['clock']],
+                'RootAge': ds_Values[param_indices['RootAge']],
+                'model': s_Values[param_indices['model']],
+                'alpha': ds_Values[param_indices['alpha']],
+                'ncatG': s_Values[param_indices['ncatG']],
+                'cleandata': s_Values[param_indices['cleandata']],
+                'BDparas': ' '.join(str(ds_Values[idx]) for idx in param_indices['BDparas']),
+                'kappa_gamma': ' '.join(str(s_Values[idx]) for idx in param_indices['kappa_gamma']),
+                'alpha_gamma': ' '.join(str(s_Values[idx]) for idx in param_indices['alpha_gamma']),
+                'rgene_gamma': ' '.join(str(s_Values[idx]) for idx in param_indices['rgene_gamma']),
+                'sigma2_gamma': ' '.join(str(s_Values[idx]) for idx in param_indices['sigma2_gamma']),
+                'print': s_Values[param_indices['print']],
+                'burnin': s_Values[param_indices['burnin']],
+                'sampfreq': s_Values[param_indices['sampfreq']],
+                'nsample': s_Values[param_indices['nsample']]
+            }
+
+            return ctl_template.format(**ctl_values)
+        seqfile = os.path.basename(self.seqFileName) if self.seqFileName else ""
+        treefile = os.path.basename(treefile) if treefile else ""
         if file_path:
             mcmctree_ctl = generate_ctl(seqfile, treefile)
             with open(file_path, "w", errors="ignore") as f:
@@ -524,16 +575,20 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 mcmctree_ctl = generate_ctl(seqfile, treefile)
                 file_path = f"{directory}{os.sep}mcmctree.ctl"
                 if os.path.exists(file_path):
-                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                    reply = QMessageBox.question(self, "File Exists", f"The file {file_path} already exists. Do you want to overwrite it？",
                                                  QMessageBox.Yes | QMessageBox.No)
                     if reply == QMessageBox.Yes:
                         with open(file_path, "w", errors="ignore") as f:
                             f.write(mcmctree_ctl)
+                        QMessageBox.information(self, "File Created", "The file has been created successfully.")
                 else:
                     with open(file_path, "w", errors="ignore") as f:
                         f.write(mcmctree_ctl)
 
     def prepare_for_run(self):
+        if not self.seqFileName:
+            QMessageBox.warning(self, "No File", "No sequence file is imported. Please import a file.")
+            return
         self.output_dir_name = self.factory.fetch_output_dir_name(self.dir_action)
         self.exportPath = self.factory.creat_dirs(self.workPath +
                                                   os.sep + "MCMCTREE_results" + os.sep + self.output_dir_name)
@@ -554,6 +609,21 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
     def eventFilter(self, obj, event):
         # modifiers = QApplication.keyboardModifiers()
         name = obj.objectName()
+        if isinstance(
+                obj,
+                QLineEdit):
+            if event.type() == QEvent.DragEnter:
+                if event.mimeData().hasUrls():
+                    # must accept the dragEnterEvent or else the dropEvent
+                    # can't occur !!!
+                    event.accept()
+                    return True
+            if event.type() == QEvent.Drop:
+                files = [u.toLocalFile() for u in event.mimeData().urls()]
+                file_f = files[0]
+                which = 3 if name == 'lineEdit_2' else 4
+                self.input(file_f, which=which)
+                return True
         if (event.type() == QEvent.Show) and (obj == self.pushButton_5.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+",
                          self.dir_action.text()) or self.dir_action.text() == "Output Dir: ":
