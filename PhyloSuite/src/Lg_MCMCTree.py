@@ -7,7 +7,7 @@ import traceback
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from ete3 import NCBITaxa
+from ete3 import NCBITaxa, TextFace
 from src.CustomWidget import MyTaxTableModel
 
 from src.factory import Factory, WorkThread
@@ -49,8 +49,6 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
-        self.log_gui = self.gui4Log()
-        self.text_gui = self.gui4Text()
         # 槽函数
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         self.logGuiSig.connect(self.addText2Log)
@@ -69,6 +67,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
         self.lineEdit.installEventFilter(self)
         self.lineEdit_2.installEventFilter(self)
+        self.log_gui = self.gui4Log()
+        #self.text_gui = self.gui4Text()
 
     def input(self, file, which):
         base = os.path.basename(file)
@@ -91,6 +91,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         if fileName[0]:
             self.treeFileName = fileName[0]
             self.input(self.treeFileName, 4)
+            self.species_matching(4)
 
     @pyqtSlot()
     def on_pushButton_3_clicked(self):
@@ -116,7 +117,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
 
     @pyqtSlot()
     def on_pushButton_7_clicked(self):
-        self.text_gui.show()
+        self.gui4Text().show()
 
     @pyqtSlot()
     def on_pushButton_5_clicked(self):
@@ -135,6 +136,10 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             self.worker.start()
 
     @pyqtSlot()
+    def on_pushButton_2_clicked(self):
+        pass
+
+    @pyqtSlot()
     def on_pushButton_clicked(self):
         """
         add calibration
@@ -148,7 +153,28 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         tree_path = self.lineEdit.toolTip()
         tre = self.factory.read_tree(tree_path, parent=self)
         if tre:
+            for node in tre.traverse():
+                if 'name' in node.features:
+                    node_bound = re.search(r'>(\d*\.\d{2})+<(\d*\.\d{2})|'
+                                           r'>(\d*\.\d{2})|'
+                                           r'<(\d*\.\d{2})|'
+                                           r'B\((\d*\.\d{2}),\s(\d*\.\d{2})(?:,\s(\d*\.\d{3}),\s(\d*\.\d{3}))?\)|'
+                                           r'L\((\d*\.\d{2})(?:,\s(\d*\.\d),\s(\d*\.\d),\s(\d*\.\d{3}))?\)|'
+                                           r'U\((\d*\.\d{2})(?:,\s(\d*\.\d{3}))?\)'
+                                           , node.name)
+                    if node_bound:
+                        text = node_bound.group()
+                        node.add_face(TextFace(text), column=0, position="branch-top")
             tre.show(name="MCMCTREE-ETE", parent=self)
+
+    def species_matching(self, which):
+        if which == 4:
+            with open(self.treeFileName, 'r') as file:
+                content = file.read()
+            match_species = re.search(r'\d+', content)
+            if match_species:
+                species = match_species.group()
+                self.label_5.setText(species)
 
     def run_command(self):
         try:
@@ -366,31 +392,34 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 f.write(content)
 
     def gui4Text(self):
-        dialog = QDialog(self)
-        dialog.resize(800, 500)
-        dialog.setWindowTitle("Preview configurations")
         para_s, para_ds = self.getParas()
-        model = QStandardItemModel()
-        #print(para_s[15])
+        """param_indices = {
+            'model': {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4}
+        }"""
+
         items_list = [("seed", para_s[13], "-", "-"),
                       ("ndata", para_s[0], "-", "-"),
                       ("seqtype", para_s[15], "-", "-"),
                       ("usedata", para_s[16], "-", "-"),
                       ("clock", para_s[17], "-", "-"),
                       ("RootAge <", para_ds[0], "-", "-"),
-                      ("model", para_s[18], "-", "-"),
+                      ("model", self.comboBox.currentText(), "-", "-"),
                       ("alpha", para_ds[4], "-", "-"),
                       ("ncatG", para_s[12], "-", "-"),
                       ("cleandata", para_s[14], "-", "-"),
                       ("BDparas", para_ds[1], para_ds[2], para_ds[3]),
-                      ("kappa_gamma", para_s[20], para_s[21], "-"),
+                      ("kappa_gamma", para_s[19], para_s[20], "-"),
                       ("alpha_gamma", para_s[1], para_s[2], "-"),
                       ("rgene_gamma", para_s[3], para_s[4], para_s[5]),
                       ("sigma2_gamma", para_s[6], para_s[7], para_s[8]),
-                      ("print", para_s[19], "-", "-"),
+                      ("print", para_s[18], "-", "-"),
                       ("burnin", para_s[9], "-", "-"),
                       ("samefreq", para_s[10], "-", "-"),
                       ("nsample", para_s[11], "-", "-")]
+        dialog = QDialog(self)
+        dialog.resize(800, 500)
+        dialog.setWindowTitle("Preview configurations")
+        model = QStandardItemModel()
 
         for row, item in enumerate(items_list):
             name_item = QStandardItem(item[0])
@@ -401,6 +430,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             model.setItem(row, 1, param_item)
             model.setItem(row, 2, param_item_rd)
             model.setItem(row, 3, param_item_th)
+
         verticalLayout_2 = QVBoxLayout(dialog)
         groupBox = QGroupBox("Configuration", dialog)
         verticalLayout = QVBoxLayout(groupBox)
@@ -490,21 +520,21 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 'usedata': 16,
                 'clock': 17,
                 'RootAge': 0,
-                'model': 18,
+                'model': {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4},
                 'alpha': 4,
                 'ncatG': 12,
                 'cleandata': 14,
                 'BDparas': (1, 2, 3),
-                'kappa_gamma': (20, 21),
+                'kappa_gamma': (19, 20),
                 'alpha_gamma': (1, 2),
                 'rgene_gamma': (3, 4, 5),
                 'sigma2_gamma': (6, 7, 8),
-                'print': 19,
+                'print': 18,
                 'burnin': 9,
                 'sampfreq': 10,
                 'nsample': 11
             }
-
+            model_value = {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4}
             ctl_template = '''          seed = {seed}
        seqfile = {seqfile}
       treefile = {treefile}
@@ -546,7 +576,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 'usedata': s_Values[param_indices['usedata']],
                 'clock': s_Values[param_indices['clock']],
                 'RootAge': ds_Values[param_indices['RootAge']],
-                'model': s_Values[param_indices['model']],
+                'model': self.comboBox.currentText(),
                 'alpha': ds_Values[param_indices['alpha']],
                 'ncatG': s_Values[param_indices['ncatG']],
                 'cleandata': s_Values[param_indices['cleandata']],
@@ -560,7 +590,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 'sampfreq': s_Values[param_indices['sampfreq']],
                 'nsample': s_Values[param_indices['nsample']]
             }
-
+            ctl_values['model'] = model_value[ctl_values['model']]
             return ctl_template.format(**ctl_values)
         seqfile = os.path.basename(self.seqFileName) if self.seqFileName else ""
         treefile = os.path.basename(treefile) if treefile else ""
@@ -623,6 +653,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 file_f = files[0]
                 which = 3 if name == 'lineEdit_2' else 4
                 self.input(file_f, which=which)
+                self.species_matching(4)
                 return True
         if (event.type() == QEvent.Show) and (obj == self.pushButton_5.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+",

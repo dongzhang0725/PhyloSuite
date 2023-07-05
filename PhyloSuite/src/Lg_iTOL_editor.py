@@ -69,7 +69,7 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
-        self.checkboxes_action()
+         self.checkboxes_action()
 
     @pyqtSlot()
     def on_pushButton_3_clicked(self):
@@ -377,7 +377,6 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
         taxWorker.finished.connect(self.progressDialog.close)
         taxWorker.start()
 
-
     def checkboxes_action(self):
         dict_parameters = {"hasRange": self.checkBox.isChecked(),
                            "hasStrip": self.checkBox_2.isChecked(),
@@ -385,6 +384,7 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
                            "hasColor": self.checkBox_4.isChecked(),
                            "hasLabels": self.checkBox_5.isChecked()
                            }
+
         if True in dict_parameters.values():
             options = QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly
             directory = QFileDialog.getExistingDirectory(self, "Choose folder", options=options)
@@ -401,6 +401,7 @@ class Itol_editor(QDialog, Ui_annotation_editor, object):
         else:
             QMessageBox.information(self, "Information", f"Please select iTOL "
                                                          f"annotation type first!")
+
 
     def itol_generater(self,
                        list_tax=None,

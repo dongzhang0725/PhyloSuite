@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_annotation_editor(object):
     def setupUi(self, annotation_editor):
         annotation_editor.setObjectName("annotation_editor")
-        annotation_editor.resize(681, 566)
+        annotation_editor.resize(713, 566)
         self.gridLayout_7 = QtWidgets.QGridLayout(annotation_editor)
         self.gridLayout_7.setObjectName("gridLayout_7")
         self.gridLayout_6 = QtWidgets.QGridLayout()
@@ -128,6 +128,6 @@ class Ui_annotation_editor(object):
         self.checkBox_3.setText(_translate("annotation_editor", "lineage colored text"))
         self.checkBox.setText(_translate("annotation_editor", "lineage colored range"))
         self.checkBox_4.setText(_translate("annotation_editor", "lineage color"))
-        self.checkBox_5.setText(_translate("annotation_editor", "Lineage labels"))
+        self.checkBox_5.setText(_translate("annotation_editor", "Labels"))
 from src.CustomWidget import MyTableView
 from uifiles import myRes_rc

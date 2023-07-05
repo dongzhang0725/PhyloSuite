@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>681</width>
+    <width>713</width>
     <height>566</height>
    </rect>
   </property>
@@ -194,7 +194,7 @@
         <item row="0" column="4">
          <widget class="QCheckBox" name="checkBox_5">
           <property name="text">
-           <string>Lineage labels</string>
+           <string>Labels</string>
           </property>
           <property name="checked">
            <bool>true</bool>

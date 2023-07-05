@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>654</width>
-    <height>514</height>
+    <height>520</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -43,6 +43,20 @@
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Species：</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
         <item>
          <spacer name="horizontalSpacer">
           <property name="orientation">
@@ -191,13 +205,6 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="5">
-         <widget class="QSpinBox" name="spinBox_6">
-          <property name="maximum">
-           <number>4</number>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="6">
          <widget class="QLabel" name="label_15">
           <property name="text">
@@ -213,6 +220,35 @@
           <property name="value">
            <double>0.500000000000000</double>
           </property>
+         </widget>
+        </item>
+        <item row="1" column="5">
+         <widget class="QComboBox" name="comboBox">
+          <item>
+           <property name="text">
+            <string>JC69</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>K80</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>F81</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>F84</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>HKY85</string>
+           </property>
+          </item>
          </widget>
         </item>
        </layout>
@@ -600,7 +636,6 @@
   <tabstop>spinBox_4</tabstop>
   <tabstop>spinBox_5</tabstop>
   <tabstop>doubleSpinBox</tabstop>
-  <tabstop>spinBox_6</tabstop>
   <tabstop>doubleSpinBox_6</tabstop>
   <tabstop>spinBox_21</tabstop>
   <tabstop>doubleSpinBox_3</tabstop>
