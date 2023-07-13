@@ -1,9 +1,13 @@
 import datetime
 import multiprocessing
+import platform
 import re
 import shutil
+import signal
 import traceback
 
+
+from PyQt5 import QtWidgets
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -15,6 +19,10 @@ import inspect
 import os
 import sys
 from uifiles.Ui_mcmctree import Ui_MCMCTree
+
+
+class TreeStorge(object):
+    pass
 
 class MCMCTree(QDialog,Ui_MCMCTree,object):
     showSig = pyqtSignal(QDialog)
@@ -68,7 +76,13 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.lineEdit.installEventFilter(self)
         self.lineEdit_2.installEventFilter(self)
         self.log_gui = self.gui4Log()
+        self.temporary_tree = None
         #self.text_gui = self.gui4Text()
+        ## brief demo
+        country = self.factory.path_settings.value("country", "UK")
+        url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#5-12-1-Brief-example" if \
+            country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/documentation/#5-12-1-Brief-example"
+        self.label_25.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
 
     def input(self, file, which):
         base = os.path.basename(file)
@@ -120,6 +134,10 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.gui4Text().show()
 
     @pyqtSlot()
+    def on_pushButton_8_clicked(self):
+        self.consistency_checking()
+
+    @pyqtSlot()
     def on_pushButton_5_clicked(self):
         """
         execute program
@@ -137,7 +155,44 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
 
     @pyqtSlot()
     def on_pushButton_2_clicked(self):
-        pass
+        """
+        Stop
+        """
+        if self.isRunning():
+            if not self.workflow:
+                reply = QMessageBox.question(
+                    self,
+                    "Confirmation",
+                    "<p style='line-height:25px; height:25px'>MCMCTree is still running, terminate it?</p>",
+                    QMessageBox.Yes,
+                    QMessageBox.Cancel)
+            else:
+                reply = QMessageBox.Yes
+            if reply == QMessageBox.Yes:
+                try:
+                    self.worker.stopWork()
+                    if platform.system().lower() in ["windows", "darwin"]:
+                        self.IQ_popen.kill()
+                    else:
+                        os.killpg(os.getpgid(self.IQ_popen.pid), signal.SIGTERM)
+                    self.IQ_popen = None
+                    self.interrupt = True
+                except:
+                    self.IQ_popen = None
+                    self.interrupt = True
+                if not self.workflow:
+                    QMessageBox.information(
+                        self,
+                        "MCMCTree",
+                        "<p style='line-height:25px; height:25px'>Program has been terminated!</p>")
+                self.startButtonStatusSig.emit(
+                    [
+                        self.pushButton,
+                        self.progressBar,
+                        "except",
+                        self.exportPath,
+                        self.qss_file,
+                        self])
 
     @pyqtSlot()
     def on_pushButton_clicked(self):
@@ -152,8 +207,9 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             return
         tree_path = self.lineEdit.toolTip()
         tre = self.factory.read_tree(tree_path, parent=self)
-        if tre:
-            for node in tre.traverse():
+        self.temporary_tree = tre
+        if self.temporary_tree:
+            for node in self.temporary_tree.traverse():
                 if 'name' in node.features:
                     node_bound = re.search(r'>(\d*\.\d{2})+<(\d*\.\d{2})|'
                                            r'>(\d*\.\d{2})|'
@@ -165,16 +221,46 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                     if node_bound:
                         text = node_bound.group()
                         node.add_face(TextFace(text), column=0, position="branch-top")
-            tre.show(name="MCMCTREE-ETE", parent=self)
+            self.temporary_tree.show(name="MCMCTREE-ETE", parent=self)
+        nwk_string = self.temporary_tree.write(format=5)
+        print(nwk_string)
+        """else:
+            QMessageBox.warning(self, "no file", "No tree file is imported. Please import a file.")"""
 
     def species_matching(self, which):
         if which == 4:
-            with open(self.treeFileName, 'r') as file:
-                content = file.read()
-            match_species = re.search(r'\d+', content)
-            if match_species:
-                species = match_species.group()
-                self.label_5.setText(species)
+            tree_path = self.lineEdit.toolTip()
+            tre = self.factory.read_tree(tree_path, parent=self)
+            species_count = len(tre)
+            self.label_5.setText(str(species_count))
+
+    def consistency_checking(self):
+        tree_path = self.lineEdit.toolTip()
+        seq_path = self.lineEdit_2.toolTip()
+        tre = self.factory.read_tree(tree_path, parent=self)
+        tre_species = set([leaf.name for leaf in tre.iter_leaves()])
+        tre_species_count = len(tre_species)
+        seq_species = set()
+        if seq_path:
+            with open(seq_path, 'r') as file:
+                for line in file:
+                    if line.strip():
+                        match = re.search(r'[a-z]+', line)
+                        if match:
+                            species_name = match.group()
+                            seq_species.add(species_name)
+            seq_species_count = len(seq_species)
+            print(seq_species)
+            print(seq_species_count)
+            print(tre_species)
+            print(tre_species_count)
+            if seq_species == tre_species:
+                if seq_species_count == tre_species_count:
+                    QMessageBox.information(self, "consistency check", "The species are the same in both files.")
+            else:
+                QMessageBox.warning(self, "different", "Different species!")
+        else:
+            QMessageBox.warning(self, "no file", "Please input the seqfile!")
 
     def run_command(self):
         try:
@@ -314,8 +400,29 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
-                if name == "comboBox_6":
-                    cpu_num = multiprocessing.cpu_count()
+                if name == "comboBox":
+                    ini_models = ["***Default***", "JC69", "K80", "F81", "F84", "HKY85"]
+                                  #"***AAs***", "cpREV10", "cpREV64", "dayhoff", "dayhoff-dcmut", "g1975a", "g1975c",
+                                  #"g1975p", "g1975v",
+                                  #"grantham", "jones", "jones-dcmut", "lg", "miyata", "mtART", "mtmam", "mtREV24", "MtZoa",
+                                  #"wag"]
+                    index = self.MCMCTree_settings.value(name, "0")
+                    model = obj.model()
+                    for num, i in enumerate(ini_models):
+                        item = QStandardItem(i)
+                        # 背景颜色
+                        if "*" in i:
+                            item.setBackground(QColor(245, 105, 87))
+                            item.setForeground(QColor("white"))
+                        elif num % 2 == 0:
+                            item.setBackground(QColor(255, 255, 255))
+                        else:
+                            item.setBackground(QColor(237, 243, 254))
+                        model.appendRow(item)
+                    obj.setCurrentIndex(int(index))
+                    obj.model().item(0).setSelectable(False)
+                    #obj.model().item(6).setSelectable(False)
+                    """cpu_num = multiprocessing.cpu_count()
                     list_cpu = [str(i + 1) for i in range(cpu_num)]
                     index = self.MCMCTree_settings.value(name, "0")
                     model = obj.model()
@@ -328,7 +435,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                         else:
                             item.setBackground(QColor(237, 243, 254))
                         model.appendRow(item)
-                    obj.setCurrentIndex(int(index))
+                    obj.setCurrentIndex(int(index))"""
                 else:
                     allItems = [obj.itemText(i) for i in range(obj.count())]
                     index = self.MCMCTree_settings.value(name, "0")
@@ -399,20 +506,20 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
 
         items_list = [("seed", para_s[13], "-", "-"),
                       ("ndata", para_s[0], "-", "-"),
-                      ("seqtype", para_s[15], "-", "-"),
-                      ("usedata", para_s[16], "-", "-"),
-                      ("clock", para_s[17], "-", "-"),
+                      ("seqtype", self.comboBox_2.currentText(), "-", "-"),
+                      ("usedata", self.comboBox_3.currentText(), "-", "-"),
+                      ("clock", self.comboBox_4.currentText(), "-", "-"),
                       ("RootAge <", para_ds[0], "-", "-"),
                       ("model", self.comboBox.currentText(), "-", "-"),
                       ("alpha", para_ds[4], "-", "-"),
                       ("ncatG", para_s[12], "-", "-"),
-                      ("cleandata", para_s[14], "-", "-"),
+                      ("cleandata", self.comboBox_5.currentText(), "-", "-"),
                       ("BDparas", para_ds[1], para_ds[2], para_ds[3]),
-                      ("kappa_gamma", para_s[19], para_s[20], "-"),
+                      ("kappa_gamma", para_s[14], para_s[15], "-"),
                       ("alpha_gamma", para_s[1], para_s[2], "-"),
                       ("rgene_gamma", para_s[3], para_s[4], para_s[5]),
                       ("sigma2_gamma", para_s[6], para_s[7], para_s[8]),
-                      ("print", para_s[18], "-", "-"),
+                      ("print", self.comboBox_7.currentText(), "-", "-"),
                       ("burnin", para_s[9], "-", "-"),
                       ("samefreq", para_s[10], "-", "-"),
                       ("nsample", para_s[11], "-", "-")]
@@ -436,16 +543,20 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         verticalLayout = QVBoxLayout(groupBox)
         tableView = QTableView(groupBox)
         tableView.setModel(model)
+        tableView.setColumnWidth(0, 150)  # 第一列宽度为 200
+        tableView.setColumnWidth(1, 150)  # 第二列宽度为 100
+        tableView.setColumnWidth(2, 150)  # 第三列宽度为 100
+        tableView.setColumnWidth(3, 150)
         verticalLayout.addWidget(tableView)
         verticalLayout_2.addWidget(groupBox)
         gridLayout = QGridLayout()
-        pushButton_2 = QPushButton("Save", dialog)
-        gridLayout.addWidget(pushButton_2, 0, 0, 1, 1)
-        pushButton = QPushButton("Cancel", dialog)
+        #pushButton_2 = QPushButton("Save", dialog)
+        #gridLayout.addWidget(pushButton_2, 0, 0, 1, 1)
+        pushButton = QPushButton("OK", dialog)
         gridLayout.addWidget(pushButton, 0, 1, 1, 1)
         verticalLayout_2.addLayout(gridLayout)
         pushButton.clicked.connect(dialog.close)
-        pushButton_2.clicked.connect(lambda: self.updateParas(model))
+        #pushButton.clicked.connect(lambda: self.updateParas(model))
         dialog.setWindowFlags(
             dialog.windowFlags() | Qt.WindowMinMaxButtonsHint)
         return dialog
@@ -516,25 +627,30 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             param_indices = {
                 'seed': 13,
                 'ndata': 0,
-                'seqtype': 15,
-                'usedata': 16,
-                'clock': 17,
+                'seqtype': {'nucleotides': 0, 'codons': 1, 'AAs': 2},
+                'usedata': {'no data': 0, 'seq like': 1, 'normal approximation': 2, 'out.BV': 3},
+                'clock': {'global clock': 1, 'independent rates': 2, 'correlated rates': 3},
                 'RootAge': 0,
                 'model': {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4},
                 'alpha': 4,
                 'ncatG': 12,
-                'cleandata': 14,
+                'cleandata': {'yes': 1, 'no': 0},
                 'BDparas': (1, 2, 3),
-                'kappa_gamma': (19, 20),
+                'kappa_gamma': (14, 15),
                 'alpha_gamma': (1, 2),
                 'rgene_gamma': (3, 4, 5),
                 'sigma2_gamma': (6, 7, 8),
-                'print': 18,
+                'print': {'no mcmc sample': 0, 'except branch rates': 1, 'everything': 2},
                 'burnin': 9,
                 'sampfreq': 10,
                 'nsample': 11
             }
             model_value = {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4}
+            usedata_value = {'no data': 0, 'seq like': 1, 'normal approximation': 2, 'out.BV': 3}
+            seqtype_value = {'nucleotides': 0, 'codons': 1, 'AAs': 2}
+            cleandata_value = {'YES': 1, 'NO': 0}
+            clock_value = {'global clock': 1, 'independent rates': 2, 'correlated rates': 3}
+            print_value = {'no mcmc sample': 0, 'except branch rates': 1, 'everything': 2}
             ctl_template = '''          seed = {seed}
        seqfile = {seqfile}
       treefile = {treefile}
@@ -572,25 +688,30 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 'treefile': treefile,
                 'seed': s_Values[param_indices['seed']],
                 'ndata': s_Values[param_indices['ndata']],
-                'seqtype': s_Values[param_indices['seqtype']],
-                'usedata': s_Values[param_indices['usedata']],
-                'clock': s_Values[param_indices['clock']],
+                'seqtype': self.comboBox_2.currentText(),
+                'usedata': self.comboBox_3.currentText(),
+                'clock': self.comboBox_4.currentText(),
                 'RootAge': ds_Values[param_indices['RootAge']],
                 'model': self.comboBox.currentText(),
                 'alpha': ds_Values[param_indices['alpha']],
                 'ncatG': s_Values[param_indices['ncatG']],
-                'cleandata': s_Values[param_indices['cleandata']],
+                'cleandata': self.comboBox_5.currentText(),
                 'BDparas': ' '.join(str(ds_Values[idx]) for idx in param_indices['BDparas']),
                 'kappa_gamma': ' '.join(str(s_Values[idx]) for idx in param_indices['kappa_gamma']),
                 'alpha_gamma': ' '.join(str(s_Values[idx]) for idx in param_indices['alpha_gamma']),
                 'rgene_gamma': ' '.join(str(s_Values[idx]) for idx in param_indices['rgene_gamma']),
                 'sigma2_gamma': ' '.join(str(s_Values[idx]) for idx in param_indices['sigma2_gamma']),
-                'print': s_Values[param_indices['print']],
+                'print': self.comboBox_7.currentText(),
                 'burnin': s_Values[param_indices['burnin']],
                 'sampfreq': s_Values[param_indices['sampfreq']],
                 'nsample': s_Values[param_indices['nsample']]
             }
             ctl_values['model'] = model_value[ctl_values['model']]
+            ctl_values['seqtype'] = seqtype_value[ctl_values['seqtype']]
+            ctl_values['usedata'] = usedata_value[ctl_values['usedata']]
+            ctl_values['cleandata'] = cleandata_value[ctl_values['cleandata']]
+            ctl_values['clock'] = clock_value[ctl_values['clock']]
+            ctl_values['print'] = print_value[ctl_values['print']]
             return ctl_template.format(**ctl_values)
         seqfile = os.path.basename(self.seqFileName) if self.seqFileName else ""
         treefile = os.path.basename(treefile) if treefile else ""
@@ -614,6 +735,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 else:
                     with open(file_path, "w", errors="ignore") as f:
                         f.write(mcmctree_ctl)
+
 
     def prepare_for_run(self):
         if not self.seqFileName:
@@ -653,7 +775,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 file_f = files[0]
                 which = 3 if name == 'lineEdit_2' else 4
                 self.input(file_f, which=which)
-                self.species_matching(4)
+                if which == 4:
+                    self.species_matching(4)
                 return True
         if (event.type() == QEvent.Show) and (obj == self.pushButton_5.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+",
@@ -684,6 +807,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         if num == 99999:
             self.progressBar.setMaximum(0)
             self.progressBar.setMinimum(0)
+
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

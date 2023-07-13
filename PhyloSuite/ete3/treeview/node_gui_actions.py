@@ -50,6 +50,7 @@ from .svg_colors import random_color
 from . import  _show_newick
 from ..evol import EvolTree
 
+
 class NewickDialog(QDialog):
     def __init__(self, node, *args):
         QDialog.__init__(self, *args)
@@ -93,6 +94,7 @@ class NewickDialog(QDialog):
 class _NodeActions(object):
     """ Used to extend QGraphicsItem features """
     def __init__(self):
+        #self.mcmcTree = MCMCTree()
         self.setCursor(Qt.PointingHandCursor)
         self.setAcceptHoverEvents(True)
         self.factory = Factory()
@@ -463,7 +465,6 @@ class _NodeActions(object):
         self.doubleSpinBox_10 = QtWidgets.QDoubleSpinBox(self.calibrate_dialog)
         self.doubleSpinBox_10.setDecimals(3)
         self.doubleSpinBox_10.setSingleStep(0.001)
-        self.doubleSpinBox_10.setStepType(QtWidgets.QAbstractSpinBox.DefaultStepType)
         self.doubleSpinBox_10.setProperty("value", 0.025)
         self.doubleSpinBox_10.setObjectName("doubleSpinBox_10")
         self.gridLayout_12.addWidget(self.doubleSpinBox_10, 0, 5, 1, 1)
@@ -524,7 +525,11 @@ class _NodeActions(object):
         self.pushButton_2 = QtWidgets.QPushButton("CANCEL", self.calibrate_dialog)
         self.pushButton_2.setObjectName("pushButton_2")
         self.horizontalLayout.addWidget(self.pushButton_2)
-        self.gridLayout.addLayout(self.horizontalLayout, 8, 0, 1, 4)
+        self.gridLayout.addLayout(self.horizontalLayout, 9, 0, 1, 4)
+        self.label_23 = QtWidgets.QLabel("<html><head/><body><p align=\"justify\">Click <a href=\"http://abacus.gene.ucl.ac.uk/software/MCMCtree.Tutorials.pdf\"><span style=\" text-decoration: underline; color:#0000ff;\">here</span></a> to learn more about <span style=\" font-weight:600; color:#ff0000;\">MCMCTree-Tutorials</span></p></body></html>", self.calibrate_dialog)
+        self.label_23.setOpenExternalLinks(True)
+        self.label_23.setObjectName("label_23")
+        self.gridLayout.addWidget(self.label_23, 8, 0, 1, 2)
         self.pushButton.clicked.connect(self.check_radiobutton_action)
         self.pushButton_2.clicked.connect(self.calibrate_dialog.close)
         self.calibrate_dialog.setWindowFlags(
