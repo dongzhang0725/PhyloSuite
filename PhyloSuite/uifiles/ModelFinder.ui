@@ -597,6 +597,11 @@
           </item>
           <item>
            <property name="text">
+            <string>PAML</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
             <string>Mrbayes</string>
            </property>
           </item>
@@ -655,7 +660,7 @@
          <string>Start</string>
         </property>
         <property name="icon">
-         <iconset resource="../myRes.qrc">
+         <iconset>
           <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
         </property>
        </widget>
@@ -678,7 +683,7 @@
          <string>Continue Previous Analysis</string>
         </property>
         <property name="icon">
-         <iconset resource="../myRes.qrc">
+         <iconset>
           <normaloff>:/picture/resourses/Play-pause_button_play_stop_blue_pause.png</normaloff>:/picture/resourses/Play-pause_button_play_stop_blue_pause.png</iconset>
         </property>
         <property name="autoExclusive">
@@ -698,7 +703,7 @@
          <string>Stop</string>
         </property>
         <property name="icon">
-         <iconset resource="../myRes.qrc">
+         <iconset>
           <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
         </property>
        </widget>
@@ -718,7 +723,7 @@
          <string>Show log</string>
         </property>
         <property name="icon">
-         <iconset resource="../myRes.qrc">
+         <iconset>
           <normaloff>:/picture/resourses/Eye_Care_Services-512.png</normaloff>:/picture/resourses/Eye_Care_Services-512.png</iconset>
         </property>
        </widget>

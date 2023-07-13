@@ -2004,6 +2004,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         # if (not autoInputs) and (not self.factory.autoInputDisbled()):
         #     self.iTOL_editor.popupAutoDec(init=True)
 
+    @pyqtSlot()
     def on_MCMCTree_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
         mcmctreeEXE = self.factory.programIsValid("PAML", mode="tool")

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>654</width>
-    <height>520</height>
+    <width>698</width>
+    <height>695</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -100,6 +100,74 @@
         </item>
        </layout>
       </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <spacer name="horizontalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButton_8">
+          <property name="text">
+           <string>check consistency</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="label_23">
+          <property name="text">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click &lt;a href=&quot;http://abacus.gene.ucl.ac.uk/software/paml.html&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;here&lt;/span&gt;&lt;/a&gt; to learn more about &lt;span style=&quot; font-weight:600; color:#ff0000;&quot;&gt;MCMCTree&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="openExternalLinks">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_24">
+          <property name="text">
+           <string>Demo:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="ClickedLableGif" name="label_25">
+          <property name="toolTip">
+           <string>Brief example</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>158</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
      </layout>
     </widget>
    </item>
@@ -110,7 +178,7 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <layout class="QGridLayout" name="gridLayout_5">
+       <layout class="QGridLayout" name="gridLayout_3">
         <item row="0" column="0">
          <widget class="QLabel" name="label_6">
           <property name="text">
@@ -143,76 +211,23 @@
          </widget>
         </item>
         <item row="0" column="4">
-         <widget class="QLabel" name="label_8">
-          <property name="text">
-           <string>seqtype</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="5">
-         <widget class="QSpinBox" name="spinBox_3">
-          <property name="maximum">
-           <number>2</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="6">
-         <widget class="QLabel" name="label_9">
-          <property name="text">
-           <string>usedata</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="7">
-         <widget class="QSpinBox" name="spinBox_4">
-          <property name="maximum">
-           <number>3</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_10">
-          <property name="text">
-           <string>clock</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QSpinBox" name="spinBox_5">
-          <property name="maximum">
-           <number>3</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QLabel" name="label_14">
-          <property name="text">
-           <string>RootAge &lt;</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="3">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox">
-          <property name="singleStep">
-           <double>0.100000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="4">
          <widget class="QLabel" name="label_11">
           <property name="text">
            <string>model</string>
           </property>
          </widget>
         </item>
-        <item row="1" column="6">
+        <item row="0" column="5">
+         <widget class="QComboBox" name="comboBox"/>
+        </item>
+        <item row="0" column="6">
          <widget class="QLabel" name="label_15">
           <property name="text">
            <string>alpha</string>
           </property>
          </widget>
         </item>
-        <item row="1" column="7">
+        <item row="0" column="7">
          <widget class="QDoubleSpinBox" name="doubleSpinBox_6">
           <property name="singleStep">
            <double>0.100000000000000</double>
@@ -222,39 +237,87 @@
           </property>
          </widget>
         </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_22">
+          <property name="text">
+           <string>burnin</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="spinBox_18">
+          <property name="maximum">
+           <number>99999</number>
+          </property>
+          <property name="singleStep">
+           <number>500</number>
+          </property>
+          <property name="value">
+           <number>2000</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="label_12">
+          <property name="text">
+           <string>sampfreq</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QSpinBox" name="spinBox_19">
+          <property name="maximum">
+           <number>200</number>
+          </property>
+          <property name="singleStep">
+           <number>10</number>
+          </property>
+          <property name="value">
+           <number>10</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="4">
+         <widget class="QLabel" name="label_13">
+          <property name="text">
+           <string>nsample</string>
+          </property>
+         </widget>
+        </item>
         <item row="1" column="5">
-         <widget class="QComboBox" name="comboBox">
-          <item>
-           <property name="text">
-            <string>JC69</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>K80</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>F81</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>F84</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>HKY85</string>
-           </property>
-          </item>
+         <widget class="QSpinBox" name="spinBox_20">
+          <property name="maximum">
+           <number>9999999</number>
+          </property>
+          <property name="singleStep">
+           <number>10000</number>
+          </property>
+          <property name="value">
+           <number>20000</number>
+          </property>
+          <property name="displayIntegerBase">
+           <number>10</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="6">
+         <widget class="QLabel" name="label_14">
+          <property name="text">
+           <string>RootAge &lt;</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="7">
+         <widget class="QDoubleSpinBox" name="doubleSpinBox">
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
          </widget>
         </item>
        </layout>
       </item>
       <item>
-       <layout class="QGridLayout" name="gridLayout_6">
+       <layout class="QGridLayout" name="gridLayout_4">
         <item row="0" column="0">
          <widget class="QLabel" name="label_16">
           <property name="text">
@@ -277,10 +340,17 @@
          </widget>
         </item>
         <item row="0" column="3">
-         <widget class="QSpinBox" name="spinBox_24">
-          <property name="maximum">
-           <number>1</number>
-          </property>
+         <widget class="QComboBox" name="comboBox_5">
+          <item>
+           <property name="text">
+            <string>YES</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>NO</string>
+           </property>
+          </item>
          </widget>
         </item>
         <item row="0" column="4">
@@ -323,7 +393,7 @@
        </layout>
       </item>
       <item>
-       <layout class="QGridLayout" name="gridLayout_7">
+       <layout class="QGridLayout" name="gridLayout_5">
         <item row="0" column="0">
          <widget class="QLabel" name="label_18">
           <property name="text">
@@ -369,7 +439,7 @@
        </layout>
       </item>
       <item>
-       <layout class="QGridLayout" name="gridLayout_8">
+       <layout class="QGridLayout" name="gridLayout_6">
         <item row="0" column="0">
          <widget class="QLabel" name="label_20">
           <property name="text">
@@ -429,7 +499,59 @@
        </layout>
       </item>
       <item>
-       <layout class="QGridLayout" name="gridLayout_9">
+       <layout class="QGridLayout" name="gridLayout_7">
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>seqtype</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>usedata</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QComboBox" name="comboBox_2">
+          <item>
+           <property name="text">
+            <string>nucleotides</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>codons</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>AAs</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QComboBox" name="comboBox_4">
+          <item>
+           <property name="text">
+            <string>global clock</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>independent rates</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>correlated rates</string>
+           </property>
+          </item>
+         </widget>
+        </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label_7">
           <property name="text">
@@ -437,77 +559,54 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
-         <widget class="QSpinBox" name="spinBox_7">
-          <property name="maximum">
-           <number>2</number>
-          </property>
-          <property name="value">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
         <item row="0" column="2">
-         <widget class="QLabel" name="label_22">
+         <widget class="QLabel" name="label_10">
           <property name="text">
-           <string>burnin</string>
+           <string>clock</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="3">
-         <widget class="QSpinBox" name="spinBox_18">
-          <property name="maximum">
-           <number>99999</number>
-          </property>
-          <property name="singleStep">
-           <number>500</number>
-          </property>
-          <property name="value">
-           <number>2000</number>
-          </property>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="comboBox_7">
+          <item>
+           <property name="text">
+            <string>no mcmc sample</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>except branch rates</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>everything</string>
+           </property>
+          </item>
          </widget>
         </item>
-        <item row="0" column="4">
-         <widget class="QLabel" name="label_12">
-          <property name="text">
-           <string>sampfreq</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="5">
-         <widget class="QSpinBox" name="spinBox_19">
-          <property name="maximum">
-           <number>200</number>
-          </property>
-          <property name="singleStep">
-           <number>10</number>
-          </property>
-          <property name="value">
-           <number>10</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="6">
-         <widget class="QLabel" name="label_13">
-          <property name="text">
-           <string>nsample</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="7">
-         <widget class="QSpinBox" name="spinBox_20">
-          <property name="maximum">
-           <number>9999999</number>
-          </property>
-          <property name="singleStep">
-           <number>10000</number>
-          </property>
-          <property name="value">
-           <number>20000</number>
-          </property>
-          <property name="displayIntegerBase">
-           <number>10</number>
-          </property>
+        <item row="1" column="3">
+         <widget class="QComboBox" name="comboBox_3">
+          <item>
+           <property name="text">
+            <string>no data</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>seq like</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>normal approximate</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>out.BV</string>
+           </property>
+          </item>
          </widget>
         </item>
        </layout>
@@ -568,7 +667,7 @@
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="ArrowPushButton" name="pushButton_2">
+         <widget class="QPushButton" name="pushButton_2">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -628,13 +727,15 @@
    <extends>QPushButton</extends>
    <header>src.CustomWidget.h</header>
   </customwidget>
+  <customwidget>
+   <class>ClickedLableGif</class>
+   <extends>QLabel</extends>
+   <header>src.CustomWidget.h</header>
+  </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>spinBox_23</tabstop>
   <tabstop>spinBox</tabstop>
-  <tabstop>spinBox_3</tabstop>
-  <tabstop>spinBox_4</tabstop>
-  <tabstop>spinBox_5</tabstop>
   <tabstop>doubleSpinBox</tabstop>
   <tabstop>doubleSpinBox_6</tabstop>
   <tabstop>spinBox_21</tabstop>
@@ -651,7 +752,6 @@
   <tabstop>spinBox_15</tabstop>
   <tabstop>spinBox_16</tabstop>
   <tabstop>spinBox_17</tabstop>
-  <tabstop>spinBox_7</tabstop>
   <tabstop>spinBox_18</tabstop>
   <tabstop>spinBox_19</tabstop>
   <tabstop>spinBox_20</tabstop>
