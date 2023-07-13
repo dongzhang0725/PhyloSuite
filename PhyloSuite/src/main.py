@@ -529,6 +529,9 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         FastTree = QAction(QIcon(":/picture/resourses/menu_icons/fast.svg"), "Import to FastTree", self,
                          statusTip="Reconstruct tree with FastTree",
                          triggered=self.on_actionFastTree_triggered)
+        tree_suite = QAction(QIcon(":/Menu/resourses/Menu/echarts-tree.png"), "Import to MCMCTree", self,
+                             statusTip="MCMCTree",
+                             triggered=self.on_MCMCTree_triggered)
         def popup(qpoint):
             index = self.treeView_4.indexAt(qpoint)
             if not index.isValid():
@@ -2008,10 +2011,11 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
     def on_MCMCTree_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
         mcmctreeEXE = self.factory.programIsValid("PAML", mode="tool")
-        # autoInputs = self.factory.init_judge(mode="tree suite", filePath=filePath, parent=self)
+        autoInputs = self.factory.init_judge(mode="MCMCTREE", filePath=filePath, parent=self)
         self.MCMCTree = MCMCTree(workPath=workPath,
                                    focusSig=self.focusSig,
-                                 mcmctreeEXE=mcmctreeEXE,
+                                   mcmctreeEXE=mcmctreeEXE,
+                                   autoInputs=autoInputs,
                                    parent=self)
         self.MCMCTree.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.MCMCTree.windowFlags())
         self.MCMCTree.show()

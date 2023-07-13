@@ -647,10 +647,11 @@ class Factory(QObject, Factory_sub, object):
                 "HmmCleaner": ["Open the results folder", "Import the results to Convert Sequence Format",
                                "Import the results to Concatenate Sequence", "Import the results to FastTree"],
                 "IQ-TREE": ["Open the results folder", "Import the results to TreeSuite",
-                               "Import the results to ASTRAL"],
-                "MrBayes": ["Open the results folder", "Import the results to TreeSuite"],
+                               "Import the results to ASTRAL", "Import the results to MCMCTree"],
+                "MrBayes": ["Open the results folder", "Import the results to TreeSuite",
+                            "Import the results to MCMCTree"],
                 "FastTree": ["Open the results folder", "Import the results to TreeSuite",
-                             "Import the results to ASTRAL"]
+                             "Import the results to ASTRAL", "Import the results to MCMCTree"]
             }
             if hasattr(parent, "function_name") and (parent.function_name in dict_):
                 windInfo = JobFinishMessageBox(":/picture/resourses/msg_info.png", parent=parent)
@@ -691,6 +692,8 @@ class Factory(QObject, Factory_sub, object):
                         parent.parent.on_actionASTRAL_triggered()
                     elif selection == "Import the results to FastTree":
                         parent.parent.on_actionFastTree_triggered()
+                    elif selection == "Import the results to MCMCTree":
+                        parent.parent.on_MCMCTree_triggered()
             else:
                 reply = QMessageBox.information(
                     parent,
@@ -1695,6 +1698,44 @@ class Factory(QObject, Factory_sub, object):
                             os.path.normpath(subResults)] = autoInputs
                 if dict_subResults:
                     dict_autoInputs[os.path.normpath(ft_path)] = dict_subResults
+        elif mode == "MCMCTREE":
+            for iq_path in self.fetchResuilts(rootpath, "IQtree_results"):
+                dict_subResults = OrderedDict()  # 按修改时间排序
+                for subResults in self.fetchSubResults(iq_path):
+                    autoInputs = glob.glob(subResults + os.sep + "*.treefile")
+                    log = f"{subResults}{os.sep}PhyloSuite_IQ-TREE.log"
+                    if os.path.exists(log):
+                        with open(log) as f:
+                            content = f.read()
+                    else:
+                        content = ""
+                    if content and re.search(r'\-s +\"([^"]+?)\"\W', content):
+                        file_path = re.search(r'\-s +\"([^"]+?)\"\W', content).group(1)
+                        file_name = os.path.basename(file_path)
+                        alignments = glob.glob(f"{subResults}{os.sep}{file_name}")
+                    else:
+                        alignments = [os.path.splitext(tree)[0] for tree in autoInputs]
+                    autoInputs = [autoInputs, alignments]
+                    if autoInputs:
+                        dict_subResults[
+                            os.path.normpath(subResults)] = autoInputs
+                if dict_subResults:
+                    dict_autoInputs[os.path.normpath(iq_path)] = dict_subResults
+            for mb_path in self.fetchResuilts(rootpath, "MrBayes_results"):
+                dict_subResults = OrderedDict()  # 按修改时间排序
+                for subResults in self.fetchSubResults(mb_path):
+                    autoInputs = glob.glob(subResults + os.sep + "*.tre")
+                    alignments = glob.glob(f"{subResults}{os.sep}[!stop_run]*.nex") + \
+                                 glob.glob(f"{subResults}{os.sep}[!stop_run]*.nexus") + \
+                                 glob.glob(f"{subResults}{os.sep}[!stop_run]*.nxs")
+                    # [subResults + os.sep + i for i in os.listdir(subResults) if
+                    # os.path.splitext(i)[1].upper() in [".NEX", ".NEXUS", "NXS"]]
+                    autoInputs = [autoInputs, alignments]
+                    if autoInputs:
+                        dict_subResults[
+                            os.path.normpath(subResults)] = autoInputs
+                if dict_subResults:
+                    dict_autoInputs[os.path.normpath(mb_path)] = dict_subResults
         self.dict_autoInputs = dict_autoInputs
         return dict_autoInputs
 
@@ -2131,6 +2172,32 @@ class Factory(QObject, Factory_sub, object):
                 input_trees = [resultsPath + os.sep + "all_gene_trees.nwk"] if \
                     os.path.exists(resultsPath + os.sep + "all_gene_trees.nwk") else []
                 autoInputs = input_trees
+        elif mode == "MCMCTREE":
+            if resultsParentName == "MrBayes_results":
+                input_trees = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                               os.path.splitext(i)[1].upper() in [".TRE"]]
+                alignments = glob.glob(f"{resultsPath}{os.sep}[!stop_run]*.nex") + \
+                             glob.glob(f"{resultsPath}{os.sep}[!stop_run]*.nexus") + \
+                             glob.glob(f"{resultsPath}{os.sep}[!stop_run]*.nxs")
+                # [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                #   os.path.splitext(i)[1].upper() in [".NEX", ".NEXUS", "NXS"]]
+                autoInputs = [input_trees, alignments]
+            elif resultsParentName == "IQtree_results":
+                input_trees = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                               os.path.splitext(i)[1].upper() in [".TREEFILE"]]
+                log = f"{resultsPath}{os.sep}PhyloSuite_IQ-TREE.log"
+                if os.path.exists(log):
+                    with open(log) as f:
+                        content = f.read()
+                else:
+                    content = ""
+                if content and re.search(r'\-s +\"([^"]+?)\"\W', content):
+                    file_path = re.search(r'\-s +\"([^"]+?)\"\W', content).group(1)
+                    file_name = os.path.basename(file_path)
+                    alignments = glob.glob(f"{resultsPath}{os.sep}{file_name}")
+                else:
+                    alignments = [os.path.splitext(tree)[0] for tree in input_trees]
+                autoInputs = [input_trees, alignments]
         if not autoInputs:
             #["ModelFinder", "IQ-TREE", "MrBayes"]: [list_alignments, None]；IQ-TREE：[list_alignments, ["", None]]
             if mode in ["ModelFinder", "MrBayes", "FastTree"]:

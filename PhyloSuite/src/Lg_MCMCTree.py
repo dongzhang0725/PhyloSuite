@@ -38,6 +38,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             workPath=None,
             focusSig=None,
             mcmctreeEXE=None,
+            autoInputs=None,
             parent=None):
         super(MCMCTree, self).__init__(parent)
         self.parent = parent
@@ -57,6 +58,11 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
+        ## 自动导入树和MSA文件
+        if autoInputs:
+            trees, alns = autoInputs
+            self.input(trees[0], 4)
+            self.input(alns[0], 3)
         # 槽函数
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         self.logGuiSig.connect(self.addText2Log)
