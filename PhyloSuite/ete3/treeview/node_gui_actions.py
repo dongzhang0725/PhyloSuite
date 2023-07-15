@@ -552,28 +552,28 @@ class _NodeActions(object):
                                 modeForth=None):
         #if .text() == "OK":
         if modeFirst:
-            l = self.doubleSpinBox_1.value()
-            h = self.doubleSpinBox_2.value()
-            self.node.name = f"'>{l}<{h}'"
+            l = "{:.2f}".format(self.doubleSpinBox_1.value())
+            h = "{:.2f}".format(self.doubleSpinBox_2.value())
+            self.node.name = f">{l}<{h}"
             self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
         if modeSecond:
-            tl = self.doubleSpinBox_3.value()
-            tu = self.doubleSpinBox_4.value()
-            pl = self.doubleSpinBox_5.value()
-            pu = self.doubleSpinBox_6.value()
-            self.node.name = f"'B({tl},{tu},{pl},{pu})'"
+            tl = "{:.2f}".format(self.doubleSpinBox_3.value())
+            tu = "{:.2f}".format(self.doubleSpinBox_4.value())
+            pl = "{:.3f}".format(self.doubleSpinBox_5.value())
+            pu = "{:.3f}".format(self.doubleSpinBox_6.value())
+            self.node.name = f"B({tl},{tu},{pl},{pu})"
             self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
         if modeThird:
-            tl = self.doubleSpinBox_7.value()
-            p = self.doubleSpinBox_8.value()
-            c = self.doubleSpinBox_9.value()
-            pl = self.doubleSpinBox_10.value()
-            self.node.name = f"'L({tl},{p},{c},{pl})'"
+            tl = "{:.2f}".format(self.doubleSpinBox_7.value())
+            p = "{:.1f}".format(self.doubleSpinBox_8.value())
+            c = "{:.1f}".format(self.doubleSpinBox_9.value())
+            pl = "{:.3f}".format(self.doubleSpinBox_10.value())
+            self.node.name = f"L({tl},{p},{c},{pl})"
             self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
         if modeForth:
-            tu = self.doubleSpinBox_11.value()
-            pr = self.doubleSpinBox_12.value()
-            self.node.name = f"'U({tu},{pr})'"
+            tu = "{:.2f}".format(self.doubleSpinBox_11.value())
+            pr = "{:.3f}".format(self.doubleSpinBox_12.value())
+            self.node.name = f"U({tu},{pr})"
             self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
         self.scene().GUI.redraw()
         self.calibrate_dialog.close()

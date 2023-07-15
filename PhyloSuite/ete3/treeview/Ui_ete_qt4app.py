@@ -271,7 +271,7 @@ class Ui_MainWindow(object):
         self.action_style_brush.setObjectName("action_style_brush")
         self.action_save_to_mcmctree = QtWidgets.QAction(MainWindow)
         icon25 = QtGui.QIcon()
-        icon25.addPixmap(QtGui.QPixmap(":/picture/resourses/all icon.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon25.addPixmap(QtGui.QPixmap(":/ete icons/filesave.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.action_save_to_mcmctree.setIcon(icon25)
         self.action_save_to_mcmctree.setObjectName("action_save_to_mcmctree")
         self.menuFile.addAction(self.actionOpen)

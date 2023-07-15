@@ -30,6 +30,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
     logGuiSig = pyqtSignal(str)
     startButtonStatusSig = pyqtSignal(list)
     mcmctree_exception = pyqtSignal(str)
+    workflow_progress = pyqtSignal(int)
+    workflow_finished = pyqtSignal(str)
     exception_signal = pyqtSignal(str)  # 定义所有类都可以使用的信号
     progressSig = pyqtSignal(int)  # 控制进度条
 
@@ -39,6 +41,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             focusSig=None,
             mcmctreeEXE=None,
             autoInputs=None,
+            workflow=False,
             parent=None):
         super(MCMCTree, self).__init__(parent)
         self.parent = parent
@@ -47,6 +50,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.thisPath = self.factory.thisPath
         self.workPath = workPath
         self.focusSig = focusSig
+        self.workflow = workflow
         self.mcmctreeEXE = mcmctreeEXE
         self.seqFileName = ''
         self.treeFileName = ''
@@ -82,7 +86,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.lineEdit.installEventFilter(self)
         self.lineEdit_2.installEventFilter(self)
         self.log_gui = self.gui4Log()
-        self.temporary_tree = None
+        #self.temporary_tree = None
         #self.text_gui = self.gui4Text()
         ## brief demo
         country = self.factory.path_settings.value("country", "UK")
@@ -211,25 +215,28 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         if set_NCBI_db:
             self.updateTaxonomyDB()
             return
-        tree_path = self.lineEdit.toolTip()
-        tre = self.factory.read_tree(tree_path, parent=self)
-        self.temporary_tree = tre
-        if self.temporary_tree:
-            for node in self.temporary_tree.traverse():
+        if hasattr(self, "tree_with_tipdate"):
+            temporary_tree = self.tree_with_tipdate
+            tre = self.factory.read_tree(temporary_tree, parent=self)
+        else:
+            tree_path = self.lineEdit.toolTip()
+            tre = self.factory.read_tree(tree_path, parent=self)
+        if tre:
+            for node in tre.traverse():
                 if 'name' in node.features:
-                    node_bound = re.search(r'>(\d*\.\d{2})+<(\d*\.\d{2})|'
-                                           r'>(\d*\.\d{2})|'
-                                           r'<(\d*\.\d{2})|'
-                                           r'B\((\d*\.\d{2}),\s(\d*\.\d{2})(?:,\s(\d*\.\d{3}),\s(\d*\.\d{3}))?\)|'
-                                           r'L\((\d*\.\d{2})(?:,\s(\d*\.\d),\s(\d*\.\d),\s(\d*\.\d{3}))?\)|'
-                                           r'U\((\d*\.\d{2})(?:,\s(\d*\.\d{3}))?\)'
+                    node_bound = re.search(r">(\d*\.\d{2})+<(\d*\.\d{2})|"
+                                           r">(\d*\.\d{2})|"
+                                           r"<(\d*\.\d{2})|"
+                                           r"B\((\d*\.\d{2}),(\d*\.\d{2})(?:,(\d*\.\d{3}),(\d*\.\d{3}))?\)|"
+                                           r"L\((\d*\.\d{2})(?:,\s(\d*\.\d),\s(\d*\.\d),\s(\d*\.\d{3}))?\)|"
+                                           r"U\((\d*\.\d{2})(?:,\s(\d*\.\d{3}))?\)"
                                            , node.name)
                     if node_bound:
                         text = node_bound.group()
                         node.add_face(TextFace(text), column=0, position="branch-top")
-            self.temporary_tree.show(name="MCMCTREE-ETE", parent=self)
-        nwk_string = self.temporary_tree.write(format=5)
-        print(nwk_string)
+            tre.show(name="MCMCTREE-ETE", parent=self)
+        #nwk_string = tre.write(format=5)
+        #print(nwk_string)
         """else:
             QMessageBox.warning(self, "no file", "No tree file is imported. Please import a file.")"""
 
@@ -427,21 +434,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                         model.appendRow(item)
                     obj.setCurrentIndex(int(index))
                     obj.model().item(0).setSelectable(False)
-                    #obj.model().item(6).setSelectable(False)
-                    """cpu_num = multiprocessing.cpu_count()
-                    list_cpu = [str(i + 1) for i in range(cpu_num)]
-                    index = self.MCMCTree_settings.value(name, "0")
-                    model = obj.model()
-                    obj.clear()
-                    for num, i in enumerate(list_cpu):
-                        item = QStandardItem(i)
-                        # 背景颜色
-                        if num % 2 == 0:
-                            item.setBackground(QColor(255, 255, 255))
-                        else:
-                            item.setBackground(QColor(237, 243, 254))
-                        model.appendRow(item)
-                    obj.setCurrentIndex(int(index))"""
+                    default_index = ini_models.index("JC69")
+                    obj.setCurrentIndex(default_index)
                 else:
                     allItems = [obj.itemText(i) for i in range(obj.count())]
                     index = self.MCMCTree_settings.value(name, "0")
@@ -657,6 +651,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             cleandata_value = {'YES': 1, 'NO': 0}
             clock_value = {'global clock': 1, 'independent rates': 2, 'correlated rates': 3}
             print_value = {'no mcmc sample': 0, 'except branch rates': 1, 'everything': 2}
+
             ctl_template = '''          seed = {seed}
        seqfile = {seqfile}
       treefile = {treefile}
@@ -720,7 +715,10 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             ctl_values['print'] = print_value[ctl_values['print']]
             return ctl_template.format(**ctl_values)
         seqfile = os.path.basename(self.seqFileName) if self.seqFileName else ""
-        treefile = os.path.basename(treefile) if treefile else ""
+        if hasattr(self, "tree_with_tipdate"):
+            treefile = "calibration_tree.nwk" if treefile else ""
+        else:
+            treefile = os.path.basename(treefile) if treefile else ""
         if file_path:
             mcmctree_ctl = generate_ctl(seqfile, treefile)
             with open(file_path, "w", errors="ignore") as f:
