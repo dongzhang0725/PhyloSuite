@@ -680,9 +680,11 @@ class _GUI(QMainWindow, Ui_MainWindow):
 
     @QtCore.pyqtSlot()
     def on_action_save_to_mcmctree_triggered(self):
-        self.parent().tree_with_tipdate = self.scene.tree.write(format=8, quoted_node_names=True).replace("NoName", "")\
-            .replace('"', '')
-        print(self.parent().tree_with_tipdate)
+        # , quoted_node_names=True
+        self.parent().tree_with_tipdate = self.scene.tree.write(format=8,
+                                                                no_replace=True).\
+                                                    replace("NoName", "")
+        # print(self.parent().tree_with_tipdate)
         self.close()
 
     def load_tree_annotation(self, settings, ts, type="normal"):
