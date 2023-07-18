@@ -126,6 +126,15 @@ class Factory_sub(object):
                 parent.version = rgx_version.search(stdout).group(1)
             else:
                 parent.version = ""
+        elif program == "MCMCTree":
+            command = f"\"{parent.mcmctreeEXE}\" --version"
+            popen = self.init_popen(command)
+            stdout = self.getSTDOUT(popen)
+            rgx_version = re.compile(r"MCMCTree (\d+\.\d+)")
+            if rgx_version.search(stdout):
+                parent.version = rgx_version.search(stdout).group(1)
+            else:
+                parent.version = ""
 
     def zipFolder(self, file, list_folder):
         # shutil.make_archive(os.path.splitext(file)[0], "zip",
@@ -2527,6 +2536,26 @@ class Factory(QObject, Factory_sub, object):
                 not CodonPath else CodonPath
             if shutil.which(CodonPath):
                 return "succeed" if mode == "settings" else CodonPath
+        elif program == "MCMCTree":
+            MCMCPath = self.settings_ini.value('MCMCTree', "")
+            if platform.system().lower() == "windows":
+                env_name = dict_plugin_settings[program]["target_win"]
+            elif platform.system().lower() == "darwin":
+                env_name = dict_plugin_settings[program]["target_mac"]
+            else:
+                env_name = dict_plugin_settings[program]["target_linux"]
+            if not MCMCPath:
+                if type(env_name) == list:
+                    for each_env in env_name:
+                        if shutil.which(each_env):
+                            return "succeed" if mode == "settings" else each_env
+                else:
+                    if shutil.which(env_name):
+                        return "succeed" if mode == "settings" else env_name
+            MCMCPath = self.getDefaultpluginPath("MCMCTree") if \
+                not MCMCPath else MCMCPath
+            if shutil.which(MCMCPath):
+                return "succeed" if mode == "settings" else MCMCPath
         else:
             plugin_name = dict_plugin_settings[program]["plugin_name"]
             pluginPath = self.settings_ini.value(plugin_name, "")

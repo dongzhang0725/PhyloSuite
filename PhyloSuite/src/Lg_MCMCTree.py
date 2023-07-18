@@ -20,10 +20,6 @@ import os
 import sys
 from uifiles.Ui_mcmctree import Ui_MCMCTree
 
-
-class TreeStorge(object):
-    pass
-
 class MCMCTree(QDialog,Ui_MCMCTree,object):
     showSig = pyqtSignal(QDialog)
     closeSig = pyqtSignal(str, str)
@@ -124,9 +120,11 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         if fileName[0]:
             self.seqFileName = fileName[0]
             self.input(self.seqFileName, 3)
+        self.codon_matching(3)
 
     @pyqtSlot()
     def on_pushButton_15_clicked(self):
+        self.consistency_checking()
         s_Values, ds_Values = self.getParas()
         print(f"s_Values:{s_Values}")
         print(f"ds_Values:{ds_Values}")
@@ -143,9 +141,9 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
     def on_pushButton_7_clicked(self):
         self.gui4Text().show()
 
-    @pyqtSlot()
+    """@pyqtSlot()
     def on_pushButton_8_clicked(self):
-        self.consistency_checking()
+        self.consistency_checking()"""
 
     @pyqtSlot()
     def on_pushButton_5_clicked(self):
@@ -153,6 +151,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         execute program
         """
         self.commands = self.prepare_for_run()
+        self.consistency_checking()
         print(self.commands)
         if self.commands:
             # 有数据才执行
@@ -216,7 +215,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             self.updateTaxonomyDB()
             return
         if hasattr(self, "tree_with_tipdate"):
-            temporary_tree = self.tree_with_tipdate
+            temporary_tree = self.tree_with_tipdate_show
             tre = self.factory.read_tree(temporary_tree, parent=self)
         else:
             tree_path = self.lineEdit.toolTip()
@@ -228,8 +227,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                                            r">(\d*\.\d{2})|"
                                            r"<(\d*\.\d{2})|"
                                            r"B\((\d*\.\d{2}),(\d*\.\d{2})(?:,(\d*\.\d{3}),(\d*\.\d{3}))?\)|"
-                                           r"L\((\d*\.\d{2})(?:,\s(\d*\.\d),\s(\d*\.\d),\s(\d*\.\d{3}))?\)|"
-                                           r"U\((\d*\.\d{2})(?:,\s(\d*\.\d{3}))?\)"
+                                           r"L\((\d*\.\d{2})(?:,(\d*\.\d),(\d*\.\d),(\d*\.\d{3}))?\)|"
+                                           r"U\((\d*\.\d{2})(?:,(\d*\.\d{3}))?\)"
                                            , node.name)
                     if node_bound:
                         text = node_bound.group()
@@ -247,14 +246,28 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             species_count = len(tre)
             self.label_5.setText(str(species_count))
 
+    def codon_matching(self, which):
+        if which == 3:
+            seq_path = self.lineEdit_2.toolTip()
+            with open(seq_path, 'r') as file:
+                lines = file.readlines()
+                first_species = lines[1].split()[0]
+                print(first_species)
+                ndata_count = sum([1 for line in lines if line.strip().startswith(first_species)])
+                print(ndata_count)
+                self.spinBox.setValue(ndata_count)
+
     def consistency_checking(self):
         tree_path = self.lineEdit.toolTip()
         seq_path = self.lineEdit_2.toolTip()
-        tre = self.factory.read_tree(tree_path, parent=self)
-        tre_species = set([leaf.name for leaf in tre.iter_leaves()])
-        tre_species_count = len(tre_species)
-        seq_species = set()
+        if tree_path:
+            tre = self.factory.read_tree(tree_path, parent=self)
+            tre_species = set([leaf.name for leaf in tre.iter_leaves()])
+            tre_species_count = len(tre_species)
+        else:
+            QMessageBox.warning(self, "no file", "No treefile file is imported, please input the treefile!")
         if seq_path:
+            seq_species = set()
             with open(seq_path, 'r') as file:
                 for line in file:
                     if line.strip():
@@ -263,17 +276,18 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                             species_name = match.group()
                             seq_species.add(species_name)
             seq_species_count = len(seq_species)
-            print(seq_species)
-            print(seq_species_count)
-            print(tre_species)
-            print(tre_species_count)
+            #print(seq_species)
+            #print(seq_species_count)
+            #print(tre_species)
+            #print(tre_species_count)
             if seq_species == tre_species:
                 if seq_species_count == tre_species_count:
-                    QMessageBox.information(self, "consistency check", "The species are the same in both files.")
+                    pass
+                    #QMessageBox.information(self, "consistency check", "The species are the same in both files.")
             else:
-                QMessageBox.warning(self, "different", "Different species!")
+                QMessageBox.warning(self, "different", "Different species, re-import files!")
         else:
-            QMessageBox.warning(self, "no file", "Please input the seqfile!")
+            QMessageBox.warning(self, "no file", "No sequence file is imported, please input the seqfile!")
 
     def run_command(self):
         try:
@@ -456,17 +470,19 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             #     if value != "no setting":
             #         obj.setChecked(
             #             self.factory.str2bool(value))  # restore checkbox
-            elif isinstance(obj, QLineEdit):
-                if name == "lineEdit_5" and self.autoInputs:
-                    self.input(self.autoInputs, obj)
+            elif isinstance(obj, QSpinBox):
+                ini_int_ = obj.value()
+                int_ = self.MCMCTree_settings.value(name, ini_int_)
+                obj.setValue(int(int_))
             elif isinstance(obj, QDoubleSpinBox):
                 ini_float_ = obj.value()
                 float_ = self.MCMCTree_settings.value(name, ini_float_)
                 obj.setValue(float(float_))
-            elif isinstance(obj,QSpinBox):
-                ini_int_ = obj.value()
-                int_ = self.MCMCTree_settings.value(name,ini_int_)
-                obj.setValue(int(int_))
+
+            """elif isinstance(obj, QLineEdit):
+                    if name == "lineEdit_5" and self.autoInputs:
+                        self.input(self.autoInputs, obj)"""
+
 
     def closeEvent(self, event):
         self.guiSave()
@@ -743,16 +759,20 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
 
     def prepare_for_run(self):
         if not self.seqFileName:
-            QMessageBox.warning(self, "No File", "No sequence file is imported. Please import a file.")
+            #QMessageBox.warning(self, "No File", "No sequence file is imported. Please import a file.")
             return
         self.output_dir_name = self.factory.fetch_output_dir_name(self.dir_action)
         self.exportPath = self.factory.creat_dirs(self.workPath +
                                                   os.sep + "MCMCTREE_results" + os.sep + self.output_dir_name)
         shutil.copy(self.seqFileName, self.exportPath + os.sep + os.path.basename(self.seqFileName))
         if hasattr(self, "tree_with_tipdate"):
+            tre = self.factory.read_tree(self.tree_with_tipdate, parent=self)
+            species_count = len(tre)
+            species_tree = f"{species_count} 1"
             treefile = self.exportPath + os.sep + "calibration_tree.nwk"
             with open(treefile, "w", errors="ignore") as f:
-                f.write(self.tree_with_tipdate)
+                f.write(f"{species_tree}\n{self.tree_with_tipdate}")
+            print(f"{species_tree}\n{self.tree_with_tipdate}")
         else:
             treefile = self.exportPath + os.sep + os.path.basename(self.treeFileName)
             shutil.copy(self.treeFileName, treefile)
@@ -781,6 +801,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 self.input(file_f, which=which)
                 if which == 4:
                     self.species_matching(4)
+                if which == 3:
+                    self.codon_matching(3)
                 return True
         if (event.type() == QEvent.Show) and (obj == self.pushButton_5.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+",

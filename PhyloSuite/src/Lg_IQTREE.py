@@ -504,10 +504,12 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                     ini_models = ["Auto", "***Binary***", "JC2", "GTR2", "***DNA***", "JC (JC69)", "F81", "K80 (K2P)", "HKY (HKY85)",
                                   "TNe (TN93e)",  "TN (TN93)",  "K81 (K3P)",  "K81u (K3Pu)",  "TPM2",  "TPM2u",  "TPM3",  "TPM3u",  "TIMe",
                                   "TIM",  "TIM2e",  "TIM2",  "TIM3e",  "TIM3",  "TVMe",  "TVM",  "SYM",  "GTR",
-                                  "***Protein***", "Blosum62",  "cpREV",  "Dayhoff",  "DCMut",  "FLU",  "HIVb",
+                                  "***Protein***", "Blosum62",  "cpREV",  "Dayhoff",  "DCMut", "FLAVI",  "FLU",  "GTR20",  "HIVb",
                                   "HIVw",  "JTT",  "JTTDCMut",  "LG",  "mtART",  "mtMAM",  "mtREV",
-                                  "mtZOA",  "PMB",  "rtREV",  "VT",  "WAG", 'mtVer', 'mtMet', 'mtInv', "***Mixture model***",
-                                  "LG4M",  "LG4X",  "JTT+CF4",  "C10",  "C20",  "EX2",  "EX3",  "EHO",
+                                  "mtZOA",  "PMB",  "rtREV",  "VT",  "WAG", 'mtVer', "mtMet", "mtInv", "NQ.bird",
+                                  "NQ.insect", "NQ.mammal", "NQ.pfam", "NQ.plant", "NQ.yeast", "Poisson", "Q.bird",
+                                  "Q.insect", "Q.mammal", "Q.pfam", "Q.plant", "Q.yeast"
+                                  "***Mixture model***", "LG4M",  "LG4X",  "JTT+CF4",  "C10",  "C20",  "EX2",  "EX3",  "EHO",
                                   "UL2",  "UL3",  "EX_EHO", "***Codon***", "GY",  "MG",  "MGK",  "GY0K",
                                   "GY1KTS",  "GY1KTV",  "GY2K",  "MG1KTS",  "MG1KTV",  "MG2K",  "KOSI07",
                                   "SCHN05", "***Morphology***", "MK", "ORDERED"]
