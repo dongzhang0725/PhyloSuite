@@ -691,18 +691,22 @@ class _GUI(QMainWindow, Ui_MainWindow):
                 if not node.is_leaf():
                     if 'name' in node.features:
                         #node_name = node.name
-                        node_bound = re.search(r"('?)>.*<.*('?)|"
-                                               r"('?)B\(.*\)('?)|"
-                                               r"('?)U\(.*\)('?)|"
-                                               r"('?)L\(.*\)('?)"
-                                               , node.name)
+                        # node_bound = re.search(r"('?)>.*<.*('?)|"
+                        #                        r"('?)B\(.*\)('?)|"
+                        #                        r"('?)U\(.*\)('?)|"
+                        #                        r"('?)L\(.*\)('?)"
+                        #                        , node.name)
+                        node_bound = re.search(r">|<|B.*\(|U.*\(|L.*\(", node.name)
                         if node_bound:
-                            match_bound = node_bound.group()
-                            if match_bound[0] != "'" and match_bound[-1] != "'":
-                                node.name = f"'{match_bound}'"
-                                print(node.name)
-        self.parent().tree_with_tipdate = tre.write(format=8,
-                                                                no_replace=True).\
+                            # match_bound = node_bound.group()
+                            if not node.name.startswith("'"):
+                                node.name = f"'{node.name}"
+                            if not node.name.endswith("'"):
+                                node.name = f"{node.name}'"
+                            # if match_bound[0] != "'" and match_bound[-1] != "'":
+                            #     node.name = f"'{match_bound}'"
+                            #     print(node.name)
+        self.parent().tree_with_tipdate = tre.write(format=8, no_replace=True).\
                                                     replace("NoName", "")
         print(self.parent().tree_with_tipdate)
         self.close()

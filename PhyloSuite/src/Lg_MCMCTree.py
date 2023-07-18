@@ -222,15 +222,20 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         if tre:
             for node in tre.traverse():
                 if 'name' in node.features:
-                    node_bound = re.search(r">(\d*\.\d{2})+<(\d*\.\d{2})|"
-                                           r">(\d*\.\d{2})|"
-                                           r"<(\d*\.\d{2})|"
-                                           r"B\((\d*\.\d{2}),(\d*\.\d{2})(?:,(\d*\.\d{3}),(\d*\.\d{3}))?\)|"
-                                           r"L\((\d*\.\d{2})(?:,(\d*\.\d),(\d*\.\d),(\d*\.\d{3}))?\)|"
-                                           r"U\((\d*\.\d{2})(?:,(\d*\.\d{3}))?\)"
-                                           , node.name)
+                    # node_bound = re.search(r">(\d*\.\d{2})+<(\d*\.\d{2})|"
+                    #                        r">(\d*\.\d{2})|"
+                    #                        r"<(\d*\.\d{2})|"
+                    #                        r"B\((\d*\.\d{2}),(\d*\.\d{2})(?:,(\d*\.\d{3}),(\d*\.\d{3}))?\)|"
+                    #                        r"L\((\d*\.\d{2})(?:,(\d*\.\d),(\d*\.\d),(\d*\.\d{3}))?\)|"
+                    #                        r"U\((\d*\.\d{2})(?:,(\d*\.\d{3}))?\)"
+                    #                        , node.name)
+                    node_bound = re.search(r">|<|B.*\(|U.*\(|L.*\(", node.name)
                     if node_bound:
-                        text = node_bound.group()
+                        if not node.name.startswith("'"):
+                            node.name = f"'{node.name}"
+                        if not node.name.endswith("'"):
+                            node.name = f"{node.name}'"
+                        text = node.name
                         node.add_face(TextFace(text), column=0, position="branch-top")
             tre.show(name="MCMCTREE-ETE", parent=self)
         #nwk_string = tre.write(format=5)
