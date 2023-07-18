@@ -215,8 +215,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             self.updateTaxonomyDB()
             return
         if hasattr(self, "tree_with_tipdate"):
-            temporary_tree = self.tree_with_tipdate_show
-            tre = self.factory.read_tree(temporary_tree, parent=self)
+            tre = self.factory.read_tree(self.tree_with_tipdate, parent=self)
         else:
             tree_path = self.lineEdit.toolTip()
             tre = self.factory.read_tree(tree_path, parent=self)

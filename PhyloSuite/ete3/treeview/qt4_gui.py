@@ -688,14 +688,23 @@ class _GUI(QMainWindow, Ui_MainWindow):
         tre = self.factory.read_tree(tree_with_tipdate, parent=self)
         if tre:
             for node in tre.traverse():
-                if 'name' in node.features:
-                    #node_name = node.name
-                    if re.search(r"^'.*'$", node.name):
-                        pass
-                    else:
-                        node.name = "'" + node.name + "'"
-        self.parent().tree_with_tipdate = tree_with_tipdate
-        print(self.parent().tree_with_tipdate_show)
+                if not node.is_leaf():
+                    if 'name' in node.features:
+                        #node_name = node.name
+                        node_bound = re.search(r"('?)>.*<.*('?)|"
+                                               r"('?)B\(.*\)('?)|"
+                                               r"('?)U\(.*\)('?)|"
+                                               r"('?)L\(.*\)('?)"
+                                               , node.name)
+                        if node_bound:
+                            match_bound = node_bound.group()
+                            if match_bound[0] != "'" and match_bound[-1] != "'":
+                                node.name = f"'{match_bound}'"
+                                print(node.name)
+        self.parent().tree_with_tipdate = tre.write(format=8,
+                                                                no_replace=True).\
+                                                    replace("NoName", "")
+        print(self.parent().tree_with_tipdate)
         self.close()
 
     def load_tree_annotation(self, settings, ts, type="normal"):

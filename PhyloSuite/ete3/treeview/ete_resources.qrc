@@ -1,6 +1,7 @@
 <RCC>
   <qresource prefix="ete icons">
     <file>show_names.png</file>
+    <file>savetree.png</file>
     <file>add-icon.png</file>
     <file>tangle_tree.svg</file>
     <file>circular_tree.png</file>
