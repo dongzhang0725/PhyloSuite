@@ -529,7 +529,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         FastTree = QAction(QIcon(":/picture/resourses/menu_icons/fast.svg"), "Import to FastTree", self,
                          statusTip="Reconstruct tree with FastTree",
                          triggered=self.on_actionFastTree_triggered)
-        tree_suite = QAction(QIcon(":/Menu/resourses/Menu/echarts-tree.png"), "Import to MCMCTree", self,
+        MCMCtree = QAction(QIcon(":/Menu/resourses/Menu/echarts-tree.png"), "Import to MCMCTree", self,
                              statusTip="MCMCTree",
                              triggered=self.on_MCMCTree_triggered)
         def popup(qpoint):
@@ -545,13 +545,13 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                      "Gblocks_results": [cvtFMT, catSeq, FastTree],
                      "trimAl_results": [cvtFMT, catSeq, FastTree],
                      "HmmCleaner_results": [cvtFMT, catSeq, FastTree],
-                     "IQtree_results": [tree_suite, ASTRAL],
-                     "MrBayes_results": [tree_suite],
-                     "FastTree_results": [ASTRAL]
+                     "IQtree_results": [tree_suite, ASTRAL, MCMCtree],
+                     "MrBayes_results": [tree_suite, MCMCtree],
+                     "FastTree_results": [ASTRAL, MCMCtree]
                      }
             list_actions = [mafft, gblocks, trimAl, HmmCleaner, cvtFMT, catSeq, iqtree, FastTree,
                             modelfinder, partfind, MACSE, mrbayes, rscu, compareTable, drawGO,
-                            rsl_dups, tree_suite, ASTRAL]
+                            rsl_dups, tree_suite, MCMCtree, ASTRAL]
             filePath = self.treeView_4.model().filePath(index)
             topResultsName = os.path.basename(os.path.dirname(filePath))
             for action in list_actions:
@@ -584,6 +584,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         tree4_popMenu.addAction(drawGO)
         tree4_popMenu.addAction(rsl_dups)
         tree4_popMenu.addAction(tree_suite)
+        tree4_popMenu.addAction(MCMCtree)
         tree4_popMenu.addAction(ASTRAL)
         self.treeView_4.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView_4.customContextMenuRequested.connect(popup)
