@@ -1745,6 +1745,15 @@ class Factory(QObject, Factory_sub, object):
                             os.path.normpath(subResults)] = autoInputs
                 if dict_subResults:
                     dict_autoInputs[os.path.normpath(mb_path)] = dict_subResults
+            for ft_path in self.fetchResuilts(rootpath, "FastTree_results"):
+                dict_subResults = OrderedDict()  # 按修改时间排序
+                for subResults in self.fetchSubResults(ft_path):
+                    autoInputs = glob.glob(subResults + os.sep + "all_gene_trees.nwk")
+                    if autoInputs:
+                        dict_subResults[
+                            os.path.normpath(subResults)] = autoInputs
+                if dict_subResults:
+                    dict_autoInputs[os.path.normpath(ft_path)] = dict_subResults
         self.dict_autoInputs = dict_autoInputs
         return dict_autoInputs
 
@@ -2191,6 +2200,10 @@ class Factory(QObject, Factory_sub, object):
                 # [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
                 #   os.path.splitext(i)[1].upper() in [".NEX", ".NEXUS", "NXS"]]
                 autoInputs = [input_trees, alignments]
+            elif resultsParentName == "FastTree_results":
+                input_trees = [resultsPath + os.sep + "all_gene_trees.nwk"] if \
+                    os.path.exists(resultsPath + os.sep + "all_gene_trees.nwk") else []
+                autoInputs = input_trees
             elif resultsParentName == "IQtree_results":
                 input_trees = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
                                os.path.splitext(i)[1].upper() in [".TREEFILE"]]
@@ -4479,6 +4492,7 @@ class Convertfmt(object):
         self.factory = Factory()
         self.unaligns = []
         self.f3 = None
+        self.f4 = None
 
     def exec_(self):
         if "files" in self.dict_args:
