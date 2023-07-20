@@ -468,10 +468,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         tree4_popMenu = QMenu(self)
         openFile = QAction(QIcon(":/seq_Viewer/resourses/field-Display.png"), "Open", self,
                            statusTip="open file",
-                           triggered=lambda : self.openResultsInWindow(self.treeView_4.model().filePath(self.treeView_4.currentIndex())))
+                           triggered=lambda: self.openResultsInWindow(self.treeView_4.model().filePath(self.treeView_4.currentIndex())))
         openInExplore = QAction(QIcon(":/picture/resourses/folder.png"), "Open in file explorer", self,
                            statusTip="open in file explorer",
-                           triggered=lambda : self.factory.openPath(os.path.dirname(self.treeView_4.model().filePath(self.treeView_4.currentIndex())), self))
+                           triggered=lambda: self.factory.openPath(os.path.dirname(self.treeView_4.model().filePath(self.treeView_4.currentIndex())),self))
         remove = QAction(QIcon(":/picture/resourses/if_Delete_1493279.png"), "Remove", self,
                            statusTip="Remove",
                            triggered=self.remove_treeview4)
@@ -506,30 +506,30 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                           statusTip="Reconstruct tree with MrBayes",
                           triggered=self.on_actionMrBayes_triggered)
         partfind = QAction(QIcon(":/picture/resourses/pie-chart.png"), "Import to PartitionFinder2", self,
-                          statusTip="Select partition model with PartitionFinder2",
-                          triggered=self.on_actionPartitionFinder_triggered)
+                           statusTip="Select partition model with PartitionFinder2",
+                           triggered=self.on_actionPartitionFinder_triggered)
         rscu = QAction(QIcon(":/picture/resourses/if_7_2172765.png"), "Import to Draw RSCU figure", self,
-                           statusTip="Draw RSCU figure",
-                           triggered=self.on_actionRSCUfig_triggered)
+                       statusTip="Draw RSCU figure",
+                       triggered=self.on_actionRSCUfig_triggered)
         compareTable = QAction(QIcon(":/picture/resourses/ezsrokaxkrotbkoewfgb.png"), "Import to Compare Table", self,
-                       statusTip="Compare table",
-                       triggered=self.on_Compare_table_triggered)
+                               statusTip="Compare table",
+                               triggered=self.on_Compare_table_triggered)
         drawGO = QAction(QIcon(":/picture/resourses/round arrangement-fill.svg"), "Import to Draw gene order", self,
-                               statusTip="Draw gene order",
-                               triggered=self.on_actionDrawGO_triggered)
+                         statusTip="Draw gene order",
+                         triggered=self.on_actionDrawGO_triggered)
         rsl_dups = QAction(QIcon(":/picture/resourses/drag.png"), "Resolve gene duplicates", self,
-            statusTip="Resolve gene duplicates",
-            triggered=self.on_rsl_duplicates_triggered)
+                           statusTip="Resolve gene duplicates",
+                           triggered=self.on_rsl_duplicates_triggered)
         tree_suite = QAction(QIcon(":/Menu/resourses/Menu/echarts-tree.png"), "Import to Treesuite", self,
-                           statusTip="TreeSuite",
-                           triggered=self.on_TreeSuite_triggered)
+                             statusTip="TreeSuite",
+                             triggered=self.on_TreeSuite_triggered)
         ASTRAL = QAction(QIcon(":/picture/resourses/menu_icons/A2.png"), "Import to ASTRAL", self,
                          statusTip="Reconstruct species tree with ASTRAL",
                          triggered=self.on_actionASTRAL_triggered)
         FastTree = QAction(QIcon(":/picture/resourses/menu_icons/fast.svg"), "Import to FastTree", self,
-                         statusTip="Reconstruct tree with FastTree",
-                         triggered=self.on_actionFastTree_triggered)
-        tree_suite = QAction(QIcon(":/Menu/resourses/Menu/echarts-tree.png"), "Import to MCMCTree", self,
+                           statusTip="Reconstruct tree with FastTree",
+                           triggered=self.on_actionFastTree_triggered)
+        MCMCTree = QAction(QIcon(":/Menu/resourses/Menu/echarts-tree.png"), "Import to MCMCTree", self,
                              statusTip="MCMCTree",
                              triggered=self.on_MCMCTree_triggered)
         def popup(qpoint):
@@ -545,13 +545,13 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                      "Gblocks_results": [cvtFMT, catSeq, FastTree],
                      "trimAl_results": [cvtFMT, catSeq, FastTree],
                      "HmmCleaner_results": [cvtFMT, catSeq, FastTree],
-                     "IQtree_results": [tree_suite, ASTRAL],
-                     "MrBayes_results": [tree_suite],
-                     "FastTree_results": [ASTRAL]
+                     "IQtree_results": [tree_suite, ASTRAL, MCMCTree],
+                     "MrBayes_results": [tree_suite, MCMCTree],
+                     "FastTree_results": [ASTRAL, MCMCTree]
                      }
             list_actions = [mafft, gblocks, trimAl, HmmCleaner, cvtFMT, catSeq, iqtree, FastTree,
                             modelfinder, partfind, MACSE, mrbayes, rscu, compareTable, drawGO,
-                            rsl_dups, tree_suite, ASTRAL]
+                            rsl_dups, tree_suite, MCMCTree, ASTRAL]
             filePath = self.treeView_4.model().filePath(index)
             topResultsName = os.path.basename(os.path.dirname(filePath))
             for action in list_actions:
@@ -584,6 +584,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         tree4_popMenu.addAction(drawGO)
         tree4_popMenu.addAction(rsl_dups)
         tree4_popMenu.addAction(tree_suite)
+        tree4_popMenu.addAction(MCMCTree)
         tree4_popMenu.addAction(ASTRAL)
         self.treeView_4.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView_4.customContextMenuRequested.connect(popup)
@@ -2011,16 +2012,53 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
     def on_MCMCTree_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
         mcmctreeEXE = self.factory.programIsValid("PAML", mode="tool")
-        autoInputs = self.factory.init_judge(mode="MCMCTREE", filePath=filePath, parent=self)
-        self.MCMCTree = MCMCTree(workPath=workPath,
-                                   focusSig=self.focusSig,
-                                   mcmctreeEXE=mcmctreeEXE,
-                                   autoInputs=autoInputs,
-                                   parent=self)
-        self.MCMCTree.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.MCMCTree.windowFlags())
-        self.MCMCTree.show()
-        # if (not autoInputs) and (not self.factory.autoInputDisbled()):
-        #     self.MCMCTree.popupAutoDec(init=True)
+        if mcmctreeEXE:
+            autoInputs = self.factory.init_judge(mode="MCMCTREE", filePath=filePath, parent=self)
+            print(autoInputs)
+            if type(autoInputs) == list:
+                autoInputs = autoInputs[0] if autoInputs else None
+            if autoInputs:
+                def startMT(autoInputs, workPath, focusSig, mcmctreeEXE, parent):
+                    self.MCMCTree = MCMCTree(autoInputs, workPath, focusSig, mcmctreeEXE, parent)
+                    self.MCMCTree.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.MCMCTree.windowFlags())
+                    self.MCMCTree.show()
+                if os.path.splitext(autoInputs[1].upper() not in [".pml"]):
+                    self.progressDialog = self.factory.myProgressDialog(
+                        "Please Wait", "Converting format...", busy=True, parent=self)
+                    self.progressDialog.show()
+                    self.convertfmt = Convertfmt(**{"export_path": os.path.dirname(autoInputs), "files": [autoInputs],
+                                                    "export_paml": True, "remove B": True,
+                                                    "exception_signal": self.exception_signal})
+                    gbWorker = WorkThread(
+                        lambda: self.convertfmt.exec_(),
+                        parent=self)
+                    gbWorker.finished.connect(
+                        lambda: [self.progressDialog.close(), startMT(self.convertfmt.f4,
+                                                                      workPath, self.focusSig, mcmctreeEXE, self)])
+                    gbWorker.start()
+                else:
+                    startMT(autoInputs,
+                            workPath, self.focusSig, mcmctreeEXE, self)
+            else:
+                self.MCMCTree = MCMCTree(autoInputs, workPath, self.focusSig, mcmctreeEXE, self)
+                # 添加最大化按钮
+                self.MCMCTree.setWindowFlags(self.MCMCTree.windowFlags() | Qt.WindowMinMaxButtonsHint)
+                self.MCMCTree.show()
+                if not self.factory.autoInputDisbled():
+                    self.MCMCTree.popupAutoDec(init=True)
+        else:
+            reply = QMessageBox.information(
+                self,
+                "Information",
+                "<p style='line-height:25px; height:25px'>Please install PAML first!</p>",
+                QMessageBox.Ok,
+                QMessageBox.Cancel)
+            if reply == QMessageBox.Ok:
+                self.setting = Setting(self)
+                self.setting.display_table(self.setting.listWidget.item(1))
+                # 隐藏？按钮
+                self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
+                self.setting.exec_()
 
     @pyqtSlot()
     def on_actionASTRAL_triggered(self):
