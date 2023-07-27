@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>756</width>
-    <height>582</height>
+    <height>576</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -157,436 +157,428 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <layout class="QGridLayout" name="gridLayout_3">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_6">
-          <property name="text">
-           <string>seed</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QSpinBox" name="spinBox_23">
-          <property name="minimum">
-           <number>-1</number>
-          </property>
-          <property name="value">
-           <number>-1</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QLabel" name="label_3">
-          <property name="text">
-           <string>ndata</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
-         <widget class="QSpinBox" name="spinBox">
-          <property name="value">
-           <number>3</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="4">
-         <widget class="QLabel" name="label_11">
-          <property name="text">
-           <string>model</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="5">
-         <widget class="QComboBox" name="comboBox"/>
-        </item>
-        <item row="0" column="6">
-         <widget class="QLabel" name="label_15">
-          <property name="text">
-           <string>alpha</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="7">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_6">
-          <property name="singleStep">
-           <double>0.100000000000000</double>
-          </property>
-          <property name="value">
-           <double>0.500000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_22">
-          <property name="text">
-           <string>burnin</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QSpinBox" name="spinBox_18">
-          <property name="maximum">
-           <number>99999</number>
-          </property>
-          <property name="singleStep">
-           <number>500</number>
-          </property>
-          <property name="value">
-           <number>2000</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QLabel" name="label_12">
-          <property name="text">
-           <string>sampfreq</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="3">
-         <widget class="QSpinBox" name="spinBox_19">
-          <property name="maximum">
-           <number>200</number>
-          </property>
-          <property name="singleStep">
-           <number>10</number>
-          </property>
-          <property name="value">
-           <number>10</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="4">
-         <widget class="QLabel" name="label_13">
-          <property name="text">
-           <string>nsample</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="5">
-         <widget class="QSpinBox" name="spinBox_20">
-          <property name="maximum">
-           <number>9999999</number>
-          </property>
-          <property name="singleStep">
-           <number>10000</number>
-          </property>
-          <property name="value">
-           <number>20000</number>
-          </property>
-          <property name="displayIntegerBase">
-           <number>10</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="6">
-         <widget class="QLabel" name="label_14">
-          <property name="text">
-           <string>RootAge &lt;</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="7">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox">
-          <property name="singleStep">
-           <double>0.100000000000000</double>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QGridLayout" name="gridLayout_4">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_16">
-          <property name="text">
-           <string>ncatG</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QSpinBox" name="spinBox_21">
-          <property name="value">
-           <number>5</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QLabel" name="label_26">
-          <property name="text">
-           <string>cleandata</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
-         <widget class="QComboBox" name="comboBox_5">
-          <item>
-           <property name="text">
-            <string>YES</string>
-           </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>seed</string>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>NO</string>
-           </property>
+          <item row="0" column="1" colspan="2">
+           <widget class="QSpinBox" name="spinBox_23">
+            <property name="minimum">
+             <number>-1</number>
+            </property>
+            <property name="value">
+             <number>-1</number>
+            </property>
+           </widget>
           </item>
-         </widget>
-        </item>
-        <item row="0" column="4">
-         <widget class="QLabel" name="label_17">
-          <property name="text">
-           <string>BDparas</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="5">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_3">
-          <property name="singleStep">
-           <double>0.100000000000000</double>
-          </property>
-          <property name="value">
-           <double>1.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="6">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_4">
-          <property name="singleStep">
-           <double>0.100000000000000</double>
-          </property>
-          <property name="value">
-           <double>1.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="7">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_5">
-          <property name="singleStep">
-           <double>0.100000000000000</double>
-          </property>
-          <property name="value">
-           <double>0.100000000000000</double>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QGridLayout" name="gridLayout_5">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_18">
-          <property name="text">
-           <string>kappa_gamma</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QSpinBox" name="spinBox_8">
-          <property name="value">
-           <number>6</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QSpinBox" name="spinBox_9">
-          <property name="value">
-           <number>2</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
-         <widget class="QLabel" name="label_19">
-          <property name="text">
-           <string>alpha_gamma</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="4">
-         <widget class="QSpinBox" name="spinBox_10">
-          <property name="value">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="5">
-         <widget class="QSpinBox" name="spinBox_11">
-          <property name="value">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QGridLayout" name="gridLayout_6">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_20">
-          <property name="text">
-           <string>rgene_gamma</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QSpinBox" name="spinBox_12">
-          <property name="value">
-           <number>2</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QSpinBox" name="spinBox_13">
-          <property name="value">
-           <number>20</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
-         <widget class="QSpinBox" name="spinBox_14">
-          <property name="value">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="4">
-         <widget class="QLabel" name="label_21">
-          <property name="text">
-           <string>sigma2_gamma</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="5">
-         <widget class="QSpinBox" name="spinBox_15">
-          <property name="value">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="6">
-         <widget class="QSpinBox" name="spinBox_16">
-          <property name="value">
-           <number>10</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="7">
-         <widget class="QSpinBox" name="spinBox_17">
-          <property name="value">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <layout class="QGridLayout" name="gridLayout_7">
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_8">
-          <property name="text">
-           <string>seqtype</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QLabel" name="label_9">
-          <property name="text">
-           <string>usedata</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QComboBox" name="comboBox_2">
-          <item>
-           <property name="text">
-            <string>nucleotides</string>
-           </property>
+          <item row="0" column="3" colspan="2">
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>ndata</string>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>codons</string>
-           </property>
+          <item row="0" column="5" colspan="2">
+           <widget class="QSpinBox" name="spinBox">
+            <property name="value">
+             <number>3</number>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>AAs</string>
-           </property>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_22">
+            <property name="text">
+             <string>burnin</string>
+            </property>
+           </widget>
           </item>
-         </widget>
+          <item row="1" column="1" colspan="2">
+           <widget class="QSpinBox" name="spinBox_18">
+            <property name="maximum">
+             <number>99999</number>
+            </property>
+            <property name="singleStep">
+             <number>500</number>
+            </property>
+            <property name="value">
+             <number>2000</number>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3" colspan="2">
+           <widget class="QLabel" name="label_12">
+            <property name="text">
+             <string>sampfreq</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="5" colspan="2">
+           <widget class="QSpinBox" name="spinBox_19">
+            <property name="maximum">
+             <number>200</number>
+            </property>
+            <property name="singleStep">
+             <number>10</number>
+            </property>
+            <property name="value">
+             <number>10</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_16">
+            <property name="text">
+             <string>ncatG</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1" colspan="2">
+           <widget class="QSpinBox" name="spinBox_21">
+            <property name="value">
+             <number>5</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="3" colspan="3">
+           <widget class="QLabel" name="label_26">
+            <property name="text">
+             <string>cleandata</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="6">
+           <widget class="QComboBox" name="comboBox_5">
+            <item>
+             <property name="text">
+              <string>YES</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>NO</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="label_18">
+            <property name="text">
+             <string>kappa_gamma</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="2" colspan="3">
+           <widget class="QSpinBox" name="spinBox_8">
+            <property name="value">
+             <number>6</number>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="5" colspan="2">
+           <widget class="QSpinBox" name="spinBox_9">
+            <property name="value">
+             <number>2</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="2">
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>rgene_gamma</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="2" colspan="2">
+           <widget class="QSpinBox" name="spinBox_12">
+            <property name="value">
+             <number>2</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="4" colspan="2">
+           <widget class="QSpinBox" name="spinBox_13">
+            <property name="value">
+             <number>20</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="6">
+           <widget class="QSpinBox" name="spinBox_14">
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>print</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1" colspan="6">
+           <widget class="QComboBox" name="comboBox_7">
+            <item>
+             <property name="text">
+              <string>no mcmc sample</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>except branch rates</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>everything</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_8">
+            <property name="text">
+             <string>seqtype</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1" colspan="6">
+           <widget class="QComboBox" name="comboBox_2">
+            <item>
+             <property name="text">
+              <string>nucleotides</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>codons</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>AAs</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
         </item>
-        <item row="0" column="3">
-         <widget class="QComboBox" name="comboBox_4">
-          <item>
-           <property name="text">
-            <string>global clock</string>
-           </property>
+        <item>
+         <layout class="QGridLayout" name="gridLayout_4">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_11">
+            <property name="text">
+             <string>model</string>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>independent rates</string>
-           </property>
+          <item row="0" column="1" colspan="2">
+           <widget class="QComboBox" name="comboBox"/>
           </item>
-          <item>
-           <property name="text">
-            <string>correlated rates</string>
-           </property>
+          <item row="0" column="3" colspan="2">
+           <widget class="QLabel" name="label_15">
+            <property name="text">
+             <string>alpha</string>
+            </property>
+           </widget>
           </item>
-         </widget>
-        </item>
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_7">
-          <property name="text">
-           <string>print</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QLabel" name="label_10">
-          <property name="text">
-           <string>clock</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="comboBox_7">
-          <item>
-           <property name="text">
-            <string>no mcmc sample</string>
-           </property>
+          <item row="0" column="5">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_6">
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>0.500000000000000</double>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>except branch rates</string>
-           </property>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_13">
+            <property name="text">
+             <string>nsample</string>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>everything</string>
-           </property>
+          <item row="1" column="1" colspan="2">
+           <widget class="QSpinBox" name="spinBox_20">
+            <property name="maximum">
+             <number>9999999</number>
+            </property>
+            <property name="singleStep">
+             <number>10000</number>
+            </property>
+            <property name="value">
+             <number>20000</number>
+            </property>
+            <property name="displayIntegerBase">
+             <number>10</number>
+            </property>
+           </widget>
           </item>
-         </widget>
-        </item>
-        <item row="1" column="3">
-         <widget class="QComboBox" name="comboBox_3">
-          <item>
-           <property name="text">
-            <string>no data</string>
-           </property>
+          <item row="1" column="3" colspan="2">
+           <widget class="QLabel" name="label_14">
+            <property name="text">
+             <string>RootAge &lt;</string>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>seq like</string>
-           </property>
+          <item row="1" column="5">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox">
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>normal approximate</string>
-           </property>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_17">
+            <property name="text">
+             <string>BDparas</string>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>out.BV</string>
-           </property>
+          <item row="2" column="1" colspan="2">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_3">
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
           </item>
-         </widget>
+          <item row="2" column="3" colspan="2">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_4">
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>1.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="5">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_5">
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>0.100000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="label_19">
+            <property name="text">
+             <string>alpha_gamma</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="2" colspan="2">
+           <widget class="QSpinBox" name="spinBox_10">
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="4" colspan="2">
+           <widget class="QSpinBox" name="spinBox_11">
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="2">
+           <widget class="QLabel" name="label_21">
+            <property name="text">
+             <string>sigma2_gamma</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="2">
+           <widget class="QSpinBox" name="spinBox_15">
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="3" colspan="2">
+           <widget class="QSpinBox" name="spinBox_16">
+            <property name="value">
+             <number>10</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="5">
+           <widget class="QSpinBox" name="spinBox_17">
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_10">
+            <property name="text">
+             <string>clock</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1" colspan="5">
+           <widget class="QComboBox" name="comboBox_4">
+            <item>
+             <property name="text">
+              <string>global clock</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>independent rates</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>correlated rates</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_9">
+            <property name="text">
+             <string>usedata</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1" colspan="5">
+           <widget class="QComboBox" name="comboBox_3">
+            <item>
+             <property name="text">
+              <string>no data</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>seq like</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>normal approximation</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>out.BV</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </item>

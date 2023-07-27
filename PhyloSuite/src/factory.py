@@ -2569,6 +2569,26 @@ class Factory(QObject, Factory_sub, object):
                 not MCMCPath else MCMCPath
             if shutil.which(MCMCPath):
                 return "succeed" if mode == "settings" else MCMCPath
+        elif program == "Baseml":
+            BasemlPath = self.settings_ini.value('Baseml', '')
+            if platform.system().lower() == "windows":
+                env_name = dict_plugin_settings[program]["target_win"]
+            elif platform.system().lower() == "darwin":
+                env_name = dict_plugin_settings[program]["target_mac"]
+            else:
+                env_name = dict_plugin_settings[program]["target_linux"]
+            if not BasemlPath:
+                if type(env_name) == list:
+                    for each_env in env_name:
+                        if shutil.which(each_env):
+                            return "succeed" if mode == "settings" else each_env
+                else:
+                    if shutil.which(env_name):
+                        return "succeed" if mode == "settings" else env_name
+            BasemlPath = self.getDefaultpluginPath("MCMCTree") if \
+                not BasemlPath else BasemlPath
+            if shutil.which(BasemlPath):
+                return "succeed" if mode == "settings" else BasemlPath
         else:
             plugin_name = dict_plugin_settings[program]["plugin_name"]
             pluginPath = self.settings_ini.value(plugin_name, "")
