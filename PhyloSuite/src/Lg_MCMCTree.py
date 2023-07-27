@@ -12,6 +12,8 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from ete3 import NCBITaxa, TextFace
+from src.Lg_Baseml import Baseml
+from uifiles.Ui_baseml import Ui_Baseml
 from src.CustomWidget import MyTaxTableModel
 
 from src.factory import Factory, WorkThread
@@ -36,10 +38,12 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             workPath=None,
             focusSig=None,
             mcmctreeEXE=None,
+            basemlEXE=None,
             autoInputs=None,
             workflow=False,
             parent=None):
         super(MCMCTree, self).__init__(parent)
+        #self.Baseml = Baseml
         self.parent = parent
         self.function_name = "MCMCTree"
         self.factory = Factory()
@@ -48,6 +52,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.focusSig = focusSig
         self.workflow = workflow
         self.mcmctreeEXE = mcmctreeEXE
+        self.basemlEXE = basemlEXE
         self.seqFileName = ''
         self.treeFileName = ''
         self.setupUi(self)
@@ -141,6 +146,9 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
     def on_pushButton_7_clicked(self):
         self.gui4Text().show()
 
+    @pyqtSlot()
+    def on_pushButton_8_clicked(self):
+        self.on_baseml_triggered()
     """@pyqtSlot()
     def on_pushButton_8_clicked(self):
         self.consistency_checking()"""
@@ -181,13 +189,13 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 try:
                     self.worker.stopWork()
                     if platform.system().lower() in ["windows", "darwin"]:
-                        self.IQ_popen.kill()
+                        self.mcmctree_popen.kill()
                     else:
-                        os.killpg(os.getpgid(self.IQ_popen.pid), signal.SIGTERM)
-                    self.IQ_popen = None
+                        os.killpg(os.getpgid(self.mcmctree_popen.pid), signal.SIGTERM)
+                    self.mcmctree_popen = None
                     self.interrupt = True
                 except:
-                    self.IQ_popen = None
+                    self.mcmctree_popen = None
                     self.interrupt = True
                 if not self.workflow:
                     QMessageBox.information(
@@ -242,6 +250,16 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         #print(nwk_string)
         """else:
             QMessageBox.warning(self, "no file", "No tree file is imported. Please import a file.")"""
+
+    """def on_baseml_triggered(self):
+        #filePath, workPath = self.fetchWorkPath(mode="all")
+        basemlEXE = self.factory.programIsValid("PAML", mode="tool")
+        self.Baseml = Baseml(focusSig=self.focusSig,
+                             basemlEXE=basemlEXE,
+                             parent=self)
+        self.Baseml.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint |self.Baseml.windowFlags())
+        self.Baseml.show()"""
+
 
     def species_matching(self, which):
         if which == 4:
@@ -311,9 +329,9 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
             # 加上version信息
-            with open(self.exportPath + os.sep + "PhyloSuite_PartitionFinder.log") as f:
+            with open(self.exportPath + os.sep + "PhyloSuite_MCMCTREE.log") as f:
                 content = f.read()
-            rgx_version = re.compile(r"-+\s+PartitionFinder.+?(\d+\.\d+\.\d+)")
+            rgx_version = re.compile(r"-+\s+MCMCTREE.+?(\d+\.\d+\.\d+)")
             if rgx_version.search(content):
                 self.version = rgx_version.search(content).group(1)
             else:
@@ -432,11 +450,12 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
                 if name == "comboBox":
-                    ini_models = ["***Default***", "JC69", "K80", "F81", "F84", "HKY85"]
-                                  #"***AAs***", "cpREV10", "cpREV64", "dayhoff", "dayhoff-dcmut", "g1975a", "g1975c",
-                                  #"g1975p", "g1975v",
-                                  #"grantham", "jones", "jones-dcmut", "lg", "miyata", "mtART", "mtmam", "mtREV24", "MtZoa",
-                                  #"wag"]
+                    ini_models = ["***Default***", "JC69", "K80", "F81", "F84", "HKY85", "T92", "TN93", "GTR", "UNREST",
+                                  "REVu", "UNRESTu",
+                                  "***AAs***", "cpREV10", "cpREV64", "dayhoff", "dayhoff-dcmut", "g1975a", "g1975c",
+                                  "g1975p", "g1975v",
+                                  "grantham", "jones", "jones-dcmut", "lg", "miyata", "mtART", "mtmam", "mtREV24", "MtZoa",
+                                  "wag"]
                     index = self.MCMCTree_settings.value(name, "0")
                     model = obj.model()
                     for num, i in enumerate(ini_models):
@@ -452,6 +471,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                         model.appendRow(item)
                     obj.setCurrentIndex(int(index))
                     obj.model().item(0).setSelectable(False)
+                    obj.model().item(12).setSelectable(False)
                     default_index = ini_models.index("JC69")
                     obj.setCurrentIndex(default_index)
                 else:
@@ -513,7 +533,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
     def save_log_to_file(self):
         content = self.textEdit_log.toPlainText()
         fileName = QFileDialog.getSaveFileName(
-            self, "MrBayes", "log", "text Format(*.txt)")
+            self, "MCMCTree", "log", "text Format(*.txt)")
         if fileName[0]:
             with open(fileName[0], "w", encoding="utf-8") as f:
                 f.write(content)
@@ -651,7 +671,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 'usedata': {'no data': 0, 'seq like': 1, 'normal approximation': 2, 'out.BV': 3},
                 'clock': {'global clock': 1, 'independent rates': 2, 'correlated rates': 3},
                 'RootAge': 0,
-                'model': {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4},
+                'model': {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4, 'T92': 5,
+                          'TN93': 6, 'GTR': 7, 'UNREST': 8, 'REVu': 9, 'UNRESTu': 10},
                 'alpha': 4,
                 'ncatG': 12,
                 'cleandata': {'yes': 1, 'no': 0},
@@ -665,7 +686,8 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 'sampfreq': 10,
                 'nsample': 11
             }
-            model_value = {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4}
+            model_value = {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4, 'T92': 5,
+                           'TN93': 6, 'GTR': 7, 'UNREST': 8, 'REVu': 9, 'UNRESTu': 10}
             usedata_value = {'no data': 0, 'seq like': 1, 'normal approximation': 2, 'out.BV': 3}
             seqtype_value = {'nucleotides': 0, 'codons': 1, 'AAs': 2}
             cleandata_value = {'YES': 1, 'NO': 0}
@@ -780,6 +802,12 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         else:
             treefile = self.exportPath + os.sep + os.path.basename(self.treeFileName)
             shutil.copy(self.treeFileName, treefile)
+        self.basemlEXE = os.path.join(os.path.dirname(self.mcmctreeEXE), "baseml.exe")
+        shutil.copy(self.basemlEXE, os.path.join(self.exportPath, "baseml.exe"))
+        """basemlEXE = os.path.join(os.path.dirname(self.mcmctreeEXE), "baseml.exe")
+        baseml_path_to_copy = os.path.join(self.exportPath, "baseml.exe")
+        if os.path.exists(basemlEXE):
+            shutil.copy(basemlEXE, baseml_path_to_copy)"""
         ctl_file = f"{self.exportPath}{os.sep}mcmctree.ctl"
         self.ctl_generater(ctl_file, treefile=treefile)
         os.chdir(self.exportPath)
@@ -837,7 +865,12 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         if num == 99999:
             self.progressBar.setMaximum(0)
             self.progressBar.setMinimum(0)
-
+        else:
+            oldValue = self.progressBar.value()
+            done_int = int(num)
+            if done_int > oldValue:
+                self.progressBar.setProperty("value", done_int)
+                QCoreApplication.processEvents()
 
 
 if __name__ == "__main__":
