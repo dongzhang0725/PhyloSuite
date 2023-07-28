@@ -161,6 +161,7 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
         self.commands = self.prepare_for_run()
         self.consistency_checking()
         print(self.commands)
+        self.check_usedata()
         if self.commands:
             # 有数据才执行
             self.interrupt = False  # 如果是终止以后重新运行要刷新
@@ -310,6 +311,25 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 QMessageBox.warning(self, "different", "Different species, re-import files!")
         else:
             QMessageBox.warning(self, "no file", "No sequence file is imported, please input the seqfile!")
+
+    def rename_file(self, filePath, oldName, newName):
+        out_file_path = os.path.join(filePath, oldName)
+        in_file_path = os.path.join(filePath, newName)
+        if os.path.exists(out_file_path):
+            os.rename(out_file_path, in_file_path)
+
+    def check_usedata(self):
+        usedata_value = {'no data': 0, 'seq like': 1, 'normal approximation': 2, 'out.BV': 3}
+        current_usedata = self.comboBox_3.currentText()
+
+        if usedata_value.get(current_usedata, -1) == 2:
+            options = QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly
+            directory = QFileDialog.getExistingDirectory(self, "Choose folder", options=options)
+            if directory:
+                self.exportPath = directory
+                QMessageBox.information(self, "Export Path Updated", f"The export path has been updated to: {directory}")
+                self.rename_file(self.exportPath, "out.BV", "in.BV")
+
 
     def run_command(self):
         try:
@@ -672,7 +692,11 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 'clock': {'global clock': 1, 'independent rates': 2, 'correlated rates': 3},
                 'RootAge': 0,
                 'model': {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4, 'T92': 5,
-                          'TN93': 6, 'GTR': 7, 'UNREST': 8, 'REVu': 9, 'UNRESTu': 10},
+                          'TN93': 6, 'GTR': 7, 'UNREST': 8, 'REVu': 9, 'UNRESTu': 10,
+                          "cpREV10":'cpREV10' , "cpREV64":'cpREV64', "dayhoff":'dayhoff', "dayhoff-dcmut":'dayhoff-dcmut',
+                          "g1975a":'g1975a', "g1975c":'g1975c',"g1975p":'g1975p', "":'g1975v',"grantham":'grantham',
+                          "jones":'jones', "jones-dcmut":'jones-dcmut', "lg":'lg', "miyata":'miyata',"mtART":'mtART',
+                          "mtmam":'mtmam', "mtREV24":'mtREV24', "MtZoa":'MtZoa',"wag":'wag'},
                 'alpha': 4,
                 'ncatG': 12,
                 'cleandata': {'yes': 1, 'no': 0},
@@ -687,7 +711,11 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
                 'nsample': 11
             }
             model_value = {'JC69': 0, 'K80': 1, 'F81': 2, 'F84': 3, 'HKY85': 4, 'T92': 5,
-                           'TN93': 6, 'GTR': 7, 'UNREST': 8, 'REVu': 9, 'UNRESTu': 10}
+                          'TN93': 6, 'GTR': 7, 'UNREST': 8, 'REVu': 9, 'UNRESTu': 10,
+                          "cpREV10":'cpREV10' , "cpREV64":'cpREV64', "dayhoff":'dayhoff', "dayhoff-dcmut":'dayhoff-dcmut',
+                          "g1975a":'g1975a', "g1975c":'g1975c',"g1975p":'g1975p', "":'g1975v',"grantham":'grantham',
+                          "jones":'jones', "jones-dcmut":'jones-dcmut', "lg":'lg', "miyata":'miyata',"mtART":'mtART',
+                          "mtmam":'mtmam', "mtREV24":'mtREV24', "MtZoa":'MtZoa',"wag":'wag'}
             usedata_value = {'no data': 0, 'seq like': 1, 'normal approximation': 2, 'out.BV': 3}
             seqtype_value = {'nucleotides': 0, 'codons': 1, 'AAs': 2}
             cleandata_value = {'YES': 1, 'NO': 0}
@@ -700,29 +728,29 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
       mcmcfile = mcmc.txt
        outfile = out.txt
 
-         ndata = {ndata}
-       seqtype = {seqtype}
-       usedata = {usedata}
-         clock = {clock}
-       RootAge = '<{RootAge}'
+         ndata = {ndata}  *
+       seqtype = {seqtype}  *
+       usedata = {usedata}  *
+         clock = {clock}  *
+       RootAge = '<{RootAge}'  *
 
-         model = {model}
-         alpha = {alpha}
-         ncatG = {ncatG}
+         model = {model}  *
+         alpha = {alpha}  *
+         ncatG = {ncatG}  *
 
-     cleandata = {cleandata}
+     cleandata = {cleandata}  *
 
-       BDparas = {BDparas}
-   kappa_gamma = {kappa_gamma}
-   alpha_gamma = {alpha_gamma}
+       BDparas = {BDparas}  *
+   kappa_gamma = {kappa_gamma}  *
+   alpha_gamma = {alpha_gamma}  *
 
-   rgene_gamma = {rgene_gamma}
-  sigma2_gamma = {sigma2_gamma}
+   rgene_gamma = {rgene_gamma}  *
+  sigma2_gamma = {sigma2_gamma}  *
 
-         print = {print}
-        burnin = {burnin}
-      sampfreq = {sampfreq}
-       nsample = {nsample}
+         print = {print}  *
+        burnin = {burnin}  *
+      sampfreq = {sampfreq}  *
+       nsample = {nsample}  *
 
 *** Note: Make your window wider (100 columns) before running the program.'''
 
