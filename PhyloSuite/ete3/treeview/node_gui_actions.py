@@ -325,7 +325,7 @@ class _NodeActions(object):
 
     def add_calibration(self):
         self.calibrate_dialog = QDialog(self.scene().GUI)
-        self.calibrate_dialog.resize(570, 290)
+        self.calibrate_dialog.resize(600, 290)
         self.gridLayout = QtWidgets.QGridLayout(self.calibrate_dialog)
         self.gridLayout.setObjectName("gridLayout")
         self.radioButton = QtWidgets.QRadioButton("Bound only", self.calibrate_dialog)
@@ -338,7 +338,8 @@ class _NodeActions(object):
         self.label_1.setObjectName("label_1")
         self.horizontalLayout_2.addWidget(self.label_1)
         self.doubleSpinBox_1 = QtWidgets.QDoubleSpinBox(self.calibrate_dialog)
-        self.doubleSpinBox_1.setSingleStep(0.01)
+        self.doubleSpinBox_1.setDecimals(4)
+        self.doubleSpinBox_1.setSingleStep(0.0001)
         self.doubleSpinBox_1.setObjectName("doubleSpinBox_1")
         self.horizontalLayout_2.addWidget(self.doubleSpinBox_1)
         self.label_2 = QtWidgets.QLabel("100MYA", self.calibrate_dialog)
@@ -353,7 +354,8 @@ class _NodeActions(object):
         self.label_3.setObjectName("label_3")
         self.horizontalLayout_2.addWidget(self.label_3)
         self.doubleSpinBox_2 = QtWidgets.QDoubleSpinBox(self.calibrate_dialog)
-        self.doubleSpinBox_2.setSingleStep(0.01)
+        self.doubleSpinBox_2.setDecimals(4)
+        self.doubleSpinBox_2.setSingleStep(0.0001)
         self.doubleSpinBox_2.setObjectName("doubleSpinBox_2")
         self.horizontalLayout_2.addWidget(self.doubleSpinBox_2)
         self.label_4 = QtWidgets.QLabel("100MYA", self.calibrate_dialog)
@@ -374,7 +376,8 @@ class _NodeActions(object):
         self.label_14.setObjectName("label_14")
         self.gridLayout_14.addWidget(self.label_14, 0, 0, 1, 1)
         self.doubleSpinBox_3 = QtWidgets.QDoubleSpinBox(self.calibrate_dialog)
-        self.doubleSpinBox_3.setSingleStep(0.01)
+        self.doubleSpinBox_3.setDecimals(4)
+        self.doubleSpinBox_3.setSingleStep(0.0001)
         self.doubleSpinBox_3.setObjectName("doubleSpinBox_3")
         self.gridLayout_14.addWidget(self.doubleSpinBox_3, 0, 1, 1, 1)
         self.label_15 = QtWidgets.QLabel("100MYA", self.calibrate_dialog)
@@ -406,7 +409,8 @@ class _NodeActions(object):
         self.label_16.setObjectName("label_16")
         self.gridLayout_15.addWidget(self.label_16, 0, 0, 1, 1)
         self.doubleSpinBox_4 = QtWidgets.QDoubleSpinBox(self.calibrate_dialog)
-        self.doubleSpinBox_4.setSingleStep(0.01)
+        self.doubleSpinBox_4.setDecimals(4)
+        self.doubleSpinBox_4.setSingleStep(0.0001)
         self.doubleSpinBox_4.setObjectName("doubleSpinBox_4")
         self.gridLayout_15.addWidget(self.doubleSpinBox_4, 0, 1, 1, 1)
         self.label_17 = QtWidgets.QLabel("100MYA", self.calibrate_dialog)
@@ -442,7 +446,8 @@ class _NodeActions(object):
         self.label_5.setObjectName("label_5")
         self.horizontalLayout_9.addWidget(self.label_5)
         self.doubleSpinBox_7 = QtWidgets.QDoubleSpinBox(self.calibrate_dialog)
-        self.doubleSpinBox_7.setSingleStep(0.01)
+        self.doubleSpinBox_7.setDecimals(4)
+        self.doubleSpinBox_7.setSingleStep(0.0001)
         self.doubleSpinBox_7.setObjectName("doubleSpinBox_7")
         self.horizontalLayout_9.addWidget(self.doubleSpinBox_7)
         self.label_6 = QtWidgets.QLabel("100MYA", self.calibrate_dialog)
@@ -492,7 +497,8 @@ class _NodeActions(object):
         self.label_7.setObjectName("label_7")
         self.gridLayout_13.addWidget(self.label_7, 0, 0, 1, 1)
         self.doubleSpinBox_11 = QtWidgets.QDoubleSpinBox(self.calibrate_dialog)
-        self.doubleSpinBox_11.setSingleStep(0.01)
+        self.doubleSpinBox_11.setDecimals(4)
+        self.doubleSpinBox_11.setSingleStep(0.0001)
         self.doubleSpinBox_11.setObjectName("doubleSpinBox_11")
         self.gridLayout_13.addWidget(self.doubleSpinBox_11, 0, 1, 1, 1)
         self.label_8 = QtWidgets.QLabel("100MYA", self.calibrate_dialog)
@@ -552,26 +558,26 @@ class _NodeActions(object):
                                 modeForth=None):
         #if .text() == "OK":
         if modeFirst:
-            l = "{:.2f}".format(self.doubleSpinBox_1.value())
-            h = "{:.2f}".format(self.doubleSpinBox_2.value())
+            l = "{:.4f}".format(self.doubleSpinBox_1.value())
+            h = "{:.4f}".format(self.doubleSpinBox_2.value())
             self.node.name = f"'>{l}<{h}'"
             self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
         if modeSecond:
-            tl = "{:.2f}".format(self.doubleSpinBox_3.value())
-            tu = "{:.2f}".format(self.doubleSpinBox_4.value())
+            tl = "{:.4f}".format(self.doubleSpinBox_3.value())
+            tu = "{:.4f}".format(self.doubleSpinBox_4.value())
             pl = "{:.3f}".format(self.doubleSpinBox_5.value())
             pu = "{:.3f}".format(self.doubleSpinBox_6.value())
             self.node.name = f"'B({tl},{tu},{pl},{pu})'"
             self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
         if modeThird:
-            tl = "{:.2f}".format(self.doubleSpinBox_7.value())
+            tl = "{:.4f}".format(self.doubleSpinBox_7.value())
             p = "{:.1f}".format(self.doubleSpinBox_8.value())
             c = "{:.1f}".format(self.doubleSpinBox_9.value())
             pl = "{:.3f}".format(self.doubleSpinBox_10.value())
             self.node.name = f"'L({tl},{p},{c},{pl})'"
             self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
         if modeForth:
-            tu = "{:.2f}".format(self.doubleSpinBox_11.value())
+            tu = "{:.4f}".format(self.doubleSpinBox_11.value())
             pr = "{:.3f}".format(self.doubleSpinBox_12.value())
             self.node.name = f"'U({tu},{pr})'"
             self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
