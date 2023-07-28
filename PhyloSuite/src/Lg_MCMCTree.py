@@ -12,8 +12,8 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from ete3 import NCBITaxa, TextFace
-from src.Lg_Baseml import Baseml
-from uifiles.Ui_baseml import Ui_Baseml
+# from src.Lg_Baseml import Baseml
+# from uifiles.Ui_baseml import Ui_Baseml
 from src.CustomWidget import MyTaxTableModel
 
 from src.factory import Factory, WorkThread
@@ -105,9 +105,6 @@ class MCMCTree(QDialog,Ui_MCMCTree,object):
             self.lineEdit_2.setText(base)
             self.lineEdit_2.setToolTip(os.path.abspath(file))
             self.seqFileName = file
-        """tre = self.factory.read_tree(file)
-        list_leaves = tre.get_leaf_names()
-        self.init_table(list_leaves)"""
 
     @pyqtSlot()
     def on_pushButton_4_clicked(self):

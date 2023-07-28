@@ -2203,7 +2203,10 @@ class Factory(QObject, Factory_sub, object):
             elif resultsParentName == "FastTree_results":
                 input_trees = [resultsPath + os.sep + "all_gene_trees.nwk"] if \
                     os.path.exists(resultsPath + os.sep + "all_gene_trees.nwk") else []
-                autoInputs = input_trees
+                list_alignments = self.fetchAlignmentFile(resultsPath)
+                list_alignments = [os.path.normpath(
+                    alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                autoInputs = [input_trees, list_alignments]
             elif resultsParentName == "IQtree_results":
                 input_trees = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
                                os.path.splitext(i)[1].upper() in [".TREEFILE"]]
@@ -4639,7 +4642,8 @@ class Convertfmt(object):
             with open(self.f3, 'w', encoding="utf-8") as f3:
                 f3.write("".join(self.nxs_inter))
         if self.dict_args["export_paml"]:
-            with open(self.outpath + os.sep + rawname + '.PML', 'w', encoding="utf-8") as f4:
+            self.f4 = self.outpath + os.sep + rawname + '.PML'
+            with open(self.f4, 'w', encoding="utf-8") as f4:
                 f4.write(self.paml)
         if self.dict_args["export_axt"]:
             self.axt_file = self.outpath + os.sep + rawname + '.axt'

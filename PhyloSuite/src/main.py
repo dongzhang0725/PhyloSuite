@@ -2012,48 +2012,42 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
     def on_MCMCTree_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
         mcmctreeEXE = self.factory.programIsValid("PAML", mode="tool")
-        basemlEXE = self.factory.programIsValid("PAML", mode="tool")
-        # if mcmctreeEXE:
-        autoInputs = self.factory.init_judge(mode="MCMCTREE", filePath=filePath, parent=self)
-        """if type(autoInputs) == list:
-            autoInputs = autoInputs[0] if autoInputs else None
-            print(autoInputs)"""
-        # if autoInputs:
-        # def startMT(autoInputs, workPath, focusSig, mcmctreeEXE, parent):
-        self.MCMCTree = MCMCTree(workPath=workPath,
-                                 focusSig=self.focusSig,
-                                 mcmctreeEXE=mcmctreeEXE,
-                                 basemlEXE=basemlEXE,
-                                 autoInputs=autoInputs,
-                                 parent=self)
-        self.MCMCTree.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.MCMCTree.windowFlags())
-        self.MCMCTree.show()
-        if autoInputs:
-            if os.path.splitext(autoInputs[1].upper() not in [".pml"]):
+        def startMT(autoInputs, workPath, focusSig, mcmctreeEXE, parent):
+            self.MCMCTree = MCMCTree(workPath=workPath,
+                                     focusSig=focusSig,
+                                     mcmctreeEXE=mcmctreeEXE,
+                                     autoInputs=autoInputs,
+                                     parent=parent)
+            self.MCMCTree.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.MCMCTree.windowFlags())
+            self.MCMCTree.show()
+        if mcmctreeEXE:
+            autoInputs = self.factory.init_judge(mode="MCMCTREE", filePath=filePath, parent=self)
+            tree, msa = autoInputs
+            if msa:
                 self.progressDialog = self.factory.myProgressDialog(
                     "Please Wait", "Converting format...", busy=True, parent=self)
                 self.progressDialog.show()
-                self.convertfmt = Convertfmt(**{"export_path": os.path.dirname(autoInputs), "files": [autoInputs],
-                                                "export_paml": True, "remove B": True,
+                self.convertfmt = Convertfmt(**{"export_path": os.path.dirname(msa[0]), "files": [msa[0]],
+                                                "export_paml": True,
                                                 "exception_signal": self.exception_signal})
-            """gbWorker = WorkThread(
-                lambda: self.convertfmt.exec_(),
-                parent=self)
+                gbWorker = WorkThread(
+                    lambda: self.convertfmt.exec_(),
+                    parent=self)
                 gbWorker.finished.connect(
-                    lambda: [self.progressDialog.close(), startMT(self.convertfmt.f4,
-                                                                  workPath, self.focusSig, mcmctreeEXE, self)])
+                    lambda: [self.progressDialog.close(),
+                             startMT([tree, [self.convertfmt.f4]], workPath, self.focusSig, mcmctreeEXE, self)])
                 gbWorker.start()
             else:
                 startMT(autoInputs,
-                        workPath, self.focusSig, mcmctreeEXE, self)"""
-        """else:
-            self.MCMCTree = MCMCTree(autoInputs, workPath, self.focusSig, mcmctreeEXE, self)
-            # 添加最大化按钮
-            self.MCMCTree.setWindowFlags(self.MCMCTree.windowFlags() | Qt.WindowMinMaxButtonsHint)
-            self.MCMCTree.show()
-            if not self.factory.autoInputDisbled():
-                self.MCMCTree.popupAutoDec(init=True)"""
-        """else:
+                        workPath, self.focusSig, mcmctreeEXE, self)
+        # else:
+        #     self.MCMCTree = MCMCTree(autoInputs, workPath, self.focusSig, mcmctreeEXE, self)
+        #     # 添加最大化按钮
+        #     self.MCMCTree.setWindowFlags(self.MCMCTree.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        #     self.MCMCTree.show()
+        #     if not self.factory.autoInputDisbled():
+        #         self.MCMCTree.popupAutoDec(init=True)
+        else:
             reply = QMessageBox.information(
                 self,
                 "Information",
@@ -2065,7 +2059,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                 self.setting.display_table(self.setting.listWidget.item(1))
                 # 隐藏？按钮
                 self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
-                self.setting.exec_()"""
+                self.setting.exec_()
 
     @pyqtSlot()
     def on_actionASTRAL_triggered(self):
