@@ -488,6 +488,8 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         self.comboBox_10.setDisabled(False)
         self.comboBox_2.setDisabled(False)
         new_infiles = []  # 预防有时候有些文件无效
+        single_seqs = []
+        less_than_4_seqs = []
         for i in infiles:
             if not os.path.exists(i):
                 continue
@@ -499,6 +501,11 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                         "The file %s is not in fasta format!" % (os.path.basename(i)))
                     self.comboBox_4.refreshInputs([])
                     return
+                if self.seq_num == 1:
+                    single_seqs.append(os.path.basename(i))
+                    continue # 不将该条序列加入到分析中
+                elif self.seq_num < 4:
+                    less_than_4_seqs.append(os.path.basename(i)) #这些序列仍然会被加入后续分析，除非被手动移除
                 try:
                     if re.search(r"(?m)^\n(?!\>)", content):
                         # 序列内部有空行
@@ -516,6 +523,14 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                 dict_taxon_num.setdefault(
                     self.seq_num, []).append(os.path.basename(i))
             new_infiles.append(i)
+        if single_seqs or less_than_4_seqs:
+            # 如果检查到单序列文件或序列过少，则在此弹出警告
+            self.popup_Gblocks_exception(f"""
+            These genes have less than 4 sequences. Running GBlocks for these genes are not recommended:
+            {', '.join(sorted(set(single_seqs + less_than_4_seqs)))}
+            These genes have only 1 sequence. PhyloSuite has automatically removed them from the analysis:
+            {', '.join(sorted(set(single_seqs)))}
+            """)
         if not new_infiles:  # 如果没有有效的文件
             return
         if len(dict_taxon_num) > 1:
