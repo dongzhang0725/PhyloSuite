@@ -27,7 +27,7 @@ platform_ = platform.system().lower()
 # What packages are required for this module to be executed?
 REQUIRED = [
     'pyparsing==3.0.7',
-    'Pillow==8.4.0',
+    'Pillow==10.3.0',
     'numpy==1.19.5',
     'netCDF4==1.5.6',
     'biopython==1.76',
