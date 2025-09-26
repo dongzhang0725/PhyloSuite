@@ -28,7 +28,7 @@ platform_ = platform.system().lower()
 REQUIRED = [
     'pyparsing==3.0.7',
     'Pillow==8.4.0',
-    'numpy==1.19.5',
+    'numpy==1.22.0',
     'netCDF4==1.5.6',
     'biopython==1.76',
     'python-dateutil',
