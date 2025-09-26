@@ -78,9 +78,10 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
         # File only, no fallback to registry or or.
         self.partitionfinder_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 读取模型
         self.partitionFinderFolder = partitionFinderFolder
         model = partitionFinderFolder + os.sep + "partfinder/models.csv"
@@ -354,7 +355,7 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
             self.description = self.description.replace("$version$", self.version)
             with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite v1.2.3 v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                        f"\n\nIf you use PhyloSuite v2 v1.2.3, please cite:\n{self.factory.get_PS_citation()}\n\n"
                         "If you use PartitionFinder 2, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             # 生成partition表格
             best_scheme = glob.glob(f"{self.exportPath}{os.sep}*{os.sep}best_scheme.txt")
@@ -363,7 +364,7 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
                 best_scheme_file = best_scheme[0]
                 with open(best_scheme_file, encoding="utf-8", errors="ignore") as f:
                     content = f.read()
-                list_ = re.findall(r"(?m)^\d +\| +(.+?) +\| +(\d+) +\|[^\|]+\| (.+)", content)
+                list_ = re.findall(r"(?m)^\d+ +\| +(.+?) +\| +(\d+) +\|[^\|]+\| (.+)", content)
                 for num,i in enumerate(list_):
                     model, sites, name = i
                     list_partition_table.append([f"P{num+1}: ({name.strip(' ')})",
@@ -476,6 +477,7 @@ class PartitionFinder(QDialog, Ui_PartitionFinder, object):
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 allItems = [obj.itemText(i) for i in range(obj.count())]
                 values = self.partitionfinder_settings.value(name, allItems)
                 model = obj.model()
@@ -691,6 +693,8 @@ separate = (Gene1_codon1) (Gene1_codon2) (Gene1_codon3) (intron);"""
                          self.pushButton_5.toolButton.menu().pos().y())
             self.pushButton_5.toolButton.menu().move(pos)
             return True
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
         # return QMainWindow.eventFilter(self, obj, event) #
         # 其他情况会返回系统默认的事件处理方法。
         return super(PartitionFinder, self).eventFilter(obj, event)  # 0

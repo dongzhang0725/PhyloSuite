@@ -1678,7 +1678,10 @@ class _SelectorItem(QGraphicsRectItem):
     def paint(self, p, option, widget):
         p.setPen(self.Color)
         p.setBrush(QBrush(Qt.NoBrush))
-        p.drawRect(self.rect().x(),self.rect().y(),self.rect().width(),self.rect().height())
+        p.drawRect(int(self.rect().x()),
+                   int(self.rect().y()),
+                   int(self.rect().width()),
+                   int(self.rect().height()))
         return
         # Draw info text
         font = QFont("Arial",13)

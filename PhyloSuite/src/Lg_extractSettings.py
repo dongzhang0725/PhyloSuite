@@ -36,9 +36,10 @@ class ExtractSettings(QDialog, Ui_ExtractSettings, object):
         # File only, no fallback to registry or or.
         self.GenBankExtract_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.tableView.installEventFilter(self)
         self.tableView.horizontalHeader().setStretchLastSection(True)
         self.listWidget.installEventFilter(self)

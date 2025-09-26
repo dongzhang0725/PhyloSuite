@@ -78,9 +78,10 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         # File only, no fallback to registry or or.
         self.iqtree_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.lineEdit_3.installEventFilter(self)
         self.comboBox_3.activated[str].connect(self.controlCodonTable)
         self.comboBox_8.currentIndexChanged[str].connect(self.ctrlBootstrap)
@@ -88,6 +89,12 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         self.ctrlBootstrap(self.comboBox_8.currentText())
         self.ctrlModel(self.comboBox_7.currentText())
         self.spinBox_3.valueChanged.connect(self.judgeBootStrap) # 判断不同模式下的bootstrap
+        self.lineEdit_2.setLineEditNoChange(True)
+        self.lineEdit_2.deleteFile.clicked.connect(
+            self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
+        self.checkBox_10.toggled.connect(self.fast_bb_conflict)
+        self.comboBox_8.currentTextChanged.connect(self.fast_bb_conflict)
+        self.lineEdit_2.installEventFilter(self)
         # 恢复用户的设置
         self.guiRestore()
         self.judgePFresults() #判断partitionfinder2是否有结果
@@ -126,6 +133,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
         # 初始化codon table的选择
         self.controlCodonTable(self.comboBox_3.currentText())
+        self.checkBox_11.toggled.connect(self.judge_iqtree)
         # 给开始按钮添加菜单
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
@@ -292,6 +300,18 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                 "<p style='line-height:25px; height:25px'>No IQ-TREE command found in %s!</p>" % os.path.normpath(
                     resultsPath))
 
+    @pyqtSlot()
+    def on_pushButton_4_clicked(self):
+        """
+        tree file
+        """
+        fileName = QFileDialog.getOpenFileName(
+            self, "Input tree file", filter="Newick Format(*.nwk *.newick);;")
+        if fileName[0]:
+            base = os.path.basename(fileName[0])
+            self.lineEdit_2.setText(base)
+            self.lineEdit_2.setToolTip(fileName[0])
+
     def run_command(self):
         try:
             time_start = datetime.datetime.now()
@@ -374,6 +394,12 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                         return
                     gene_tree_path = self.factory.creat_dirs(self.exportPath +
                                         os.sep + os.path.splitext(os.path.basename(i))[0])
+                    # 判断基因树是否已经跑完了
+                    gene_tree = f"{gene_tree_path}{os.sep}{os.path.basename(i)}.treefile"
+                    if self.factory.is_file_not_empty(gene_tree):
+                        self.progressSig.emit(each_pro*num + each_pro)
+                        self.logGuiSig.emit(f"{gene_tree} already finished!")
+                        continue
                     # 创建一个文件作为单基因建树批次的标记（每一批要不一样的ID
                     # with open(f"{gene_tree_path}/{gt_id}", "w") as f:
                     #     f.write("This file is used as identifier")
@@ -398,7 +424,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                                                                                            self.time_used)
 
             with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
-                f.write(self.description + "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                f.write(self.description + f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n"
                         "If you use IQ-TREE and Ultrafast bootstrap, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -475,14 +501,15 @@ class IQTREE(QDialog, Ui_IQTREE, object):
     def guiRestore(self):
 
         # Restore geometry
-        height = 700 if platform.system().lower() == "darwin" else 568
-        size = self.factory.judgeWindowSize(self.iqtree_settings, 859, height)
+        height = 700 if platform.system().lower() == "darwin" else 781
+        size = self.factory.judgeWindowSize(self.iqtree_settings, 1194, height)
         self.resize(size)
         self.factory.centerWindow(self)
         # self.move(self.iqtree_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 obj.setMaxVisibleItems(10)
                 if name == "comboBox_6":
                     cpu_num = multiprocessing.cpu_count()
@@ -500,19 +527,20 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                         model.appendRow(item)
                     obj.setCurrentIndex(int(index))
                 elif name == "comboBox_7":
-                    ini_models = ["Auto", "***Binary***", "JC2", "GTR2", "***DNA***", "JC (JC69)", "F81", "K80 (K2P)", "HKY (HKY85)",
+                    self.ini_models = ["Auto", "***DNA***", "JC (JC69)", "F81", "K80 (K2P)", "HKY (HKY85)",
                                   "TNe (TN93e)",  "TN (TN93)",  "K81 (K3P)",  "K81u (K3Pu)",  "TPM2",  "TPM2u",  "TPM3",  "TPM3u",  "TIMe",
                                   "TIM",  "TIM2e",  "TIM2",  "TIM3e",  "TIM3",  "TVMe",  "TVM",  "SYM",  "GTR",
-                                  "***Protein***", "Blosum62",  "cpREV",  "Dayhoff",  "DCMut",  "FLU",  "HIVb",
+                                  "***Protein***", "Blosum62",  "cpREV",  "Dayhoff",  "DCMut", "FLAVI",  "FLU",  "GTR20",  "HIVb",
                                   "HIVw",  "JTT",  "JTTDCMut",  "LG",  "mtART",  "mtMAM",  "mtREV",
-                                  "mtZOA",  "PMB",  "rtREV",  "VT",  "WAG", 'mtVer', 'mtMet', 'mtInv', "***Mixture model***",
-                                  "LG4M",  "LG4X",  "JTT+CF4",  "C10",  "C20",  "EX2",  "EX3",  "EHO",
-                                  "UL2",  "UL3",  "EX_EHO", "***Codon***", "GY",  "MG",  "MGK",  "GY0K",
-                                  "GY1KTS",  "GY1KTV",  "GY2K",  "MG1KTS",  "MG1KTV",  "MG2K",  "KOSI07",
-                                  "SCHN05", "***Morphology***", "MK", "ORDERED"]
+                                  "mtZOA",  "PMB",  "rtREV",  "VT",  "WAG", 'mtVer', "mtMet", "mtInv", "NQ.bird",
+                                  "NQ.insect", "NQ.mammal", "NQ.pfam", "NQ.plant", "NQ.yeast", "Poisson", "Q.bird",
+                                  "Q.insect", "Q.mammal", "Q.pfam", "Q.plant", "Q.yeast",
+                                  "***Codon***", "GY",  "MG",  "MGK",  "GY0K",
+                                  "GY1KTS",  "GY1KTV",  "GY2K",  "MG1KTS",  "MG1KTV",  "MG2K",  "KOSI07", "ECMrest",
+                                  "SCHN05", "***Binary and Morphology***", "JC2", "GTR2", "GTRX", "MK", "ORDERED"]
                     index = self.iqtree_settings.value(name, "0")
                     model = obj.model()
-                    for num, i in enumerate(ini_models):
+                    for num, i in enumerate(self.ini_models):
                         item = QStandardItem(i)
                         # 背景颜色
                         if "*" in i:
@@ -552,10 +580,12 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             #     value = self.iqtree_settings.value(name, ini_value)
             #     obj.setValue(int(value))
             elif isinstance(obj, QSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 ini_value = obj.value()
                 value = self.iqtree_settings.value(name, ini_value)
                 obj.setValue(int(value))
             elif isinstance(obj, QDoubleSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 ini_float_ = obj.value()
                 float_ = self.iqtree_settings.value(name, ini_float_)
                 obj.setValue(float(float_))
@@ -701,6 +731,16 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                     self.lineEdit_3.setText(base)
                     self.lineEdit_3.setToolTip(files[0])
                     # self.comboBox_5.setEnabled(True)
+                elif name == "lineEdit_2":
+                    if os.path.splitext(files[0])[1].upper() in [".NWK", ".NEWICK"]:
+                        base = os.path.basename(files[0])
+                        self.lineEdit_2.setText(base)
+                        self.lineEdit_2.setToolTip(files[0])
+                    else:
+                        QMessageBox.information(
+                            self,
+                            "IQ-TREE",
+                            "<p style='line-height:25px; height:25px'>File ends with '.nwk' or '.newick' needed!</p>")
         if (event.type() == QEvent.Show) and (obj == self.pushButton.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+", self.dir_action.text()) or self.dir_action.text() == "Output Dir: ":
                 self.factory.sync_dir(self.dir_action)  ##同步文件夹名字
@@ -711,6 +751,8 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
         # 其他情况会返回系统默认的事件处理方法。
         return super(IQTREE, self).eventFilter(obj, event)  # 0
 
@@ -1117,6 +1159,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             self.label_28.setEnabled(False)
 
     def autoModel(self):
+        self.checkBox_8.setChecked(False)
         if self.autoModelFile[0] == "MB_MF_part":
             # model要选auto,而且也要导入partition文件，auto在ifFinished里面选好了
             with open(self.autoModelFile[1], encoding="utf-8", errors='ignore') as f:
@@ -1144,7 +1187,11 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                 f1.write(iq_partition)
             self.lineEdit_3.setText(os.path.basename(path))
             self.lineEdit_3.setToolTip(path)
-        elif self.autoModelFile[0] == "mf_part_model":
+        elif self.autoModelFile[0] in ["mf_part_model", "mf_part_model_unlink"]:
+            if self.autoModelFile[0] == "mf_part_model_unlink":
+                self.comboBox_5.setCurrentText("Edge-unlinked")
+            else:
+                self.comboBox_5.setCurrentText("Edge-linked")
             # 直接把mf_part_model的模型导入即可
             self.lineEdit_3.setText(os.path.basename(self.autoModelFile[1]))
             self.lineEdit_3.setToolTip(self.autoModelFile[1])
@@ -1168,8 +1215,12 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             f = self.factory.read_file(self.autoModelFile[1])
             content = f.read()
             f.close()
+            # rgx_model = re.compile(r"Best-fit model according to.+?\: (.+)")
+            # best_model = rgx_model.search(content).group(1)
             rgx_model = re.compile(r"Best-fit model according to.+?\: (.+)")
-            best_model = rgx_model.search(content).group(1)
+            rgx_model2 = re.compile(r"Model of substitution: (.+)")
+            best_model = rgx_model.search(content).group(1) if rgx_model.search(content) \
+                else rgx_model2.search(content).group(1)
             model_split = best_model.split("+")
             dict_1 = {"K81u": "K3Pu", "JC": "JC69", "K80": "K2P", "HKY": "HKY85",
                       "TNe": "TN93e", "TN": "TN93", "K81": "K3P"}
@@ -1186,11 +1237,18 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             if index >= 0:
                 self.comboBox_7.setCurrentIndex(index)
             else:
-                QMessageBox.information(
-                    self,
-                    "MrBayes",
-                    "<p style='line-height:25px; height:25px'>Model invalid!</p>",
-                    QMessageBox.Ok)
+                self.comboBox_7.setEditable(True)
+                self.comboBox_7.setCurrentText(best_model)
+                # self.comboBox_7.setEditable(False)
+                self.comboBox_7.lineEdit().setReadOnly(True)
+                # QMessageBox.information(
+                #     self,
+                #     "MrBayes",
+                #     "<p style='line-height:25px; height:25px'>Model invalid! Please check if there are any errors "
+                #     "in the models from the ModelFinder results. "
+                #     "If you are using the new version of IQ-TREE, you can consider adding the required model in the "
+                #     "'View | Edit command' function.</p>",
+                #     QMessageBox.Ok)
             dict_state_freq_rev = {"F": "Empirical (from data)", "FO": "ML-optimized",
                                    "F1X4": "Codon F1X4", "F3X4": "Codon F3X4"}
             has_F, has_R, has_G, has_I = False, False, False, False
@@ -1361,6 +1419,8 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         if alignments:
             # 有数据才执行
             self.interrupt = False
+            # init tree
+            init_tree = f" -t {self.lineEdit_2.toolTip()}" if self.lineEdit_2.toolTip() else ""
             dict_seq = {"DNA": "DNA", "Protein": "AA", "Codon": "CODON", "Binary": "BIN", "Morphology": "MORPH",
                         "DNA-->AA": "NT2AA"}
             seqType = " -st %s" % dict_seq[
@@ -1374,7 +1434,12 @@ class IQTREE(QDialog, Ui_IQTREE, object):
             #     partitionCMD, shutil.copy(self.lineEdit_3.toolTip(), self.exportPath)) if (
             #     self.checkBox_8.isChecked() and self.lineEdit_3.toolTip() and self.lineEdit_3.isEnabled()) else ""
             # model
-            self.model_text = self.comboBox_7.currentText().split(" ")[0]
+            self.model_text = self.comboBox_7.currentText()
+            abnormal_model = False
+            if self.model_text in self.ini_models:
+                self.model_text = self.model_text.split(" ")[0]
+            else:
+                abnormal_model = True
             if self.isPartitionChecked():
                 # if not self.workflow:
                 #     QMessageBox.information(
@@ -1389,7 +1454,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                     # 计算分区模型，然后建树
                     model = " -m TESTNEWMERGE" if self.checkBox_2.isChecked() else " -m TESTMERGE"
             elif self.model_text == "Auto":
-                model = " -m TESTNEW" if self.checkBox_2.isChecked() else " -m TEST"
+                model = " -m MFP" if self.checkBox_2.isChecked() else " -m TEST"
                 # if self.checkBox_2.isChecked():
                 #     if self.checkBox_8.isChecked() and self.lineEdit_3.toolTip() and self.lineEdit_3.isEnabled():  # partition
                 #         # 确保勾选了partition以及输入了文件
@@ -1404,22 +1469,25 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                         # auto_model = "TESTNEW" if self.checkBox_2.isChecked() else "TEST"
                         # model = " -m %s"%auto_model
             else:
-                dict_state_freq = {"Empirical (from data)": "F", "AA model (from matrix)": "",
-                                   "ML-optimized": "FO", "Codon F1X4": "F1X4", "Codon F3X4": "F3X4"}
-                if self.checkBox_2.isChecked():
-                    # +R
-                    freeRate = "+R%d" % self.spinBox.value()
-                    state_freq = "+%s" % dict_state_freq[self.comboBox_4.currentText()] if dict_state_freq[
-                        self.comboBox_4.currentText()] else ""
-                    model = " -m %s" % (self.model_text +
-                                        freeRate + state_freq)
+                if abnormal_model:
+                    model = f" -m {self.model_text}"
                 else:
-                    gamma = "+G%d" % self.spinBox.value() if self.checkBox_3.isChecked() else ""
-                    invar = "+I" if self.checkBox_4.isChecked() else ""
-                    state_freq = "+%s" % dict_state_freq[
-                        self.comboBox_4.currentText()] if dict_state_freq[self.comboBox_4.currentText()] else ""
-                    model = " -m %s" % (self.model_text +
-                                        invar + gamma + state_freq)
+                    dict_state_freq = {"Empirical (from data)": "F", "AA model (from matrix)": "",
+                                       "ML-optimized": "FO", "Codon F1X4": "F1X4", "Codon F3X4": "F3X4"}
+                    if self.checkBox_2.isChecked():
+                        # +R
+                        freeRate = "+R%d" % self.spinBox.value()
+                        state_freq = "+%s" % dict_state_freq[self.comboBox_4.currentText()] if dict_state_freq[
+                            self.comboBox_4.currentText()] else ""
+                        model = " -m %s" % (self.model_text +
+                                            freeRate + state_freq)
+                    else:
+                        gamma = "+G%d" % self.spinBox.value() if self.checkBox_3.isChecked() else ""
+                        invar = "+I" if self.checkBox_4.isChecked() else ""
+                        state_freq = "+%s" % dict_state_freq[
+                            self.comboBox_4.currentText()] if dict_state_freq[self.comboBox_4.currentText()] else ""
+                        model = " -m %s" % (self.model_text +
+                                            invar + gamma + state_freq)
             model_final = model + \
                 "+ASC" if self.checkBox.isChecked() else model
             # branch support
@@ -1452,9 +1520,14 @@ class IQTREE(QDialog, Ui_IQTREE, object):
                 fasttree = " --fast"
             else:
                 fasttree = ""
+            # trim sites
+            trim = ""
+            if self.version.startswith("3"):
+                if self.checkBox_11.isChecked():
+                    trim = f" --robust-phy {self.spinBox_2.value()/100}"
             threads = " -nt %s" % self.comboBox_6.currentText()
-            command = f"\"{self.iqtree_exe}\" -s inputFile" + seqType + \
-                model_final + branch_support + fasttree + outgroup + threads
+            command = f"\"{self.iqtree_exe}\" -s inputFile" + init_tree + seqType + \
+                model_final + branch_support + trim + fasttree + outgroup + threads
             self.textEdit_log.clear()  # 清空
             # 描述
             if self.checkBox_8.isChecked() and self.lineEdit_3.toolTip() and self.lineEdit_3.isEnabled():
@@ -1646,7 +1719,7 @@ class IQTREE(QDialog, Ui_IQTREE, object):
         #     if self.checkBox_8.isChecked():
         #         if self.lineEdit_3.toolTip():
                     ##输入了partition文件
-        with open(self.lineEdit_3.toolTip()) as f:
+        with open(self.lineEdit_3.toolTip(), encoding="utf-8", errors="ignore") as f:
             content = f.read()
         if "charpartition" in content:
             return True
@@ -1687,10 +1760,28 @@ class IQTREE(QDialog, Ui_IQTREE, object):
     #     self.version = rgx_version.search(stdout).group(1)
 
     def switchNewOptions(self):
-        if self.version.startswith("2"):
+        if not self.version.startswith("1"):
             self.checkBox_10.setVisible(True)
         else:
             self.checkBox_10.setVisible(False)
+
+    def fast_bb_conflict(self):
+        is_fast = self.checkBox_10.isChecked()
+        bootstrap = self.comboBox_8.currentText()
+        if is_fast and (bootstrap=="Ultrafast"):
+            QMessageBox.warning(
+                self,
+                "Warning",
+                "<p style='line-height:25px; height:25px'>Ultrafast bootstrap (-bb) does not work with -fast option!</p>")
+            self.checkBox_10.setChecked(False)
+
+    def judge_iqtree(self):
+        if self.checkBox_11.isChecked() and self.version and (not self.version.startswith("3")):
+            QMessageBox.information(
+                self,
+                "Information",
+                "<p style='line-height:25px; height:25px'>The \"Trimming alignment\" option is only available in IQ-TREE 3.x!</p>")
+            self.checkBox_11.setChecked(False)
 
 
 if __name__ == "__main__":

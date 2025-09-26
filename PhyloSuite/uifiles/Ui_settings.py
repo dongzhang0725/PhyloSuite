@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\works\ZD\phylosuite\PhyloSuite\uifiles\settings.ui'
+# Form implementation generated from reading ui file 'C:\Users\HUAWEI\works\phylosuite\PhyloSuite_gitee\PhyloSuite\uifiles\settings.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -34,7 +34,7 @@ class Ui_Settings(object):
         self.tableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.tableWidget.setObjectName("tableWidget")
         self.tableWidget.setColumnCount(4)
-        self.tableWidget.setRowCount(16)
+        self.tableWidget.setRowCount(17)
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setVerticalHeaderItem(0, item)
         item = QtWidgets.QTableWidgetItem()
@@ -67,6 +67,8 @@ class Ui_Settings(object):
         self.tableWidget.setVerticalHeaderItem(14, item)
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setVerticalHeaderItem(15, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setVerticalHeaderItem(16, item)
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setHorizontalHeaderItem(0, item)
         item = QtWidgets.QTableWidgetItem()
@@ -169,6 +171,12 @@ class Ui_Settings(object):
         self.tableWidget.setItem(15, 1, item)
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setItem(15, 2, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setItem(16, 0, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setItem(16, 1, item)
+        item = QtWidgets.QTableWidgetItem()
+        self.tableWidget.setItem(16, 2, item)
         self.tableWidget.horizontalHeader().setStretchLastSection(False)
         self.gridLayout_5.addWidget(self.tableWidget, 0, 0, 1, 1)
         self.stackedWidget.addWidget(self.page_2)
@@ -437,6 +445,8 @@ class Ui_Settings(object):
         item.setText(_translate("Settings", "15"))
         item = self.tableWidget.verticalHeaderItem(15)
         item.setText(_translate("Settings", "16"))
+        item = self.tableWidget.verticalHeaderItem(16)
+        item.setText(_translate("Settings", "17"))
         item = self.tableWidget.horizontalHeaderItem(0)
         item.setText(_translate("Settings", "Name"))
         item = self.tableWidget.horizontalHeaderItem(1)
@@ -543,6 +553,13 @@ class Ui_Settings(object):
         item = self.tableWidget.item(15, 1)
         item.setText(_translate("Settings", "Plot engine for PhyloSuite"))
         item = self.tableWidget.item(15, 2)
+        item.setText(_translate("Settings", "Uninstalled"))
+        item = self.tableWidget.item(16, 0)
+        item.setText(_translate("Settings", "r8s"))
+        item = self.tableWidget.item(16, 1)
+        item.setText(_translate("Settings", "a program for estimating absolute rates of molecular evolution and\n"
+"divergence times on a phylogenetic tree."))
+        item = self.tableWidget.item(16, 2)
         item.setText(_translate("Settings", "Uninstalled"))
         self.tableWidget.setSortingEnabled(__sortingEnabled)
         self.pushButton_6.setText(_translate("Settings", "Add Row"))

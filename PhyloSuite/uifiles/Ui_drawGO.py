@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\ZD\20220405\uifiles\drawGO.ui'
+# Form implementation generated from reading ui file 'E:\F\Work\python\bioinfo_excercise\PhyloSuite\codes\PhyloSuite_gitee\PhyloSuite\uifiles\drawGO.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -561,7 +561,7 @@ class Ui_DrawGO(object):
         self.verticalLayout.addLayout(self.horizontalLayout_3)
 
         self.retranslateUi(DrawGO)
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(DrawGO)
 
     def retranslateUi(self, DrawGO):
@@ -649,7 +649,7 @@ class Ui_DrawGO(object):
         self.pushButton_2.setText(_translate("DrawGO", "Convert current name as name set"))
         self.pushButton_9.setText(_translate("DrawGO", "Remove current name set"))
         self.pushButton_save_ns.setText(_translate("DrawGO", "Save current name set"))
-        self.label_14.setText(_translate("DrawGO", "<html><head/><body><p><span style=\" color:#ff0000;\">Note: Please use comma to seperate genes</span></p></body></html>"))
+        self.label_14.setText(_translate("DrawGO", "<html><head/><body><p><span style=\" color:#ff0000;\">Note: Use comma to separate gene names in the name set.</span></p></body></html>"))
         self.toolButton.setText(_translate("DrawGO", "..."))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), _translate("DrawGO", "Name set"))
         self.label.setText(_translate("DrawGO", "Gene Interval:"))

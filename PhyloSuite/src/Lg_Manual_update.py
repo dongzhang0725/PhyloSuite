@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import *
 from ete3 import NCBITaxa
 import os
 
+from src.factory import Factory
 from src.update import UpdateAPP
 from uifiles.Ui_Manual_update import Ui_Manual_update
 from uifiles.Ui_NCBI_db import Ui_NCBI_DB
@@ -22,14 +23,16 @@ class LG_Manual_update(QDialog, Ui_Manual_update, object):
         self.parent = parent
         self.thisPath = thisPath
         self.update_path = update_path
+        self.factory = Factory()
         self.setupUi(self)
         self.label_3.setText(re.sub(r'href="[^"]+"',
                                     f'href="{update_path}"',
                                     self.label_3.text()))
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.pushButton.setFocus()
         self.lineEdit.installEventFilter(self)
         # self.label_4.linkActivated.connect(self.exe_link)

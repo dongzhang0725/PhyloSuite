@@ -100,10 +100,10 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.displaySettings()
         self.guiRestore()
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
-
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.progressSig.connect(self.runProgress)
         self.exception_signal.connect(self.popupException)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
@@ -136,6 +136,8 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         # 信号槽
         self.checkBox.toggled.connect(self.judgeCodonWinstallation)
         self.progressDialogSig.connect(self.Progress)
+        self.checkBox_2.toggled.connect(self.judgeNCBIdbInstallation)
+        self.checkBox_2.toggled.connect(self.judgeMAFFT)
         # 给开始按钮添加菜单
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
@@ -148,7 +150,6 @@ class ExtractGB(QDialog, Ui_Extractor, object):
         self.pushButton_2.toolButton.setMenu(menu)
         self.pushButton_2.toolButton.menu().installEventFilter(self)
         self.factory.swithWorkPath(self.work_action, init=True, parent=self)  # 初始化一下
-        self.checkBox_2.toggled.connect(self.judgeMAFFT)
         self.qmut_progress = QMutex() # 创建线程锁
         ## brief demo
         country = self.factory.path_settings.value("country", "UK")
@@ -266,7 +267,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
             ## 比较耗时，放到此处执行
             if self.dict_args["resolve duplicates"]:
                 manager = multiprocessing.Manager()
-                self.queue = manager.Queue()
+                self.queue = manager.Queue() if platform.system().lower() == "windows" else multiprocessing.Manager().Queue()
                 self.dict_args["rsdpl_queue"] = self.queue
                 self.resolved_gene_num = 0
             self.startButtonStatusSig.emit(
@@ -292,10 +293,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
             with open(self.dict_args["exportPath"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, "
-                        "and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular "
-                        "sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, "
-                        "2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des
+                f.write(f"If you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n" + self.time_used_des
                         + "For the summary of this extraction, please see \"overview.csv\"")
         except BaseException:
             self.exceptionInfo = ''.join(
@@ -507,12 +505,13 @@ class ExtractGB(QDialog, Ui_Extractor, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.factory.judgeWindowSize(self.extractGB_settings, 756, 661))
+        self.resize(self.factory.judgeWindowSize(self.extractGB_settings, 1042, 760))
         self.factory.centerWindow(self)
         # self.move(self.extractGB_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if name == "comboBox_5":
                     # 展示输入
                     model = obj.model()
@@ -682,6 +681,7 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                 index = self.extractGB_settings.value(name, 0)
                 obj.setCurrentIndex(int(index))
             if isinstance(obj, QDoubleSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 value = self.extractGB_settings.value(name, 1.0)
                 obj.setValue(float(value))
             if isinstance(obj, QLineEdit):
@@ -763,6 +763,8 @@ class ExtractGB(QDialog, Ui_Extractor, object):
                          self.pushButton_2.toolButton.menu().pos().y())
             self.pushButton_2.toolButton.menu().move(pos)
             return True
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
         return super(ExtractGB, self).eventFilter(obj, event)
 
     def changeLable(self):
@@ -1020,6 +1022,19 @@ class ExtractGB(QDialog, Ui_Extractor, object):
             self.resolved_gene_num += 1
             # print(self.resolved_gene_num, total_num)
             self.progressSig.emit(70 + self.resolved_gene_num * 25 /total_num)
+
+    def judgeNCBIdbInstallation(self, state):
+        sender = self.sender()
+        if state and (not self.factory.NCBI_tax_db_is_installed()):
+            reply = QMessageBox.information(
+                self,
+                "Information",
+                "<p style='line-height:25px; height:25px'>Please install NCBI taxonomy database first!</p>",
+                QMessageBox.Ok,
+                QMessageBox.Cancel)
+            sender.setChecked(False)
+            if reply == QMessageBox.Ok:
+                self.parent.updateTaxonomyDB()
 
 
 if __name__ == "__main__":

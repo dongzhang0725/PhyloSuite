@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import *
 
 from uifiles.Ui_ASTRAL import Ui_ASTRAL
 from uifiles.Ui_HmmCleaner import Ui_HmmCleaner
-from src.factory import Factory, WorkThread
+from src.factory import Factory, WorkThread, Parsefmt
 import inspect
 import os
 import sys
@@ -23,6 +23,7 @@ import traceback
 import subprocess
 import platform
 from multiprocessing.pool import ApplyResult
+from src.CustomWidget2 import MyMappingTableModel
 
 
 def run(dict_args, command, file):
@@ -57,9 +58,15 @@ def run(dict_args, command, file):
                 run.queue.put(("log", fileBase + " --- " + out_line.strip()))
             if re.search(r"ERROR", out_line):
                 run.queue.put(("log", fileBase + " --- " + out_line.strip()))
+                error_text = ""
                 is_error = True
+            elif re.search(r"BAD CPU TYPE", out_line, re.IGNORECASE):
+                is_error = True
+                error_text = "ASTER is incompatible with your current CPU type. To proceed, please follow the manual " \
+                             "configuration guide available at https://github.com/chaoszhang/ASTER"
+                break
         if is_error:
-            run.queue.put(("error",))
+            run.queue.put(("error", error_text))
         else:
             pass
         run.queue.put(("prog", "finished"))
@@ -98,7 +105,7 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
             parent=None):
         super(ASTRAL, self).__init__(parent)
         self.parent = parent
-        self.function_name = "ASTRAL"
+        self.function_name = "ASTRAL/CASTER/WASTER"
         self.workflow = workflow
         self.factory = Factory()
         self.thisPath = self.factory.thisPath
@@ -124,34 +131,52 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
         # print(self.ASTRAL_settings.childGroups())
         # self.factory.settingsGroup2Group(self.ASTRAL_settings, "PCGs", "temporary")
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
-        # 恢复用户的设置
-        self.guiRestore()
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 判断程序的版本
         self.version = ""
         version_worker = WorkThread(
-            lambda : self.factory.get_version("ASTRAL", self),
+            lambda : self.factory.get_version("ASTRAL/CASTER/WASTER", self),
             parent=self)
         version_worker.start()
         #
         self.interrupt = False
-        self.lineEdit_5.installEventFilter(self)
+        self.comboBox_20.lineEdit().autoDetectSig.connect(
+            self.popupAutoDec)  # 自动识别可用的输入
+        # self.comboBox_20.refreshInputs([])
+        self.comboBox_18.lineEdit().autoDetectSig.connect(
+            self.popupAutoDec)  # 自动识别可用的输入
+        # self.comboBox_18.refreshInputs([])
+        self.comboBox_19.lineEdit().autoDetectSig.connect(
+            self.popupAutoDec)  # 自动识别可用的输入
+        # self.comboBox_19.refreshInputs([])
+        self.comboBox_20.itemsChanged.connect(self.update_mapping_array)
+        self.comboBox_18.itemsChanged.connect(self.update_mapping_array)
+        self.comboBox_19.itemsChanged.connect(self.update_mapping_array)
+        self.comboBox_20.installEventFilter(self)
+        self.comboBox_18.installEventFilter(self)
+        self.comboBox_19.installEventFilter(self)
         self.lineEdit_2.installEventFilter(self)
         self.lineEdit_3.installEventFilter(self)
-        self.lineEdit_4.installEventFilter(self)
-        self.lineEdit_5.autoDetectSig.connect(self.popupAutoDec)
+        # self.lineEdit_4.installEventFilter(self)
+        # self.lineEdit_5.autoDetectSig.connect(self.popupAutoDec)
+        self.radioButton_2.toggled['bool'].connect(self.treesInputProgram)
+        self.radioButton.toggled['bool'].connect(self.msaInputProgram)
+        self.radioButton_3.toggled['bool'].connect(self.fastaqInputProgram)
+        # 恢复用户的设置
+        self.guiRestore()
         self.log_gui = self.gui4Log()
         ## 信号槽
-        self.lineEdit_5.deleteFile.clicked.connect(
-            self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
+        # self.lineEdit_5.deleteFile.clicked.connect(
+        #     self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
         self.lineEdit_2.deleteFile.clicked.connect(
             self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
         self.lineEdit_3.deleteFile.clicked.connect(
             self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
-        self.lineEdit_4.deleteFile.clicked.connect(
-            self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
+        # self.lineEdit_4.deleteFile.clicked.connect(
+        #     self.clear_lineEdit)  # 删除了内容，也要把tooltip删掉
         self.exception_signal.connect(self.popupException)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         self.progressSig.connect(self.runProgress)
@@ -211,10 +236,30 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
         """
         gene trees
         """
-        fileName = QFileDialog.getOpenFileName(
-            self, "Input gene tree file")
-        if fileName[0]:
-            self.input(fileName[0], self.lineEdit_5)
+        fileNames = QFileDialog.getOpenFileNames(
+            self, "Input gene tree file(s)")
+        if fileNames[0]:
+            self.input(files=fileNames[0], combobox=self.comboBox_20)
+
+    @pyqtSlot()
+    def on_pushButton_8_clicked(self):
+        """
+        alignments
+        """
+        fileNames = QFileDialog.getOpenFileNames(
+            self, "Input alignment file(s)")
+        if fileNames[0]:
+            self.input(files=fileNames[0], combobox=self.comboBox_19)
+
+    @pyqtSlot()
+    def on_pushButton_7_clicked(self):
+        """
+        fasta/fastq
+        """
+        fileNames = QFileDialog.getOpenFileNames(
+            self, "Input fasta/fastq file(s)")
+        if fileNames[0]:
+            self.input(files=fileNames[0], combobox=self.comboBox_18)
 
     @pyqtSlot()
     def on_pushButton_4_clicked(self):
@@ -225,7 +270,7 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
             self, "Input constraint tree file")
         file = fileName[0]
         if file:
-            self.input(file, self.lineEdit_2)
+            self.input(files=file, lineedit=self.lineEdit_2)
             # base = os.path.basename(file)
             # self.lineEdit_2.setText(base)
             # self.lineEdit_2.setToolTip(file)
@@ -239,24 +284,46 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
             self, "Input guide tree file")
         file = fileName[0]
         if file:
-            self.input(file, self.lineEdit_3)
+            self.input(files=file, lineedit=self.lineEdit_3)
             # base = os.path.basename(file)
             # self.lineEdit_3.setText(base)
             # self.lineEdit_3.setToolTip(file)
 
     @pyqtSlot()
-    def on_pushButton_6_clicked(self):
+    def on_toolButton_3_clicked(self):
         """
-        mapping file
+        mapping file for gene trees
         """
-        fileName = QFileDialog.getOpenFileName(
-            self, "Input mapping file")
-        file = fileName[0]
-        if file:
-            self.input(file, self.lineEdit_4)
-            # base = os.path.basename(file)
-            # self.lineEdit_4.setText(base)
-            # self.lineEdit_4.setToolTip(file)
+        tree_files = self.comboBox_20.fetchListsText()
+        if not tree_files:
+            QMessageBox.warning(self, "Warning",
+                "<p style='line-height:25px; height:25px'>Please input gene tree files first!</p>")
+            return
+        self.create_mapping_widgets(self.geneTreeMapArray, mode="gene trees")
+
+    @pyqtSlot()
+    def on_toolButton_2_clicked(self):
+        """
+        mapping file for alignments
+        """
+        msa_files = self.comboBox_19.fetchListsText()
+        if not msa_files:
+            QMessageBox.warning(self, "Warning",
+                "<p style='line-height:25px; height:25px'>Please input alignment files first!</p>")
+            return
+        self.create_mapping_widgets(self.msaMapArray, mode="alignments")
+
+    @pyqtSlot()
+    def on_toolButton_clicked(self):
+        """
+        mapping file for fasta/fastq
+        """
+        files = self.comboBox_18.fetchListsText()
+        if not files:
+            QMessageBox.warning(self, "Warning",
+                "<p style='line-height:25px; height:25px'>Please input fasta/fastq files first!</p>")
+            return
+        self.create_mapping_widgets(self.fastMapArray, mode="fasta/q")
 
     @pyqtSlot()
     def on_pushButton_2_clicked(self, quiet=False):
@@ -290,7 +357,7 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
                 if (not self.workflow) and (not quiet):
                     QMessageBox.information(
                         self,
-                        "ASTRAL",
+                        "ASTRAL/CASTER/WASTER",
                         "<p style='line-height:25px; height:25px'>Program has been terminated!</p>")
                 self.startButtonStatusSig.emit(
                     [
@@ -321,7 +388,7 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
                 self.time_used)
             with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(
-                    self.description + "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                    self.description + f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n"
                                        "If you use ASTRAL, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             ## 判断是否运行成功
             unfinished = False
@@ -407,6 +474,7 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if name == "comboBox_6":
                     cpu_num = multiprocessing.cpu_count()
                     list_cpu = [str(i + 1) for i in range(cpu_num)]
@@ -422,6 +490,8 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
                             item.setBackground(QColor(237, 243, 254))
                         model.appendRow(item)
                     obj.setCurrentIndex(int(index))
+                elif (name in ["comboBox_20", "comboBox_19", "comboBox_18"]) and self.autoInputs:
+                    self.input(files=self.autoInputs, combobox=obj)
                 else:
                     allItems = [obj.itemText(i) for i in range(obj.count())]
                     index = self.ASTRAL_settings.value(name, "0")
@@ -435,6 +505,9 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
                         else:
                             item.setBackground(QColor(237, 243, 254))
                         model.appendRow(item)
+                    if (int(index) + 1) > obj.count():
+                        # 避免comboBox_11出问题
+                        index = 1
                     obj.setCurrentIndex(int(index))
             # elif isinstance(obj, QCheckBox):
             #     value = self.ASTRAL_settings.value(
@@ -442,10 +515,11 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
             #     if value != "no setting":
             #         obj.setChecked(
             #             self.factory.str2bool(value))  # restore checkbox
-            elif isinstance(obj, QLineEdit):
-                if name == "lineEdit_5" and self.autoInputs:
-                    self.input(self.autoInputs, obj)
+            # elif isinstance(obj, QLineEdit):
+            #     if name == "lineEdit_5" and self.autoInputs:
+            #         self.input(self.autoInputs, obj)
             elif isinstance(obj, QDoubleSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 ini_float_ = obj.value()
                 float_ = self.ASTRAL_settings.value(name, ini_float_)
                 obj.setValue(float(float_))
@@ -468,12 +542,20 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
                 self.logGuiSig.emit(out_line.strip())
                 if out_line.startswith("Error"):
                     is_error = True
+                    error_text = ""
+                    break
+                elif re.search(r"BAD CPU TYPE", out_line, re.IGNORECASE):
+                    is_error = True
+                    error_text = "ASTER is incompatible with your current CPU type. To proceed, please follow the manual " \
+                                 "configuration guide available at https://github.com/chaoszhang/ASTER"
+                    break
             else:
                 break
         if is_error:
             self.interrupt = True
             self.ASTRAL_exception.emit(
-                "Error happened! Click <span style='font-weight:600; color:#ff0000;'>Show log</span> to see detail!")
+                "Error happened! Click <span style='font-weight:600; color:#ff0000;'>Show log</span> to see detail!" \
+                if not error_text else error_text)
         self.ASTRAL_popen = None
 
     def clear_lineEdit(self):
@@ -513,13 +595,13 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
         except:
             pass
         if self.workflow:
-            self.ui_closeSig.emit("ASTRAL")
+            self.ui_closeSig.emit("ASTRAL/CASTER/WASTER")
             # 自动跑的时候不杀掉程序
             return
         if self.isRunning():
             reply = QMessageBox.question(
                 self,
-                "ASTRAL",
+                "ASTRAL/CASTER/WASTER",
                 "<p style='line-height:25px; height:25px'>ASTRAL is still running, terminate it?</p>",
                 QMessageBox.Yes,
                 QMessageBox.Cancel)
@@ -556,7 +638,19 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
                     return True
             if event.type() == QEvent.Drop:
                 files = [u.toLocalFile() for u in event.mimeData().urls()]
-                self.input(file=files, lineedit=obj)
+                self.input(files=files, lineedit=obj)
+        elif isinstance(
+                obj,
+                QComboBox):
+            if event.type() == QEvent.DragEnter:
+                if event.mimeData().hasUrls():
+                    # must accept the dragEnterEvent or else the dropEvent
+                    # can't occur !!!
+                    event.accept()
+                    return True
+            if event.type() == QEvent.Drop:
+                files = [u.toLocalFile() for u in event.mimeData().urls()]
+                self.input(files=files, combobox=obj)
         if (event.type() == QEvent.Show) and (obj == self.pushButton.toolButton.menu()):
             if re.search(r"\d+_\d+_\d+\-\d+_\d+_\d+",
                          self.dir_action.text()) or self.dir_action.text() == "Output Dir: ":
@@ -568,6 +662,10 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
+
         # return QMainWindow.eventFilter(self, obj, event) #
         # 其他情况会返回系统默认的事件处理方法。
         return super(ASTRAL, self).eventFilter(obj, event)  # 0
@@ -620,7 +718,7 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
     def save_log_to_file(self):
         content = self.textEdit_log.toPlainText()
         fileName = QFileDialog.getSaveFileName(
-            self, "ASTRAL", "log", "text Format(*.txt)")
+            self, "ASTRAL/CASTER/WASTER", "log", "text Format(*.txt)")
         if fileName[0]:
             with open(fileName[0], "w", encoding="utf-8") as f:
                 f.write(content)
@@ -634,15 +732,55 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
             button.setChecked(False)
             self.textEdit_log.setLineWrapMode(QTextEdit.NoWrap)
 
-    def input(self, file=None, lineedit=None):
-        if type(file) == list:
-            file = file[0]
-        if file:
-            base = os.path.basename(file)
-            lineedit.setText(base)
-            lineedit.setToolTip(file)
-        else:
-            lineedit.setText("")
+    def update_mapping_array(self):
+        sender = self.sender()
+        files = sender.fetchListsText()
+        l_ = []
+        if sender == self.comboBox_20:
+            for file in files:
+                ete_tre = self.factory.read_tree(file)
+                l_.extend(ete_tre.get_leaf_names())
+            self.geneTreeMapArray = [[i, i] for i in list(set(l_))]
+        elif sender == self.comboBox_19:
+            for file in files:
+                parseFmt = Parsefmt()
+                parseFmt.readfile(file)
+                dict_taxon = parseFmt.dict_taxon
+                l_.extend(list(dict_taxon.keys()))
+            self.msaMapArray = [[i, i] for i in list(set(l_))]
+        elif sender == self.comboBox_18:
+            self.fastMapArray = []
+            for file in files:
+                base = os.path.splitext(os.path.basename(file))[0]
+                self.fastMapArray.append([base, file])
+
+    def input(self, files=None, combobox=None, lineedit=None):
+        if combobox is not None:
+            if type(files[0]) == list:
+                # 自动识别的iqtree等上游建树结果
+                trees, msas = files
+                if trees:
+                    self.comboBox_20.refreshInputs(trees)
+                    # self.geneTreeMapArray = self.get_mapping_array(trees)
+                else:
+                    self.comboBox_20.refreshInputs([])
+                if msas:
+                    self.comboBox_19.refreshInputs(msas)
+                    # self.msaMapArray = self.get_mapping_array(msas, mode="msa")
+                else:
+                    self.comboBox_19.refreshInputs([])
+            else:
+                if files:
+                    combobox.refreshInputs(files)
+                else:
+                    combobox.refreshInputs([])
+        if lineedit is not None:
+            if files:
+                base = os.path.basename(files)
+                lineedit.setText(base)
+                lineedit.setToolTip(files)
+            else:
+                lineedit.setText("")
 
     def showCMD(self):
         """
@@ -711,7 +849,7 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
             self.error_has_shown = False
             self.output_dir_name = self.factory.fetch_output_dir_name(self.dir_action)
             self.exportPath = self.factory.creat_dirs(self.workPath + \
-                                                      os.sep + "ASTRAL_results" + os.sep + self.output_dir_name)
+                                                      os.sep + "ASTER_results" + os.sep + self.output_dir_name)
             self.dict_args = {}
             self.dict_args["workPath"] = self.workPath
             self.dict_args["exportPath"] = self.exportPath
@@ -729,30 +867,66 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
                     program = f"\"{os.path.dirname(self.ASTRALPath)}/astral-pro\""
                 else:
                     program = f"\"{os.path.dirname(self.ASTRALPath)}/astral-pro.exe\""
-            elif self.comboBox_9.currentText() == "Length weighted ASTRAL (takes branch length in trees into consideration)":
-                if platform.system().lower() != "windows":
-                    program = f"\"{os.path.dirname(self.ASTRALPath)}/astral-lengthweighted\""
-                else:
-                    program = f"\"{os.path.dirname(self.ASTRALPath)}/astral-lengthweighted.exe\""
-            elif self.comboBox_9.currentText() == "Support weighted ASTRAL (takes support value in trees into consideration)":
-                if platform.system().lower() != "windows":
-                    program = f"\"{os.path.dirname(self.ASTRALPath)}/astral-weighted\""
-                else:
-                    program = f"\"{os.path.dirname(self.ASTRALPath)}/astral-weighted.exe\""
-            elif self.comboBox_9.currentText() == "Hybrid weighted ASTRAL (takes branch length and support value in trees into consideration)":
+            elif self.comboBox_9.currentText() == "Weighted ASTRAL (branch length | support value | both | unweighted)":
                 if platform.system().lower() != "windows":
                     program = f"\"{os.path.dirname(self.ASTRALPath)}/astral-hybrid\""
                 else:
                     program = f"\"{os.path.dirname(self.ASTRALPath)}/astral-hybrid.exe\""
+            elif self.comboBox_9.currentText() == "Caster-site (Coalescence-aware Alignment-based Species Tree EstimatoR - Site)":
+                if platform.system().lower() != "windows":
+                    program = f"\"{os.path.dirname(self.ASTRALPath)}/caster-site\""
+                else:
+                    program = f"\"{os.path.dirname(self.ASTRALPath)}/caster-site.exe\""
+            elif self.comboBox_9.currentText() == "Caster-pair (Coalescence-aware Alignment-based Species Tree EstimatoR - Pair)":
+                if platform.system().lower() != "windows":
+                    program = f"\"{os.path.dirname(self.ASTRALPath)}/caster-pair\""
+                else:
+                    program = f"\"{os.path.dirname(self.ASTRALPath)}/caster-pair.exe\""
+            elif self.comboBox_9.currentText() == "Waster (Without-Alignment/Assembly Species Tree EstimatoR)":
+                if platform.system().lower() != "windows":
+                    program = f"\"{os.path.dirname(self.ASTRALPath)}/waster\""
+                else:
+                    program = f"\"{os.path.dirname(self.ASTRALPath)}/waster.exe\""
+            elif self.comboBox_9.currentText() == "Waster with branch (Without-Alignment/Assembly Species Tree EstimatoR) SLOW":
+                if platform.system().lower() != "windows":
+                    program = f"\"{os.path.dirname(self.ASTRALPath)}/waster_branchlength\""
+                else:
+                    program = f"\"{os.path.dirname(self.ASTRALPath)}/waster_branchlength.exe\""
             list_command.append(program)
-            shutil.copy(self.lineEdit_5.toolTip(), self.exportPath)
-            list_command.append(f"-i \"{self.lineEdit_5.text()}\"")
+            # shutil.copy(self.lineEdit_5.toolTip(), self.exportPath)
+            # list_command.append(f"-i \"{self.lineEdit_5.text()}\"")
+            if self.radioButton_2.isChecked():
+                tree_files = self.comboBox_20.fetchListsText()
+                l_ = []
+                for tree_file in tree_files:
+                    with open(tree_file, encoding="utf-8", errors='ignore') as f_in:
+                        l_.append(f_in.read().strip())
+                tree_file = f"{self.exportPath}{os.sep}input.trees"
+                with open(tree_file, "w", encoding="utf-8", errors='ignore') as f_out:
+                    f_out.write("\n".join(l_) + "\n")
+                list_command.append(f"-i input.trees")
+                with open(f"{self.exportPath}{os.sep}gene_spe_map.txt", 'w', errors='ignore') as f:
+                    f.write("\n".join(["\t".join(row) for row in self.geneTreeMapArray]))
+                list_command.append(f"-a gene_spe_map.txt")
+            elif self.radioButton_3.isChecked():
+                with open(f"{self.exportPath}{os.sep}list_fastaq_files.txt", 'w', errors='ignore') as f:
+                    f.write("\n".join(["\t".join(row) for row in self.fastMapArray]))
+                list_command.append(f"-i list_fastaq_files.txt")
+            elif self.radioButton.isChecked():
+                files = self.comboBox_19.fetchListsText()
+                with open(f"{self.exportPath}{os.sep}list_msa_files.txt", 'w', errors='ignore') as f:
+                    f.write("\n".join(files))
+                list_command.append(f"-i list_msa_files.txt")
+                list_command.append(f"-f list")
+                with open(f"{self.exportPath}{os.sep}gene_spe_map.txt", 'w', errors='ignore') as f:
+                    f.write("\n".join(["\t".join(row) for row in self.msaMapArray]))
+                list_command.append(f"-a gene_spe_map.txt")
             if self.lineEdit_2.text():
                 shutil.copy(self.lineEdit_2.toolTip(), self.exportPath)
                 list_command.append(f"-c \"{self.lineEdit_2.text()}\"")
-            if self.lineEdit_4.text():
-                shutil.copy(self.lineEdit_4.toolTip(), self.exportPath)
-                list_command.append(f"-a \"{self.lineEdit_4.text()}\"")
+            # if self.lineEdit_4.text():
+            #     shutil.copy(self.lineEdit_4.toolTip(), self.exportPath)
+            #     list_command.append(f"-a \"{self.lineEdit_4.text()}\"")
             if self.lineEdit_3.text():
                 shutil.copy(self.lineEdit_3.toolTip(), self.exportPath)
                 list_command.append(f"-g \"{self.lineEdit_3.text()}\"")
@@ -764,16 +938,40 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
             elif search_ == "Minimum (r=1, s=0)":
                 list_command.append("-r 1 -s 0")
             support_ = self.comboBox_11.currentText()
-            if support_ == "LocalPP support":
+            if support_ == "length and support only":
                 list_command.append("-u 1")
-            elif support_ == "None":
+            elif support_ == "no branch or support":
                 list_command.append("-u 0")
-            elif support_ == "Verbose":
+            elif support_ == "detailed":
                 list_command.append("-u 2")
+            elif support_ == "freqQuad.csv":
+                list_command.append("-u 3")
+            # length unit
+            if self.comboBox_14.isEnabled():
+                list_command.append(f"--length {self.comboBox_14.currentText().split(':')[0].strip()}")
+            # Ambiguity
+            if self.comboBox_15.isEnabled():
+                list_command.append(f"--ambiguity {self.comboBox_15.currentText().split(':')[0].strip()}")
+            # chunk
+            if self.spinBox.isEnabled():
+                list_command.append(f"--chunk {self.spinBox.value()}")
+            # Objective
+            if self.comboBox_16.isEnabled():
+                list_command.append(f"--objective {self.comboBox_16.currentText().split(':')[0].strip()}")
+            # Pairdist
+            if self.spinBox_2.isEnabled():
+                list_command.append(f"--pairdist {self.spinBox_2.value()}")
+            # waster mode
+            if self.comboBox_17.isEnabled():
+                list_command.append(f"--mode {self.comboBox_17.currentText().split(':')[0].strip()}")
+            if self.spinBox_3.isEnabled():
+                list_command.append(f"--qcs {self.spinBox_3.value()}")
+            if self.spinBox_4.isEnabled():
+                list_command.append(f"--qcn {self.spinBox_4.value()}")
             list_command.append(f"-t {self.comboBox_6.currentText()}")
-            list_command.append(f"-p {self.doubleSpinBox.value()}")
+            list_command.append(f"--proportion {self.doubleSpinBox.value()}")
             # support 相关
-            if self.comboBox_12.isVisible():
+            if self.comboBox_12.isEnabled():
                 if self.comboBox_12.currentText() == "Bootstrap support value":
                     list_command.append("-S")
                 elif self.comboBox_12.currentText() == "Likelihood (alrt) support value":
@@ -798,15 +996,15 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
                 cmd_used = f"We obtained the species tree from gene trees using wASTRAL-unweighted v{self.version} " \
                            f"[1] by optimizing the objective function of ASTRAL [2]."
             elif program == "ASTRAL-PRO (for both paralogs and othorlogs)":
-                self.reference = "[1] Chao Zhang, Siavash Mirarab, ASTRAL-Pro 2: ultrafast species tree reconstruction " \
-                                 "from multi-copy gene family trees, Bioinformatics, 2022, btac620, " \
-                                 "https://doi.org/10.1093/bioinformatics/btac620\n" \
+                self.reference = "[1] Chao Zhang, Rasmus Nielsen, Siavash Mirarab, ASTER: A Package for Large-scale " \
+                                 "Phylogenomic Reconstructions, Molecular Biology and Evolution, 2025, msaf172, " \
+                                 "https://doi.org/10.1093/molbev/msaf172\n" \
                                  "[2] Chao Zhang, Celine Scornavacca, Erin K Molloy, Siavash Mirarab, ASTRAL-Pro: " \
                                  "Quartet-Based Species-Tree Inference despite Paralogy, " \
                                  "Molecular Biology and Evolution, Volume 37, Issue 11, November 2020, Pages 3292–3307, " \
                                  "https://doi.org/10.1093/molbev/msaa139"
                 cmd_used = f"We obtained the species tree from muti-copy gene family trees using " \
-                           f"ASTRAL-Pro2 v{self.version} [1] by optimizing the objective function of " \
+                           f"ASTRAL-Pro3 v{self.version} [1] by optimizing the objective function of " \
                            f"ASTRAL-Pro [2]."
             else:
                 self.reference = "[1] Chao Zhang, Siavash Mirarab, Weighting by Gene Tree Uncertainty Improves Accuracy " \
@@ -824,7 +1022,7 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
         else:
             QMessageBox.critical(
                 self,
-                "ASTRAL",
+                "ASTRAL/CASTER/WASTER",
                 "<p style='line-height:25px; height:25px'>Please input file first!</p>")
 
     def updateProcess(self):
@@ -841,9 +1039,11 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
         elif info[0] == "popen":
             self.list_pids.append(info[1])
         elif info[0] == "error":
+            error_text = info[1]
             self.on_pushButton_2_clicked(quiet=True) #杀掉进程
             self.ASTRAL_exception.emit(
-                "Error happened! Click <span style='font-weight:600; color:#ff0000;'>Show log</span> to see detail!")
+                "Error happened! Click <span style='font-weight:600; color:#ff0000;'>Show log</span> to see detail!" \
+                if not error_text else error_text)
             self.error_has_shown = True
         elif info[0] == "popen finished":
             if info[1] in self.list_pids:
@@ -853,14 +1053,14 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
         if not self.error_has_shown:
             QMessageBox.critical(
                 self,
-                "ASTRAL",
+                "ASTRAL/CASTER/WASTER",
                 "<p style='line-height:25px; height:25px'>%s</p>" % text)
             if "Show log" in text:
                 self.on_pushButton_9_clicked()
 
     def popupAutoDec(self, init=False):
         self.init = init
-        self.factory.popUpAutoDetect("ASTRAL", self.workPath, self.auto_popSig, self)
+        self.factory.popUpAutoDetect("ASTRAL/CASTER/WASTER", self.workPath, self.auto_popSig, self)
 
     def popupAutoDecSub(self, popupUI):
         if not popupUI:
@@ -875,7 +1075,7 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
             widget = popupUI.listWidget_framless.itemWidget(
                 popupUI.listWidget_framless.selectedItems()[0])
             autoInputs = widget.autoInputs
-            self.input(autoInputs, self.lineEdit_5)
+            self.input(files=autoInputs, combobox=self.comboBox_20)
 
     def fetchWorkflowSetting(self):
         '''* Alignment Mode
@@ -919,27 +1119,102 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
         return settings
 
     def isFileIn(self):
-        return self.lineEdit_5.text()
+        if self.radioButton_3.isChecked():
+            return self.comboBox_18.count()
+        elif self.radioButton_2.isChecked():
+            return self.comboBox_20.count()
+        elif self.radioButton.isChecked():
+            return self.comboBox_19.count()
 
     def popup_unfinished_exception(self):
         QMessageBox.critical(
             self,
-            "ASTRAL",
+            "ASTRAL/CASTER/WASTER",
             "<p style='line-height:25px; height:25px'>ASTRAL run failed, "
             "click <span style=\"color:red\">Show log</span> to see details!</p>",
             QMessageBox.Ok)
         self.on_pushButton_9_clicked()
 
     def switch_widgets(self, text):
-        if text in ["Support weighted ASTRAL (takes support value in trees into consideration)",
-                    "Hybrid weighted ASTRAL (takes branch length and support value in trees into consideration)"]:
+        if text in ["Weighted ASTRAL (branch length | support value | both | unweighted)"]:
             for i in [self.label_25, self.comboBox_12, self.label_7, self.doubleSpinBox_2,
-                      self.label_11, self.doubleSpinBox_3, self.label_12, self.doubleSpinBox_4]:
-                i.setVisible(True)
+                      self.label_11, self.doubleSpinBox_3, self.label_12, self.doubleSpinBox_4,
+                      self.comboBox_13, self.label_26]:
+                i.setEnabled(True)
         else:
             for i in [self.label_25, self.comboBox_12, self.label_7, self.doubleSpinBox_2,
-                      self.label_11, self.doubleSpinBox_3, self.label_12, self.doubleSpinBox_4]:
-                i.setVisible(False)
+                      self.label_11, self.doubleSpinBox_3, self.label_12, self.doubleSpinBox_4,
+                      self.comboBox_13, self.label_26]:
+                i.setEnabled(False)
+        # -u
+        if text in ["Caster-site (Coalescence-aware Alignment-based Species Tree EstimatoR - Site)",
+                    "Caster-pair (Coalescence-aware Alignment-based Species Tree EstimatoR - Pair)",
+                    "Waster (Without-Alignment/Assembly Species Tree EstimatoR)"]:
+            self.comboBox_11.setCurrentIndex(1)
+            self.comboBox_11.removeItem(3)
+        else:
+            if self.comboBox_11.count() < 4:
+                self.comboBox_11.addItem("freqQuad.csv")
+        # length unit
+        if text in ["Caster-pair (Coalescence-aware Alignment-based Species Tree EstimatoR - Pair)",
+                    "Weighted ASTRAL (branch length | support value | both | unweighted)"]:
+            self.comboBox_14.setEnabled(False)
+            self.label_27.setEnabled(False)
+        else:
+            self.comboBox_14.setEnabled(True)
+            self.label_27.setEnabled(True)
+        # Ambiguity:
+        if text in ["Caster-site (Coalescence-aware Alignment-based Species Tree EstimatoR - Site)"]:
+            self.comboBox_15.setEnabled(True)
+            self.label_28.setEnabled(True)
+        else:
+            self.comboBox_15.setEnabled(False)
+            self.label_28.setEnabled(False)
+        # chunk
+        if text in ["Caster-site (Coalescence-aware Alignment-based Species Tree EstimatoR - Site)",
+                    "Caster-pair (Coalescence-aware Alignment-based Species Tree EstimatoR - Pair)"]:
+            self.spinBox.setEnabled(True)
+            self.label_29.setEnabled(True)
+            self.radioButton.setChecked(True)
+            self.lineEdit.setText("Caster.nwk")
+        else:
+            self.spinBox.setEnabled(False)
+            self.label_29.setEnabled(False)
+        # Objective,Pairdist
+        if text in ["Caster-pair (Coalescence-aware Alignment-based Species Tree EstimatoR - Pair)"]:
+            self.comboBox_16.setEnabled(True)
+            self.spinBox_2.setEnabled(True)
+            self.label_31.setEnabled(True)
+            self.label_30.setEnabled(True)
+        else:
+            self.comboBox_16.setEnabled(False)
+            self.spinBox_2.setEnabled(False)
+            self.label_31.setEnabled(False)
+            self.label_30.setEnabled(False)
+        # waster mode
+        if text in ["Waster (Without-Alignment/Assembly Species Tree EstimatoR)",
+                    "Waster with branch (Without-Alignment/Assembly Species Tree EstimatoR) SLOW"]:
+            self.comboBox_17.setEnabled(True)
+            self.spinBox_3.setEnabled(True)
+            self.spinBox_4.setEnabled(True)
+            self.label_34.setEnabled(True)
+            self.label_32.setEnabled(True)
+            self.label_33.setEnabled(True)
+            self.radioButton_3.setChecked(True)
+            self.lineEdit.setText("WASTER.nwk")
+        else:
+            self.comboBox_17.setEnabled(False)
+            self.spinBox_3.setEnabled(False)
+            self.spinBox_4.setEnabled(False)
+            self.label_34.setEnabled(False)
+            self.label_32.setEnabled(False)
+            self.label_33.setEnabled(False)
+        # ASTRAL mode
+        if text in ["ASTRAL",
+                    "ASTRAL-PRO (for both paralogs and othorlogs)",
+                    "Weighted ASTRAL (branch length | support value | both | unweighted)"]:
+            self.radioButton_2.setChecked(True)
+            self.lineEdit.setText("ASTRAL.nwk")
 
     def switch_support(self, text):
         if text == "Bootstrap support value":
@@ -954,6 +1229,123 @@ class ASTRAL(QDialog, Ui_ASTRAL, object):
             self.doubleSpinBox_4.setValue(0.333)
             self.doubleSpinBox_2.setValue(0.333)
             self.doubleSpinBox_3.setValue(1)
+
+    def create_mapping_widgets(self, init_array, mode="species-file"):
+        self.MapDialog = QDialog(self)
+        self.MapDialog.resize(1000, 1000)
+        self.MapDialog.setWindowTitle("Mapping table")
+        self.MapDialog.setObjectName("MappingDialog")
+        verticalLayout = QVBoxLayout(self.MapDialog)
+        verticalLayout.setObjectName("verticalLayout")
+        horizontalLayout_2 = QHBoxLayout()
+        horizontalLayout_2.setObjectName("horizontalLayout_2")
+        label = QLabel("Mapping file:", self.MapDialog)
+        label.setObjectName("label")
+        horizontalLayout_2.addWidget(label)
+        lineEdit_3 = QLineEdit(self.MapDialog)
+        lineEdit_3.setEnabled(True)
+        lineEdit_3.setCursor(QCursor(Qt.ArrowCursor))
+        lineEdit_3.setReadOnly(True)
+        lineEdit_3.setObjectName("lineEdit_3")
+        lineEdit_3.setPlaceholderText("Optional! The table will be updated based on the file input")
+        horizontalLayout_2.addWidget(lineEdit_3)
+        pushButton_22 = QPushButton(self.MapDialog)
+        pushButton_22.setEnabled(True)
+        icon = QIcon()
+        icon.addPixmap(QPixmap(":/picture/resourses/Open_folder_add_512px_1186192_easyicon.net.png"),
+            QIcon.Normal, QIcon.Off)
+        pushButton_22.setIcon(icon)
+        sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(pushButton_22.sizePolicy().hasHeightForWidth())
+        pushButton_22.setSizePolicy(sizePolicy)
+        pushButton_22.setMinimumSize(QSize(30, 26))
+        pushButton_22.setMaximumSize(QSize(30, 26))
+        # pushButton_22.setStyleSheet("")
+        pushButton_22.setText("")
+        pushButton_22.setObjectName("pushButton_22")
+        horizontalLayout_2.addWidget(pushButton_22)
+        verticalLayout.addLayout(horizontalLayout_2)
+        pushButton = QPushButton("Export mapping table", self.MapDialog)
+        pushButton.setObjectName("pushButton")
+        icon = QIcon()
+        icon.addPixmap(QPixmap(":/picture/resourses/report_disk_32px_507034_easyicon.net.png"),
+            QIcon.Normal, QIcon.Off)
+        pushButton.setIcon(icon)
+        # table view
+        tableView = QTableView(self.MapDialog)
+        if mode in ["alignments", "gene trees"]:
+            col_names = ["Individual/Gene name", "Species name"]
+            col_fixed = [0]
+        elif mode=="fasta/q":
+            col_names = ["Species name", "File"]
+            col_fixed = [1]
+        verticalLayout.addWidget(tableView)
+        pushButton_22.clicked.connect(lambda: self.input_mapping_file(lineEdit_3, tableView))
+        pushButton.clicked.connect(lambda: self.export_mapping_file(tableView))
+        model_ = MyMappingTableModel(init_array, col_names, column_fixed=col_fixed, parent=tableView)
+        tableView.setModel(model_)
+        horizontalLayout = QHBoxLayout()
+        horizontalLayout.setObjectName("horizontalLayout")
+        label_2 = QLabel("<html><head/><body><p>Double click to edit the cell. <span style=\" color:#aa0000;\">"
+                         "Close the window to apply the changes.</span></p></body></html>", self.MapDialog)
+        horizontalLayout.addWidget(label_2)
+        spacerItem = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        horizontalLayout.addItem(spacerItem)
+        horizontalLayout.addWidget(pushButton)
+        verticalLayout.addLayout(horizontalLayout)
+        self.MapDialog.finished.connect(lambda : self.saveMapArray(tableView.model().arraydata, mode))
+        self.MapDialog.setWindowFlags(self.MapDialog.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        self.MapDialog.exec_()
+
+    def saveMapArray(self, array, mode):
+        if mode == "alignments":
+            self.msaMapArray = array
+        elif mode == "gene trees":
+            self.geneTreeMapArray = array
+        elif mode=="fasta/q":
+            self.fastMapArray = array
+
+    def input_mapping_file(self, lineEdit, tableView):
+        fileName, filetype = QFileDialog.getOpenFileName(self,
+            "Open Mapping Table",
+            filter="All Files (*);;Text Files (*.txt);;CSV Files (*.csv)")
+        if fileName:
+            base = os.path.basename(fileName)
+            lineEdit.setText(base)
+            lineEdit.setToolTip(fileName)
+            # 处理tableview
+            with open(fileName) as f:
+                lines = [line.strip().split() for line in f if line.strip()]
+            # 更新table
+            tableView.model().arraydata = lines
+
+    def export_mapping_file(self, tableView):
+        fileName, filetype = QFileDialog.getSaveFileName(self,
+            "Export Mapping Table",
+            "mapping_table.txt",
+            "Text Files (*.txt);;CSV Files (*.csv);;All Files (*)")
+        if fileName:
+            with open(fileName, 'w') as f:
+                f.write("\n".join(["\t".join(row) for row in tableView.model().arraydata]))
+            QMessageBox.information(self, "Export Successful", "Mapping table exported successfully!")
+
+    def msaInputProgram(self, isChecked):
+        if isChecked and (self.comboBox_9.currentText() not in ["Caster-site (Coalescence-aware Alignment-based Species Tree EstimatoR - Site)",
+                                                 "Caster-pair (Coalescence-aware Alignment-based Species Tree EstimatoR - Pair)"]):
+            self.comboBox_9.setCurrentText("Caster-site (Coalescence-aware Alignment-based Species Tree EstimatoR - Site)")
+
+    def treesInputProgram(self, isChecked):
+        if isChecked and (self.comboBox_9.currentText() not in ["ASTRAL", "ASTRAL-PRO (for both paralogs and othorlogs)",
+                                                                "Weighted ASTRAL (branch length | support value | both | unweighted)"]):
+            self.comboBox_9.setCurrentText("ASTRAL")
+
+    def fastaqInputProgram(self, isChecked):
+        if isChecked and (self.comboBox_9.currentText() not in ["Waster (Without-Alignment/Assembly Species Tree EstimatoR)",
+                                                                "Waster with branch (Without-Alignment/Assembly Species Tree EstimatoR) SLOW"]):
+            self.comboBox_9.setCurrentText("Waster (Without-Alignment/Assembly Species Tree EstimatoR)")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

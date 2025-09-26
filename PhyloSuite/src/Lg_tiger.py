@@ -47,9 +47,10 @@ class Tiger(QDialog, Ui_Tiger, object):
         # File only, no fallback to registry or or.
         self.tiger_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
         self.exception_signal.connect(self.popupException)
@@ -160,7 +161,7 @@ class Tiger(QDialog, Ui_Tiger, object):
             self.dict_args["mask"] = self.checkBox.isChecked()
             self.dict_args["rate_list_yes"] = self.checkBox_2.isChecked()
             self.dict_args["thread"] = int(self.comboBox_6.currentText())
-            self.queue = multiprocessing.Queue()
+            self.queue = multiprocessing.Queue() if platform.system().lower() == "windows" else multiprocessing.Manager().Queue()
             self.pool = multiprocessing.get_context("spawn").Pool(processes=self.dict_args["thread"],
                                              initializer=pool_init, initargs=(self.queue,)) #\
                 # if platform.system().lower() == "windows" else multiprocessing.Pool(processes=self.dict_args["thread"],
@@ -207,6 +208,7 @@ class Tiger(QDialog, Ui_Tiger, object):
             self.pool.close()  # 关闭进程池，防止进一步操作。如果所有操作持续挂起，它们将在工作进程终止前完成
             map(ApplyResult.wait, async_results_index)
             [r.get() for r in async_results_index]
+            self.pool.join()  # 等待所有进程结束
             if not self.interrupt:
                 self.pool = None
                 self.interrupt = False

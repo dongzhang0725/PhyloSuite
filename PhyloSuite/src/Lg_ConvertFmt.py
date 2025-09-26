@@ -46,9 +46,10 @@ class ConvertFMT(QDialog, Ui_ConverFMT, object):
         # File only, no fallback to registry or or.
         self.convertFmt_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
         self.exception_signal.connect(self.popupException)
@@ -154,7 +155,7 @@ class ConvertFMT(QDialog, Ui_ConverFMT, object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
             with open(self.dict_args["export_path"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
+                f.write(f"If you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n" + self.time_used_des)
         except BaseException:
             self.exceptionInfo = ''.join(
                 traceback.format_exception(
@@ -188,6 +189,7 @@ class ConvertFMT(QDialog, Ui_ConverFMT, object):
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if self.autoFiles:
                     self.input(self.autoFiles)
                 else:
@@ -253,6 +255,8 @@ class ConvertFMT(QDialog, Ui_ConverFMT, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
         return super(ConvertFMT, self).eventFilter(obj, event)  # 0
 
     def popupUnaligns(self, message):

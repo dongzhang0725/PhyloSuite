@@ -76,9 +76,10 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         # File only, no fallback to registry or or.
         self.modelfinder_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.textEdit.dblclicked.connect(self.popupPartitionEditor)
         self.partitioneditor = PartitionEditor(mode="MF", parent=self)
@@ -118,6 +119,9 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         self.checkBox.toggled.connect(self.judgeMergeOn)
         # 初始化codon table的选择
         self.controlCodonTable(self.comboBox_3.currentText())
+        self.checkBox_4.toggled.connect(self.judge_iqtree)
+        self.checkBox_2.toggled.connect(self.controlMixtureFinder)
+        self.groupBox_2.toggled.connect(self.judge_iqtree)
         # self.checkBox.stateChanged.connect(self.switchPart)
         # self.switchPart(self.checkBox.isChecked())
         # 给开始按钮添加菜单
@@ -349,7 +353,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                                             silence=True)
             if softWare in ["BEAST1 (NUC)", "BEAST2 (NUC)", "BEAST (AA)"]:
                 str1 = self.description + " " + self.parseResults() +\
-                    "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n" \
+                    f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n" \
                     "If you use ModelFinder, please cite:\n" + self.reference + \
                     "\n\nhttps://justinbagley.rbind.io/2016/10/11/setting-dna-substitution-models-beast/\nDetails for setting substitution models in %s\n" % softWare
                 array = [[i] for i in str1.split(
@@ -359,7 +363,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             else:
                 with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                     f.write(self.description + " " + self.parseResults() +
-                            "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                            f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n"
                             "If you use ModelFinder, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -432,17 +436,21 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             if isinstance(obj, QGroupBox):
                 state = obj.isChecked()
                 self.modelfinder_settings.setValue(name, state)
+            if isinstance(obj, QSpinBox):
+                value = obj.value()
+                self.modelfinder_settings.setValue(name, value)
 
     def guiRestore(self):
 
         # Restore geometry
-        size = self.factory.judgeWindowSize(self.modelfinder_settings, 840, 505)
+        size = self.factory.judgeWindowSize(self.modelfinder_settings, 1350, 650)
         self.resize(size)
         self.factory.centerWindow(self)
         # self.move(self.modelfinder_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if name == "comboBox_6":
                     cpu_num = multiprocessing.cpu_count()
                     list_cpu = ["AUTO"] + [str(i + 1) for i in range(cpu_num)]
@@ -500,6 +508,12 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     name, "false")  # get stored value from registry
                 obj.setChecked(
                     self.factory.str2bool(value))  # restore checkbox
+            if isinstance(obj, QSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
+                ini_float_ = obj.value()
+                float_ = self.modelfinder_settings.value(name, ini_float_)
+                obj.setValue(int(float_))
+
 
     def runProgress(self, num):
         if num == 99999:
@@ -649,6 +663,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
         # return QMainWindow.eventFilter(self, obj, event) #
         # 其他情况会返回系统默认的事件处理方法。
         return super(ModelFinder, self).eventFilter(obj, event)  # 0
@@ -736,14 +752,20 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             self.comboBox_5.setCurrentText("IQ-TREE")
 
     def run_MF(self):
-        rgx_test_model = re.compile(r"^ModelFinder will test (\d+) \w+ models")
+        rgx_test_model = re.compile(r"^ModelFinder will test.+[^\d](\d+)[^\d].+models")
         rgx_part_model = re.compile(r"^Loading (\d+) partitions\.\.\.")
+        rgx_merge_model = re.compile(r"(?m)^Merging models to increase model fit \(about (\d+) total partition schemes\)\.\.\.")
+        rgx_merge_num = re.compile(r"(?m)^ *(\d+) +[^ ]+ +\d+\.\d+ +[^ ]+")
         rgx_finished = re.compile(r"^Date and Time:")
         self.totleModels = None
         self.totlePartitions_2 = None
+        self.part_scheme_num = None
+        self.rgx_model_num = 0
         list_partition_names = []  # 存放partition的名字
         num = 0  # partition出现的次数，当num等于2倍partition的个数的时候，就完成
         is_error = False  ##判断是否出了error
+        self.progressSig.emit(5)
+        self.workflow_progress.emit(5)
         while True:
             QApplication.processEvents()
             if self.isRunning():
@@ -754,6 +776,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                 if out_line == "" and self.MF_popen.poll() is not None:
                     break
                 list_outline = out_line.strip().split()
+                if rgx_merge_num.search(out_line):
+                    self.rgx_model_num = int(rgx_merge_num.search(out_line).group(1))
                 if rgx_test_model.search(out_line):
                     self.totleModels = int(
                         rgx_test_model.search(out_line).group(1))
@@ -764,6 +788,8 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                         int(rgx_part_model.search(out_line).group(1))
                     self.progressSig.emit(5)
                     self.workflow_progress.emit(5)
+                elif rgx_merge_model.search(out_line):
+                    self.part_scheme_num = int(rgx_merge_model.search(out_line).group(1)) + self.rgx_model_num
                 elif self.totleModels and (len(list_outline) == 7) and list_outline[0].isdigit() and list_outline[3].isdigit():
                     # 普通模式
                     model_num = int(list_outline[0])
@@ -782,10 +808,16 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                         if i in out_line:
                             num += 1
                             self.progressSig.emit(
-                                5 + num * 90 / self.totlePartitions_2)
+                                5 + num * 25 / self.totlePartitions_2)
                             self.workflow_progress.emit(
-                                5 + num * 90 / self.totlePartitions_2)
+                                5 + num * 25 / self.totlePartitions_2)
                     # print(num, self.totlePartitions_2)
+                elif self.part_scheme_num and rgx_merge_num.search(out_line):
+                    merge_num = int(rgx_merge_num.search(out_line).group(1))
+                    self.progressSig.emit(
+                        30 + merge_num * 65 / self.part_scheme_num)
+                    self.workflow_progress.emit(
+                        30 + merge_num * 65 / self.part_scheme_num)
                 elif rgx_finished.search(out_line):
                     self.progressSig.emit(100)
                     self.workflow_progress.emit(100)
@@ -851,10 +883,15 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
         lineEdit.setToolTip("")
 
     def ctrl_ratehet(self, text):
+        self.judge_iqtree()
         if text == "IQ-TREE":
             self.checkBox_2.setEnabled(True)
+            self.spinBox_2.setEnabled(True)
+            self.spinBox_3.setEnabled(True)
         else:
             self.checkBox_2.setEnabled(False)
+            self.spinBox_2.setEnabled(False)
+            self.spinBox_3.setEnabled(False)
         if self.comboBox_3.currentText() == "Codon" and text != "IQ-TREE":
             QMessageBox.information(
                 self,
@@ -1087,23 +1124,31 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             pre = " -pre \"%s\""%self.factory.refineName(inputFile + "." + self.comboBox_5.currentText().lower().replace("-", "_"))
             # use_model_for = " -m MF" if self.comboBox_5.currentText() == "IQ-TREE" else " -m TESTONLY -mset %s"%self.comboBox_5.currentText().lower()
             if self.comboBox_5.currentText() == "IQ-TREE":
+                mix_model = "MIX+" if self.checkBox_4.isChecked() else ""
                 if self.checkBox_2.isChecked():
-                    if self.groupBox_2.isChecked() and self.textEdit.toPlainText() and self.checkBox_3.isChecked():  # partition
-                        #确保勾选了partition以及输入了文件
-                        use_model_for = " -m TESTNEWMERGEONLY"
-                    else:
-                        use_model_for = " -m TESTNEWONLY"
+                    # if self.groupBox_2.isChecked() and self.textEdit.toPlainText() and self.checkBox_3.isChecked():  # partition
+                    #     #确保勾选了partition以及输入了文件
+                    #     use_model_for = f"{mix_model}MF+MERGE"
+                    # else:
+                    use_model_for = f"{mix_model}MF"
                 else:
-                    if self.groupBox_2.isChecked() and self.textEdit.toPlainText() and self.checkBox_3.isChecked():  # partition
-                        use_model_for = " -m TESTMERGEONLY"
-                    else:
-                        use_model_for = " -m TESTONLY"
+                    # if self.groupBox_2.isChecked() and self.textEdit.toPlainText() and self.checkBox_3.isChecked():  # partition
+                    #     use_model_for = f"{mix_model}TESTMERGEONLY"
+                    # else:
+                    use_model_for = f"{mix_model}TESTONLY"
+                if self.groupBox_2.isChecked() and self.textEdit.toPlainText() and self.checkBox_3.isChecked():
+                    use_model_for = f"{use_model_for} --merge"
+                use_model_for = f" -m {use_model_for}"
             elif self.comboBox_5.currentText() in ["BEAST1 (NUC)", "BEAST2 (NUC)"]:
                 use_model_for = " -mset JC69,TrN,TrNef,K80,K2P,F81,HKY,SYM,TIM,TVM,TVMef,GTR -mrate E,G"
             elif self.comboBox_5.currentText() in ["BEAST (AA)"]:
                 use_model_for = " -mset Blosum62,cpREV,JTT,mtREV,WAG,LG,Dayhoff -mrate E,G"
             elif self.comboBox_5.currentText() in ["FastTree (AA)"]:
                 use_model_for = " -mset JTT,WAG,LG -mrate G"
+            elif self.comboBox_5.currentText() in ["MCMCtree (NUC)"]:
+                use_model_for = " -mset JC69,K80,F81,HKY,TN93,GTR -mrate G"
+            elif self.comboBox_5.currentText() in ["MCMCtree (AA)"]:
+                use_model_for = " -mset Dayhoff,DCMut,JTT,JTTDCMut,LG,mtART,mtMAM,mtREV,mtZOA,WAG -mrate G"
             else:
                 use_model_for = " -m TESTONLY -mset %s" % self.comboBox_5.currentText().lower() \
                     if ((not self.groupBox_2.isChecked()) or (not self.textEdit.toPlainText()) or
@@ -1123,7 +1168,18 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
                     " -st CODON", " -st NT2AA"] else seqType
             treeFile = " -te %s" % shutil.copy(self.lineEdit_2.toolTip(),
                                                self.exportPath) if self.lineEdit_2.toolTip() else ""
-            partitionCMD = "-spp" if self.radioButton.isChecked() else "-sp"
+            if self.version.startswith("1"):
+                partitionCMD = "-spp" if self.radioButton.isChecked() or self.radioButton_3.isChecked() else "-sp"
+                category = ""
+            else:
+                if self.radioButton.isChecked():
+                    partitionCMD = "-q"
+                elif self.radioButton_3.isChecked():
+                    partitionCMD = "-p"
+                else:
+                    partitionCMD = "-Q"
+                category = f" --cmin {self.spinBox_2.value()} --cmax {self.spinBox_3.value()}" if \
+                    (self.checkBox_2.isChecked() and self.checkBox_2.isEnabled() and self.version.startswith("3")) else ""
             if (self.groupBox_2.isChecked() and self.textEdit.toPlainText()):
                 path = self.exportPath + os.sep + "MF_partition.txt"
                 with open(path, "w", encoding="utf-8") as f1:
@@ -1133,7 +1189,7 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
             threads = " -nt %s" % self.comboBox_6.currentText()
             command = f"\"{self.modelfinder_exe}\" -s \"%s\"" % inputFile + \
                 use_model_for + criterion + seqType + \
-                treeFile + partFile + threads + pre
+                treeFile + partFile + category + threads + pre
             # print(self.command)
             self.textEdit_log.clear()  # 清空
             # 描述
@@ -1210,6 +1266,32 @@ class ModelFinder(QDialog, Ui_ModelFinder, object):
     def judgeMergeOn(self, bool_):
         pass
         # if bool_ and not self.
+
+    def judge_iqtree(self):
+        if self.checkBox_4.isChecked() and self.version and (not self.version.startswith("3")):
+            QMessageBox.information(
+                self,
+                "Information",
+                "<p style='line-height:25px; height:25px'>The \"MixtureFinder\" option is only available in IQ-TREE 3.x!</p>")
+            self.checkBox_4.setChecked(False)
+        if self.checkBox_4.isChecked() and (not self.comboBox_5.currentText() == "IQ-TREE"):
+            QMessageBox.information(
+                self,
+                "Information",
+                "<p style='line-height:25px; height:25px'>The \"MixtureFinder\" option is only available when \"Model for\" is set to \"IQ-TREE\"!</p>")
+            self.checkBox_4.setChecked(False)
+        if self.checkBox_4.isChecked() and self.groupBox_2.isChecked():
+            QMessageBox.information(
+                self,
+                "Information",
+                "<p style='line-height:25px; height:25px'>The \"MixtureFinder\" option is not available in partition mode!</p>")
+            self.checkBox_4.setChecked(False)
+        if self.checkBox_4.isChecked():
+            self.checkBox_2.setChecked(True)
+
+    def controlMixtureFinder(self, bool_):
+        if not bool_:
+            self.checkBox_4.setChecked(False)
 
 
 if __name__ == "__main__":

@@ -85,7 +85,7 @@
        </sizepolicy>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -515,7 +515,7 @@
            <string>Add row</string>
           </property>
           <property name="icon">
-           <iconset resource="../myRes.qrc">
+           <iconset>
             <normaloff>:/picture/resourses/table_row_add_after.png</normaloff>:/picture/resourses/table_row_add_after.png</iconset>
           </property>
          </widget>
@@ -526,7 +526,7 @@
            <string>Delete row</string>
           </property>
           <property name="icon">
-           <iconset resource="../myRes.qrc">
+           <iconset>
             <normaloff>:/picture/resourses/delete.png</normaloff>:/picture/resourses/delete.png</iconset>
           </property>
          </widget>
@@ -556,7 +556,7 @@
            <string>Export</string>
           </property>
           <property name="icon">
-           <iconset resource="../myRes.qrc">
+           <iconset>
             <normaloff>:/picture/resourses/import.png</normaloff>:/picture/resourses/import.png</iconset>
           </property>
          </widget>
@@ -573,7 +573,7 @@
            <string>draw</string>
           </property>
           <property name="icon">
-           <iconset resource="../myRes.qrc">
+           <iconset>
             <normaloff>:/picture/resourses/if_start_60207.png</normaloff>:/picture/resourses/if_start_60207.png</iconset>
           </property>
          </widget>
@@ -593,7 +593,7 @@
              <string>Convert current name as name set</string>
             </property>
             <property name="icon">
-             <iconset resource="../myRes.qrc">
+             <iconset>
               <normaloff>:/picture/resourses/refresh-icon.png</normaloff>:/picture/resourses/refresh-icon.png</iconset>
             </property>
            </widget>
@@ -604,7 +604,7 @@
              <string>Remove current name set</string>
             </property>
             <property name="icon">
-             <iconset resource="../myRes.qrc">
+             <iconset>
               <normaloff>:/picture/resourses/if_Delete_1493279.png</normaloff>:/picture/resourses/if_Delete_1493279.png</iconset>
             </property>
            </widget>
@@ -621,7 +621,7 @@
              <string>Save current name set</string>
             </property>
             <property name="icon">
-             <iconset resource="../myRes.qrc">
+             <iconset>
               <normaloff>:/picture/resourses/import.png</normaloff>:/picture/resourses/import.png</iconset>
             </property>
            </widget>
@@ -642,7 +642,7 @@
           <item>
            <widget class="QLabel" name="label_14">
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ff0000;&quot;&gt;Note: Please use comma to seperate genes&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ff0000;&quot;&gt;Note: Use comma to separate gene names in the name set.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
           </item>
@@ -652,7 +652,7 @@
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="../myRes.qrc">
+             <iconset>
               <normaloff>:/picture/resourses/interface-controls-text-wrap-512.png</normaloff>:/picture/resourses/interface-controls-text-wrap-512.png</iconset>
             </property>
             <property name="checkable">

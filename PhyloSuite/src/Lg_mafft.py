@@ -36,6 +36,7 @@ class CodonAlign(object):  # 读取fasta文件
         self.vessel_aaseq = self.dict_args["vessel_aaseq"]
         self.exportPath = self.dict_args["exportPath"]
         self.filenames = self.dict_args["filenames"]
+        self.suffix = self.dict_args["suffix"]
         self.dict_file = {}  # 键为每个文件名，值为列表，列表内含元组；全局输出文件
         self.DictInterstop = OrderedDict()
         num = 0
@@ -44,14 +45,14 @@ class CodonAlign(object):  # 读取fasta文件
             num += 1
             self.file_base = os.path.basename(self.each_file)
             self.read_fas(self.each_file)  # 生成dict_fas,循环一次就丢
-            if self.dict_args["progressSig"]:
+            if ("progressSig" in self.dict_args) and self.dict_args["progressSig"]:
                 self.dict_args["progressSig"].emit(
                     10 * (num / sums) * (1 / 5))  # read_fas占五分之一
                 self.dict_args["workflow_progress"].emit(
                     10 * (num / sums) * (1 / 5))  # read_fas占五分之一
             self.dict_file[self.file_base] = {}
             self.translate()  # 翻译氨基酸，生成映射，存翻译后的AA文件
-            if self.dict_args["progressSig"]:
+            if ("progressSig" in self.dict_args) and self.dict_args["progressSig"]:
                 self.dict_args["progressSig"].emit(
                     10 * (num / sums))  # read_fas占五分之一
                 self.dict_args["workflow_progress"].emit(
@@ -165,13 +166,13 @@ class CodonAlign(object):  # 读取fasta文件
             num += 1
             # 生成dict_fas,循环一次就丢
             self.read_fas(self.vessel_aalign + os.sep + self.each_aa_align)
-            if self.dict_args["progressSig"]:
+            if ("progressSig" in self.dict_args) and self.dict_args["progressSig"]:
                 self.dict_args["progressSig"].emit(
                     90 + 10 * (num / sums) * (1 / 5))  # read_fas占五分之一
                 self.dict_args["workflow_progress"].emit(
                     90 + 10 * (num / sums) * (1 / 5))  # read_fas占五分之一
             self.tocodon()  # 执行剩下的4/5
-            if self.dict_args["progressSig"]:
+            if ("progressSig" in self.dict_args) and self.dict_args["progressSig"]:
                 self.dict_args["progressSig"].emit(90 + 10 * (num / sums))
                 self.dict_args["workflow_progress"].emit(90 + 10 * (num / sums))
         return [self.exportPath + os.sep + i for i in files]
@@ -232,9 +233,10 @@ class Mafft(QDialog, Ui_mafft, object):
         # File only, no fallback to registry or or.
         self.mafft_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
         # 判断程序的版本
@@ -298,6 +300,7 @@ class Mafft(QDialog, Ui_mafft, object):
             self.dict_args["PCG_NUC_files"] = self.PCG_NUC_files
             self.dict_args["PCG_AA_files"] = self.PCG_AA_files
             self.dict_args["RNAs_files"] = self.RNAs_files
+            self.dict_args["suffix"] = "_mafft"
             # if self.checkBox_2.isChecked() and self.checkBox_2.isEnabled():
             #     if self.AA_radioButton_2.isChecked():
             #         self.dict_args["filenames"] = self.PCG_AA_files
@@ -421,7 +424,7 @@ class Mafft(QDialog, Ui_mafft, object):
                                                                                            self.time_used)
             with open(self.dict_args["exportPath"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                        f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n"
                         "If you use MAFFT, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             # 判断比对是否成功
             mafft_results = [self.dict_args["exportPath"] + os.sep + result for result in
@@ -800,6 +803,7 @@ class Mafft(QDialog, Ui_mafft, object):
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if name != "comboBox_4":
                     # allItems = [obj.itemText(i) for i in range(obj.count())]
                     # values = self.mafft_settings.value(name, allItems)
@@ -962,6 +966,8 @@ class Mafft(QDialog, Ui_mafft, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
         return super(Mafft, self).eventFilter(obj, event)  # 0
 
     # 子线程run

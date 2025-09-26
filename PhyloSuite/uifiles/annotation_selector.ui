@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>annotation_selector</class>
+ <widget class="QDialog" name="annotation_selector">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>298</width>
+    <height>107</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Annotation selector</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Select an annotation type:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="comboBox">
+     <item>
+      <property name="text">
+       <string>Bar chart</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Auto-assign taxonomy (style 1)</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Auto-assign taxonomy (style 2)</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Leaf name</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Color strip</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Text</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Image</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Sequence</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Motif</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Stacked bar chart</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Pie chart</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Heatmap</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Shape</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Attributes</string>
+      </property>
+     </item>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="checkBox">
+     <property name="text">
+      <string>Include internal nodes</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="pushButton">
+     <property name="text">
+      <string>Create</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -95,8 +95,8 @@ from urllib.request import urlopen
 from .svg_colors import COLOR_SCHEMES
 import random
 from .faces import _aafgcolors, _aabgcolors, _ntfgcolors, _ntbgcolors, TreeFace
+from uifiles.Ui_mcmctree import Ui_MCMCTreeGUI
 from ete3.treeview import qt4_circular_render as crender
-
 
 def etime(f):
     def a_wrapper_accepting_arguments(*args, **kargs):
@@ -133,7 +133,7 @@ class _GUI(QMainWindow, Ui_MainWindow):
         self.scene.draw()
         self.view.init_values()
 
-    def __init__(self, scene, *args):
+    def __init__(self, scene, mcmctree_flag=False, treesuite_flag=False, *args):
         QMainWindow.__init__(self, *args)
         screenSize = QApplication.primaryScreen().size()
         self.setupUi(self)
@@ -141,7 +141,15 @@ class _GUI(QMainWindow, Ui_MainWindow):
         self.setAcceptDrops(True)
         self.installEventFilter(self)
         self.factory = Factory()
-
+        self.mcmctree_flag = mcmctree_flag
+        self.treesuite_flag = treesuite_flag
+        # mcmctree mode
+        if mcmctree_flag:
+            self.action_save_to_mcmctree.setVisible(True)
+            self.action_save_to_r8s.setVisible(True)
+        else:
+            self.action_save_to_mcmctree.setVisible(False)
+            self.action_save_to_r8s.setVisible(False)
         # compare mode
         self.compare_mode = False
         self.toolButton.setHidden(True)
@@ -173,12 +181,13 @@ class _GUI(QMainWindow, Ui_MainWindow):
 
         self.add_ann_btn.clicked.connect(self.on_annotation_btn_clicked)
         self.add_ann_btn.installEventFilter(self)
+        self.general_table.installEventFilter(self)
 
         # Don't resize left panel if it's not needed
-        self.tabWidget.setMinimumWidth(screenSize.width() * 0.20) # make
+        self.tabWidget.setMinimumWidth(int(screenSize.width() * 0.20)) # make
         self.splitter_2.setStretchFactor(0, 5)
         self.splitter_2.setStretchFactor(1, 1)
-        self.listWidget.setMinimumWidth(screenSize.width() * 0.14) # make
+        self.listWidget.setMinimumWidth(int(screenSize.width() * 0.14)) # make
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStretchFactor(1, 20)
 
@@ -192,10 +201,10 @@ class _GUI(QMainWindow, Ui_MainWindow):
         self.scene.setItemIndexMethod(QGraphicsScene.NoIndex)
 
         self.setGeometry(
-            screenSize.width() * 0.2,
-            screenSize.height() * 0.2,
-            screenSize.width() * 0.9,
-            screenSize.height() * 0.85,
+            int(screenSize.width() * 0.2),
+            int(screenSize.height() * 0.2),
+            int(screenSize.width() * 0.9),
+            int(screenSize.height() * 0.85),
             )
         self.centerWindow(self)
 
@@ -448,7 +457,16 @@ class _GUI(QMainWindow, Ui_MainWindow):
             array = [[node.id, node.name, "#000000", "None color"] for node in self.scene.tree.traverse() if node.is_leaf()]
         else:
             array = None
-        self.create_annotation_editor("Leaf name", array_=array, include_inner_nodes=False)
+        # 避免重复添加 leaf name
+        for node in self.scene.tree.traverse():
+            if node.is_leaf():
+                if node.faces.__dict__["aligned"] == {}:
+                    no_name = True
+                else:
+                    no_name = False
+                break
+        if no_name:
+            self.create_annotation_editor("Leaf name", array_=array, include_inner_nodes=False)
         # self.scene.img.show_leaf_name ^= True
         # self.scene.img._scale = None
         # self.redraw()
@@ -673,6 +691,30 @@ class _GUI(QMainWindow, Ui_MainWindow):
         settings.beginGroup("Transform")
         self.view.setTransform(settings.value("transform"))
         settings.endGroup()
+
+    @QtCore.pyqtSlot()
+    def on_action_save_to_mcmctree_triggered(self):
+        # root = self.scene.tree.get_tree_root()
+        # # print(root)
+        # root_calibration = False
+        # if hasattr(root, "name") and root.name:
+        #     if re.search(r">|<|B.*\(|U.*\(|L.*\(|G.*\(|SN.*\(|ST.*", root.name):
+        #         root_calibration = True
+        # if not root_calibration:
+        #     reply = QMessageBox.warning(
+        #         self,
+        #         "Error",
+        #         "The root node lacks fossil calibration information, but it is required to be specified.",
+        #         QMessageBox.Yes | QMessageBox.No,
+        #         QMessageBox.No
+        #     )
+        #     return
+        # self.parent().tree_with_tipdate = self.scene.tree
+        self.close()
+
+    @QtCore.pyqtSlot()
+    def on_action_save_to_r8s_triggered(self):
+        self.close()
 
     def load_tree_annotation(self, settings, ts, type="normal"):
         if type != "brush":
@@ -952,7 +994,7 @@ class _GUI(QMainWindow, Ui_MainWindow):
 
     def eventFilter(self, obj, event):
         # modifiers = QApplication.keyboardModifiers()
-        if type(obj) in [QGraphicsView, QListWidget, QPushButton]:
+        if type(obj) in [QGraphicsView, QListWidget, QPushButton, QMainWindow, QTableView]:
             if event.type() == QEvent.DragEnter:
                 if event.mimeData().hasUrls():
                     # must accept the dragEnterEvent or else the dropEvent
@@ -2524,6 +2566,9 @@ class _GUI(QMainWindow, Ui_MainWindow):
             editor.ui.pushButton.clicked.connect(lambda: [self.create_annotation(type, model.fetchIncludedArray(),
                                                         editor=editor, configs=configs, tabIsChecked=tabIsChecked),
                                                           editor.close()])
+
+            editor.ui.pushButton_13.clicked.connect(lambda: [self.checkboxes_action(editor)])
+
             # add column
             editor.ui.pushButton_2.clicked.connect(lambda : [model.header.append(f"Taxonomy{len(model.header)}"),
                                                              model.headerDataChanged.emit(Qt.Horizontal, len(model.header)-1, len(model.header)-1),
@@ -3614,6 +3659,184 @@ class _GUI(QMainWindow, Ui_MainWindow):
                             if face.name == "strip":
                                 face.node = node
                                 face.update_items(node=node)
+
+    def checkboxes_action(self, editor):
+        dict_parameters = {"hasRange": editor.ui.checkBox.isChecked(),
+                           "hasStrip": editor.ui.checkBox_2.isChecked(),
+                           "hasText": editor.ui.checkBox_3.isChecked(),
+                           "hasColor": editor.ui.checkBox_4.isChecked()
+                           }
+        if True in dict_parameters.values():
+            options = QFileDialog.DontResolveSymlinks | QFileDialog.ShowDirsOnly
+            directory = QFileDialog.getExistingDirectory(self, "Choose folder", options=options)
+            if directory:
+                dict_parameters["directory"] = directory
+                array = editor.ui.tableView.model().fetchIncludedArray()
+                list_tax = editor.ui.tableView.model().fetchIncludedTax()
+                dict_color = editor.ui.tableView.model().get_colors()
+                dict_parameters["array"] = array
+                dict_parameters["list_tax"] = list_tax
+                dict_parameters["dict_color"] = dict_color
+                self.itol_generater(**dict_parameters)
+                QMessageBox.information(self, "File Created", f"File saved successfully")
+        else:
+            QMessageBox.information(self, "Information", f"Please select iTOL "
+                                                         f"annotation type first!")
+
+    def itol_generater(self,
+                       list_tax=None,
+                       array=None,
+                       dict_color=None,
+                       directory=None,
+                       hasRange=None,
+                       hasStrip=None,
+                       hasText=None,
+                       hasColor=None,
+                       ):
+        if hasRange:
+            for num, tax in enumerate(list_tax[1:]):
+                list_itol_range = [f'''TREE_COLORS
+SEPARATOR COMMA
+DATA''']
+                for line in array:
+                    tax_name = line[num + 1]
+                    if tax_name:
+                        list_itol_range.append(f"{line[0]},range,{dict_color[tax_name]},{tax_name}")
+                file_path = f"{directory}{os.sep}itol_range_{tax}.txt"
+                if os.path.exists(file_path):
+                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                                 QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        with open(file_path, "w", errors="ignore") as f:
+                            f.write("\n".join(list_itol_range))
+                else:
+                    with open(file_path, "w", errors="ignore") as f:
+                        f.write("\n".join(list_itol_range))
+        if hasStrip:
+            for num,tax in enumerate(list_tax[1:]):
+                list_tax_ = list(set([line[num+1] for line in array]))
+                tab_ = "\t"
+                list_itol_strip = [f'''DATASET_COLORSTRIP
+SEPARATOR	TAB
+DATASET_LABEL	color_strip_{tax}
+COLOR	#ff0000
+COLOR_BRANCHES	1
+STRIP_WIDTH	25
+LEGEND_TITLE	{tax}
+LEGEND_SHAPES	{tab_.join(["RE"]*len(list_tax_))}
+LEGEND_COLORS	{tab_.join([dict_color[tax] for tax in list_tax_ if tax])}
+LEGEND_LABELS	{tab_.join(list_tax_)}
+DATA''']
+                for line in array:
+                    tax_name = line[num+1]
+                    if tax_name:
+                        list_itol_strip.append(f"{line[0]}\t{dict_color[tax_name]}\t{tax_name}")
+                # print("\n".join(list_itol_strip))
+                file_path = f"{directory}{os.sep}itol_color_strip_{tax}.txt"
+                if os.path.exists(file_path):
+                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                                 QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        with open(file_path, "w", errors="ignore") as f:
+                            f.write("\n".join(list_itol_strip))
+                else:
+                    with open(file_path, "w", errors="ignore") as f:
+                        f.write("\n".join(list_itol_strip))
+        if hasText:
+            for num, tax in enumerate(list_tax[1:]):
+                list_itol_text = [f'''DATASET_TEXT
+SEPARATOR COMMA
+DATASET_LABEL,{tax} text
+COLOR,#ff0000
+MARGIN,0
+SHOW_INTERNAL,0
+LABEL_ROTATION,0
+ALIGN_TO_TREE,0
+SIZE_FACTOR,1
+DATA''']
+                for line in array:
+                    tax_name = line[num + 1]
+                    if tax_name:
+                        list_itol_text.append(f"{line[0]},{tax_name},-1,{dict_color[tax_name]},bold,2,0")
+                file_path = f"{directory}{os.sep}itol_{tax}_text.txt"
+                if os.path.exists(file_path):
+                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                                 QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        with open(file_path, "w", errors="ignore") as f:
+                            f.write("\n".join(list_itol_text))
+                else:
+                    with open(file_path, "w", errors="ignore") as f:
+                        f.write("\n".join(list_itol_text))
+        if hasColor:
+            for num, tax in enumerate(list_tax[1:]):
+                list_itol_color = [f'''TREE_COLORS
+SEPARATOR COMMA
+DATA''']
+                for line in array:
+                    tax_name = line[num + 1]
+                    if tax_name:
+                        list_itol_color.append(f"{line[0]},label,{dict_color[tax_name]},normal,1")
+                    # print("\n".join(list_itol_strip))
+                file_path = f"{directory}{os.sep}itol_color_{tax}.txt"
+                if os.path.exists(file_path):
+                    reply = QMessageBox.question(self, "File Exists", f"文件 {file_path} 已存在，是否覆盖？",
+                                                 QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        with open(file_path, "w", errors="ignore") as f:
+                            f.write("\n".join(list_itol_color))
+                else:
+                    with open(file_path, "w", errors="ignore") as f:
+                        f.write("\n".join(list_itol_color))
+
+    def closeEvent(self, event):
+        # 用户关闭窗口的时候，保存当前树
+        if self.mcmctree_flag:
+            self.parent().tree_with_tipdate = self.scene.tree
+            self.judge_root_node(event)
+        if self.treesuite_flag:
+            # print(self.scene.tree.file)
+            self.parent().dict_trees[self.scene.tree.file] = self.scene.tree
+            # print(self.parent().dict_trees)
+
+    def judge_root_node(self, event):
+        root = self.scene.tree.get_tree_root()
+        if len(self.scene.tree.children) > 2:
+            # 无根树
+            reply = QMessageBox.warning(
+                self,
+                "Error",
+                "The tree is unrooted, please root the tree. First, select the node, then right-click to open the "
+                "context menu, and choose the “Set as outgroup (root tree)” option.",
+                QMessageBox.Ok, QMessageBox.Ignore
+            )
+            if reply == QMessageBox.Ok:
+                event.ignore()
+                return
+        # print(root)
+        root_calibration = False
+        if hasattr(root, "name") and root.name:
+            if re.search(r">|<|B.*\(|U.*\(|L.*\(|G.*\(|SN.*\(|ST.*", root.name):
+                root_calibration = True
+        if not root_calibration:
+            msg = QMessageBox(QMessageBox.Warning, "Error",
+                "The root node lacks fossil calibration information, but MCMCtree requires it to be set. You have two options:\n"
+                "1. Click \"Set RootAge in MDGUI\", then check the \"RootAge\" option in the interface and set the "
+                "age range using the two spin boxes. \n"
+                "2. Click \"Add Calibration Now\", then select the node, right-click to open the context menu, and choose \"Add calibration\". "
+                "Then switch to the MCMCtree root node tab to set the calibration.",
+                QMessageBox.Ok | QMessageBox.Ignore,
+                self
+                )
+            # 修改按钮文字
+            msg.button(QMessageBox.Ok).setText("Add Calibration Now")
+            msg.button(QMessageBox.Ignore).setText("Set RootAge in MDGUI")
+            reply = msg.exec_()
+            if reply==QMessageBox.Ok:
+                event.ignore()
+                return
+        event.accept()
+
 
 
 class _BasicNodeActions(object):

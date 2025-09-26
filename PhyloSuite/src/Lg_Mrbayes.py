@@ -37,9 +37,10 @@ class PartDefine(QDialog, Ui_PartDefine, object):
         # self.thisPath = os.path.dirname(os.path.realpath(__file__))
         super(PartDefine, self).__init__(parent)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.resize(800, 600)
         self.setupUi(self)
 
@@ -113,10 +114,11 @@ class PartDefine(QDialog, Ui_PartDefine, object):
                 # partition
                 partition_block += "partition Names = %d:%s;\nset partition=Names;" % (
                     len(zip_data[1]), ", ".join(zip_data[1]))
-                last_block = "prset applyto=(all) ratepr=variable;\nunlink statefreq=(all) revmat=(all) shape=(all) pinvar=(all) tratio=(all)"
-                last_block = last_block + \
-                    ";\nunlink brlens=(all)" if isAA else last_block
-                last_block = "" if num == 0 else last_block  # 只有1个分区
+                # last_block = "prset applyto=(all) ratepr=variable;\nunlink statefreq=(all) revmat=(all) shape=(all) pinvar=(all) tratio=(all)"
+                # last_block = last_block + \
+                #     ";\nunlink brlens=(all)" if isAA else last_block
+                # last_block = "" if num == 0 else last_block  # 只有1个分区
+                last_block = ""
                 block = "\n".join(
                     [charset_block.strip(), partition_block, lset_block.strip(), last_block])
                 block = block.replace(
@@ -145,9 +147,10 @@ class NexView(QDialog, Ui_nexViewer, object):
         # self.thisPath = os.path.dirname(os.path.realpath(__file__))
         super(NexView, self).__init__(parent)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.resize(800, 600)
         self.setupUi(self)
         self.installEventFilter(self)
@@ -217,9 +220,10 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         # File only, no fallback to registry or or.
         self.MrBayes_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.interrupt = False
         self.run_from_text = False
         self.spinBox_2.valueChanged.connect(self.ctrlBurin)
@@ -651,14 +655,15 @@ class MrBayes(QDialog, Ui_MrBayes, object):
     def guiRestore(self):
 
         # Restore geometry
-        height = 750 if platform.system().lower() == "darwin" else 594
-        size = self.factory.judgeWindowSize(self.MrBayes_settings, 896, height)
+        height = 750 if platform.system().lower() == "darwin" else 700
+        size = self.factory.judgeWindowSize(self.MrBayes_settings, 1300, height)
         self.resize(size)
         self.factory.centerWindow(self)
         # self.move(self.MrBayes_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox) and name not in ["comboBox_7", "comboBox_5", "comboBox_10"]:
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 allItems = [obj.itemText(i) for i in range(obj.count())]
                 index = self.MrBayes_settings.value(name, "0")
                 model = obj.model()
@@ -679,10 +684,12 @@ class MrBayes(QDialog, Ui_MrBayes, object):
                     obj.setChecked(
                         self.factory.str2bool(value))  # restore checkbox
             elif isinstance(obj, QSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 ini_value = obj.value()
                 value = self.MrBayes_settings.value(name, ini_value)
                 obj.setValue(int(value))
             elif isinstance(obj, QDoubleSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 ini_float_ = obj.value()
                 float_ = self.MrBayes_settings.value(name, ini_float_)
                 obj.setValue(float(float_))
@@ -801,6 +808,8 @@ class MrBayes(QDialog, Ui_MrBayes, object):
                              self.pushButton_2.toolButton.menu().pos().y())
                 self.pushButton_2.toolButton.menu().move(pos)
             return True
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
         # return QMainWindow.eventFilter(self, obj, event) #
         # 其他情况会返回系统默认的事件处理方法。
         return super(MrBayes, self).eventFilter(obj, event)  # 0
@@ -993,6 +1002,12 @@ class MrBayes(QDialog, Ui_MrBayes, object):
             # print(self.input_model)
             # if "+ASC" in self.input_model:
             #     self.input_model = self.input_model.replace("+ASC", "")
+            if "**UNLINK**" in self.input_model:
+                self.input_model = self.input_model.replace("**UNLINK**", "")
+                unlink = True
+            else:
+                unlink = False
+            # print(self.input_model)
             if ":" in self.input_model:
                 # partition
                 # re.search(r"(?s)begin sets;(.+)charpartition", self.input_model).group(1).strip()
@@ -1053,10 +1068,14 @@ class MrBayes(QDialog, Ui_MrBayes, object):
                 # partition
                 partition_block += "partition Names = %d:%s;\nset partition=Names;" % (
                     len(list_names), ", ".join(list_names))
-                last_block = "prset applyto=(all) ratepr=variable;\nunlink statefreq=(all) revmat=(all) shape=(all) pinvar=(all) tratio=(all)"
-                last_block = last_block + \
-                    ";\nunlink brlens=(all)" if isAA else last_block
-                last_block = "" if num == 0 else last_block  # 只有1个分区
+                if unlink:
+                    last_block = "unlink statefreq=(all) revmat=(all) shape=(all) pinvar=(all) tratio=(all);\n" \
+                                 "unlink brlens=(all)"
+                    # last_block = last_block + \
+                    #     ";\nunlink brlens=(all)" if isAA else last_block
+                    last_block = "" if num == 0 else last_block  # 只有1个分区
+                else:
+                    last_block = ""
                 block = "\n".join(
                     [charset_block, partition_block, lset_block.strip(), last_block])
                 self.pushButton_partition.setChecked(True)
@@ -1596,8 +1615,8 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         self.worker.start()
 
     def viewResultsEarly_workFun(self):
-        run_t_files = glob.glob("./*.t")
-        print(run_t_files)
+        run_t_files = glob.glob(f"{self.exportPath}{os.sep}*.t")
+        # print(run_t_files)
         # 添加end给树文件
         if run_t_files:
             for i in run_t_files:
@@ -1653,7 +1672,7 @@ class MrBayes(QDialog, Ui_MrBayes, object):
         else:
             return
         nex_content = f"{rgx_mb_block.sub('', nex_content)}\n{mb_block}\n"
-        with open("stop_run.nex", "w") as f2:
+        with open(f"stop_run.nex", "w") as f2:
             f2.write(nex_content)
         sum_commands = f"\"{self.MB_exe}\" stop_run.nex"
 #         self.stop_run_progress(5)
@@ -1835,7 +1854,7 @@ class MrBayes(QDialog, Ui_MrBayes, object):
                 "xxxx generations", " generations")
         with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
             f.write(self.description +
-                    "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                    f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n"
                     "If you use MrBayes, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
 
     def judgeFinish(self):

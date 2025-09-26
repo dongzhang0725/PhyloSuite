@@ -130,9 +130,10 @@ class TrimAl(QDialog, Ui_trimAl, object):
         # File only, no fallback to registry or or.
         self.trimAl_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
         # 判断程序的版本
@@ -208,7 +209,7 @@ class TrimAl(QDialog, Ui_trimAl, object):
             self.interrupt = False
             self.error_has_shown = False #保证只报一次错
             self.list_pids = []
-            self.queue = multiprocessing.Queue()
+            self.queue = multiprocessing.Queue() if platform.system().lower() == "windows" else multiprocessing.Manager().Queue()
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.dict_args["inputFiles"]) > thread else len(self.dict_args["inputFiles"])
             thread = 1 if not self.dict_args["inputFiles"] else thread  # compare的情况
@@ -370,6 +371,7 @@ class TrimAl(QDialog, Ui_trimAl, object):
             self.pool.close()  # 关闭进程池，防止进一步操作。如果所有操作持续挂起，它们将在工作进程终止前完成
             map(ApplyResult.wait, async_results)
             lst_results = [r.get() for r in async_results]
+            self.pool.join()  # 等待所有进程结束
             # 判断比对是否成功
             trimAl_results = glob.glob(self.exportPath + os.sep + "*_trimAl.fas")
             empty_files = [os.path.basename(file) for file in trimAl_results if os.stat(file).st_size == 0]
@@ -398,7 +400,7 @@ class TrimAl(QDialog, Ui_trimAl, object):
                 self.time_used)
             with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(
-                    self.description + "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                    self.description + f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n"
                                        "If you use trimAl, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if (not self.interrupt) and (not has_error):
                 self.pool = None
@@ -488,6 +490,7 @@ class TrimAl(QDialog, Ui_trimAl, object):
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if name == "comboBox_6":
                     cpu_num = multiprocessing.cpu_count()
                     list_cpu = [str(i + 1) for i in range(cpu_num)]
@@ -533,6 +536,7 @@ class TrimAl(QDialog, Ui_trimAl, object):
                     obj.setChecked(
                         self.factory.str2bool(value))  # restore checkbox
             elif isinstance(obj, QDoubleSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 ini_float_ = obj.value()
                 float_ = self.trimAl_settings.value(name, ini_float_)
                 obj.setValue(float(float_))
@@ -652,6 +656,8 @@ class TrimAl(QDialog, Ui_trimAl, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
         # return QMainWindow.eventFilter(self, obj, event) #
         # 其他情况会返回系统默认的事件处理方法。
         return super(TrimAl, self).eventFilter(obj, event)  # 0
@@ -861,7 +867,7 @@ class TrimAl(QDialog, Ui_trimAl, object):
             self.interrupt = False
             self.error_has_shown = False
             self.list_pids = []
-            self.queue = multiprocessing.Queue()
+            self.queue = multiprocessing.Queue() if platform.system().lower() == "windows" else multiprocessing.Manager().Queue()
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.dict_args["inputFiles"]) > thread else len(self.dict_args["inputFiles"])
             thread = 1 if not self.dict_args["inputFiles"] else thread # compare的情况
@@ -992,34 +998,40 @@ class TrimAl(QDialog, Ui_trimAl, object):
                 "this result for other functions.</p>"%text)
 
     def renameSequence(self, dict_name_mapping):
-        trimedFiles = glob.glob(self.exportPath + os.sep + "*_trimAl.fas")
-        if trimedFiles:
-            for num, file in enumerate(trimedFiles):
-                with open(file, encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
-                with open(file, "w", encoding="utf-8") as f1:
-                    if dict_name_mapping:
-                        f1.write(re.sub(r">(.+?) \d+ bp", lambda x: f">{dict_name_mapping[x.group(1)]}",
-                                    content))
-                    else:
-                        f1.write(re.sub(r"(>.+?) \d+ bp", "\\1", content))
-                self.progressSig.emit(95 + (3 * (num + 1)/len(trimedFiles)))
-                self.workflow_progress.emit(95 + (3 * (num + 1)/len(trimedFiles)))
-        if dict_name_mapping:
-            max_len_name = len(max(dict_name_mapping.values(), key=len))
-            html_files = glob.glob(self.exportPath + os.sep + "*.html")
-            for html_file in html_files:
-                with open(html_file, encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
-                with open(html_file, "w", encoding="utf-8") as f1:
-                    content = re.sub(r"(?m) +(\d+.+\n)^ +=",
-                            lambda x: f"{' '*(max_len_name+17)}{x.group(1)}{' '*(max_len_name+9)}=", content)
-                    f1.write(re.sub(r"(?m)(^ {4}%s)(.+?)(%s)"%(re.escape("<span class=sel>"), re.escape("</span>")),
-                                lambda x: f"{x.group(1)}{dict_name_mapping[x.group(2)].ljust(max_len_name)}{x.group(3)}",
-                                    content))
-                self.progressSig.emit(98 + (2 * (num + 1)/len(html_files)))
-                self.workflow_progress.emit(98 + (2 * (num + 1)/len(html_files)))
-        else:
+        try:
+            trimedFiles = glob.glob(self.exportPath + os.sep + "*_trimAl.fas")
+            if trimedFiles:
+                for num, file in enumerate(trimedFiles):
+                    with open(file, encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                    with open(file, "w", encoding="utf-8") as f1:
+                        if dict_name_mapping:
+                            f1.write(re.sub(r">(.+?) \d+ bp", lambda x: f">{dict_name_mapping[x.group(1)]}",
+                                        content))
+                        else:
+                            f1.write(re.sub(r"(>.+?) \d+ bp", "\\1", content))
+                    self.progressSig.emit(95 + (3 * (num + 1)/len(trimedFiles)))
+                    self.workflow_progress.emit(95 + (3 * (num + 1)/len(trimedFiles)))
+            if dict_name_mapping:
+                max_len_name = len(max(dict_name_mapping.values(), key=len))
+                html_files = glob.glob(self.exportPath + os.sep + "*.html")
+
+                for html_file in html_files:
+                    with open(html_file, encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                    with open(html_file, "w", encoding="utf-8") as f1:
+                        content = re.sub(r"(?m) +(\d+.+\n)^ +=",
+                                lambda x: f"{' '*(max_len_name+17)}{x.group(1)}{' '*(max_len_name+9)}=", content)
+                        f1.write(re.sub(r"(?m)(^ {4}%s)(.+?)(%s)"%(re.escape("<span class=sel>"), re.escape("</span>")),
+                                    lambda x: f"{x.group(1)}{dict_name_mapping[x.group(2)].ljust(max_len_name)}{x.group(3)}"
+                                      if x.group(2) in dict_name_mapping else x.group(),
+                                        content))
+                    self.progressSig.emit(98 + (2 * (num + 1)/len(html_files)))
+                    self.workflow_progress.emit(98 + (2 * (num + 1)/len(html_files)))
+            else:
+                self.progressSig.emit(100)
+                self.workflow_progress.emit(100)
+        except:
             self.progressSig.emit(100)
             self.workflow_progress.emit(100)
 

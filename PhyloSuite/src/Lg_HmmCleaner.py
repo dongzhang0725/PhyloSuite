@@ -121,9 +121,10 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
         # print(self.HmmCleaner_settings.childGroups())
         # self.factory.settingsGroup2Group(self.HmmCleaner_settings, "PCGs", "temporary")
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
         self.interrupt = False
@@ -170,7 +171,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
             self.interrupt = False
             self.error_has_shown = False  # 保证只报一次错
             self.list_pids = []
-            self.queue = multiprocessing.Queue()
+            self.queue = multiprocessing.Queue() if platform.system().lower() == "windows" else multiprocessing.Manager().Queue()
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.dict_args["inputFiles"]) > thread else len(self.dict_args["inputFiles"])
             thread = 1 if not self.dict_args["inputFiles"] else thread  # compare的情况
@@ -267,6 +268,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
             self.pool.close()  # 关闭进程池，防止进一步操作。如果所有操作持续挂起，它们将在工作进程终止前完成
             map(ApplyResult.wait, async_results)
             lst_results = [r.get() for r in async_results]
+            self.pool.join()  # 等待所有进程结束
             # 判断比对是否成功
             HmmCleaner_results = glob.glob(self.exportPath + os.sep + "*_hmm.*")
             empty_files = [os.path.basename(file) for file in HmmCleaner_results if os.stat(file).st_size == 0]
@@ -301,7 +303,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
                 self.time_used)
             with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(
-                    self.description + "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                    self.description + f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n"
                                        "If you use HmmCleaner, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if (not self.interrupt) and (not has_error):
                 self.pool = None
@@ -382,6 +384,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if name == "comboBox_6":
                     cpu_num = multiprocessing.cpu_count()
                     list_cpu = [str(i + 1) for i in range(cpu_num)]
@@ -421,6 +424,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
                     obj.setChecked(
                         self.factory.str2bool(value))  # restore checkbox
             elif isinstance(obj, QDoubleSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 ini_float_ = obj.value()
                 float_ = self.HmmCleaner_settings.value(name, ini_float_)
                 obj.setValue(float(float_))
@@ -511,6 +515,8 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
         # return QMainWindow.eventFilter(self, obj, event) #
         # 其他情况会返回系统默认的事件处理方法。
         return super(HmmCleaner, self).eventFilter(obj, event)  # 0
@@ -628,7 +634,7 @@ class HmmCleaner(QDialog, Ui_HmmCleaner, object):
             self.interrupt = False
             self.error_has_shown = False
             self.list_pids = []
-            self.queue = multiprocessing.Queue()
+            self.queue = multiprocessing.Queue() if platform.system().lower() == "windows" else multiprocessing.Manager().Queue()
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.dict_args["inputFiles"]) > thread else len(self.dict_args["inputFiles"])
             thread = 1 if not self.dict_args["inputFiles"] else thread # compare的情况

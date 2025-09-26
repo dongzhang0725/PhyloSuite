@@ -23,6 +23,7 @@ try:
     import plotly
     import pandas as pd
     import statsmodels.api as sm
+    import statsmodels.formula.api as smf
 except:
     pass
 
@@ -56,9 +57,10 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
         # File only, no fallback to registry or or.
         self.TreeSuite_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         ## 自动导入树和MSA文件
         if autoInputs:
             trees, alns = autoInputs
@@ -73,8 +75,8 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
             self.popupAutoDec)  # 自动识别可用的输入
         # 信号槽
         self.comboBox.activated[str].connect(self.ctrl_input_widget)
-        self.comboBox_10.activated[str].connect(self.ctrlOutgroupLable)
-        self.comboBox_10.setTopText()
+        # self.comboBox_10.activated[str].connect(self.ctrlOutgroupLable)
+        # self.comboBox_10.setTopText()
         self.lineEdit_3.clicked.connect(self.setFont)
         self.lineEdit_4.clicked.connect(self.setFont)
         self.comboBox_6.currentTextChanged.connect(self.changePlotParms)
@@ -134,12 +136,14 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
         self.sep = self.lineEdit.text()
         self.suffix = self.lineEdit_2.text()
         self.trees = self.comboBox_6.fetchListsText()
+        self.dict_trees = self.dict_trees if hasattr(self, "dict_trees") else \
+                                {tree:self.factory.read_tree(tree, parent=self) for tree in self.trees}
         self.msas = self.comboBox_5.fetchListsText()
-        self.make_plot = self.groupBox_plot.isChecked()
+        self.make_plot = True  # self.groupBox_plot.isChecked()  # 由于普通回归方法无法强制回归线从原点开始，所以得用 statsmodel
         d_type = {"Auto detect": "AUTO", "Nucleotide": "NUC", "Amino acid": "AA"}
         self.seq_type = d_type[self.comboBox_4.currentText()]
-        self.outgroups = [self.comboBox_10.itemText(i) for i in range(self.comboBox_10.count())
-                          if self.comboBox_10.model().item(i).checkState() == Qt.Checked]
+        # self.outgroups = [self.comboBox_10.itemText(i) for i in range(self.comboBox_10.count())
+        #                   if self.comboBox_10.model().item(i).checkState() == Qt.Checked]
         self.factor = self.spinBox.value()
         ## 绘图相关的参数
         if self.analysis == "Saturation":
@@ -195,6 +199,29 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
         """
         self.log_cmd.show()
 
+    @pyqtSlot()
+    def on_pushButton_5_clicked(self):
+        """
+        set outgroup
+        """
+        tree_files = self.comboBox_6.fetchListsText()
+        if tree_files:
+            QMessageBox.information(self, "TreeSuite",
+                                    "<span style=\"color:red\">This is a prompt: </span>"
+                                    f"As you have {len(tree_files)} trees, "
+                                    f"PhyloSuite will open {len(tree_files)} tree window(s). "
+                                    f"Please set the outgroup using the right-click menu, "
+                                    f"and then closing the tree window will save the tree")
+            self.dict_trees = {}
+            for num, file in enumerate(tree_files):
+                tree = self.factory.read_tree(file, parent=self)
+                tree.file = file
+                tree.show(name="treesuite-ETE", parent=self)
+            #print(self.handle_tree_text(self.tree_with_tipdate, mode="calibration").write())
+        else:
+            QMessageBox.information(self, "TreeSuite",
+                                    "Please input tree first!")
+
     def input_alignment(self, files):
         if files:
             self.comboBox_5.refreshInputs(files)
@@ -204,13 +231,22 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
     def input_tree(self, files):
         if files:
             self.comboBox_6.refreshInputs(files)
-            self.changeOutgroup()
+            # self.dict_trees = {file:file for file in files}
+            # self.changeOutgroup()
+            # self.used_tree = self.factory.read_tree(files[0], parent=self)
         else:
             self.comboBox_6.refreshInputs([])
 
     def set_outgroups(self, ete_tre, outgroups):
         if set([i in ete_tre for i in outgroups]) == {True}:
-            outgroup_mca = ete_tre.get_common_ancestor(outgroups)
+            ete_tre.unroot()
+            def get_out_mca(tre, out_groups):
+                if len(out_groups) >= 2:
+                    outgroup_mca = tre.get_common_ancestor(out_groups)
+                else:
+                    outgroup_mca = tre.search_nodes(name=out_groups[0])[0]
+                return outgroup_mca
+            outgroup_mca = get_out_mca(ete_tre, outgroups)
             if outgroup_mca == ete_tre:
                 ## 外群的MCA就是根节点
                 ### 先置根一个非外群物种
@@ -219,7 +255,7 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
                         break
                 ete_tre.set_outgroup(node)
                 ### 再置根原本的外群
-                outgroup_mca = ete_tre.get_common_ancestor(outgroups)
+                outgroup_mca = get_out_mca(ete_tre, outgroups)
                 ete_tre.set_outgroup(outgroup_mca)
             else:
                 ete_tre.set_outgroup(outgroup_mca)
@@ -238,12 +274,10 @@ class TreeSuite(QDialog, Ui_TreeSuite, object):
                 i.setVisible(False)
         ## 如果是RCV，隐藏树的选项
         if analysis == "RCV (Relative composition variability)":
-            for i in [self.label_8, self.comboBox_6, self.pushButton_4,
-                      self.label_3, self.comboBox_10]:
+            for i in [self.label_8, self.comboBox_6, self.pushButton_4]:
                 i.setVisible(False)
         else:
-            for i in [self.label_8, self.comboBox_6, self.pushButton_4,
-                      self.label_3, self.comboBox_10]:
+            for i in [self.label_8, self.comboBox_6, self.pushButton_4]:
                 i.setVisible(True)
         if analysis == "Spurious species identification":
             for j in [self.label_4, self.spinBox, self.label_15]:
@@ -315,8 +349,8 @@ BAR_SHIFT\t0
 BAR_ZERO\t0
 DATA''']
 
-    def cal_treeness(self, tree):
-        ete_tre = self.factory.read_tree(tree, parent=self)
+    def cal_treeness(self, ete_tre):
+        # ete_tre = self.factory.read_tree(tree, parent=self)
         inter_node_len = []
         all_len = []
         leaf_names = []
@@ -329,13 +363,13 @@ DATA''']
                 all_len.append(node.dist)
         return sum(inter_node_len) / sum(all_len), leaf_names
 
-    def treeness(self, trees, export_path, sep="\t", suffix="tsv"):
+    def treeness(self, dict_trees, export_path, sep="\t", suffix="tsv"):
         if sep=="\\t":
             sep = "\t"
         list_out = [["File", "Treeness"]]
-        for tree in trees:
-            file_base = os.path.splitext(os.path.basename(tree))[0]
-            treeness, leafnames = self.cal_treeness(tree)
+        for tree_file, ete_tre in dict_trees.items():
+            file_base = os.path.splitext(os.path.basename(tree_file))[0]
+            treeness, leafnames = self.cal_treeness(ete_tre)
             list_out.append([file_base, str(treeness)])
         self.factory.write_csv_file(f"{export_path}{os.sep}treeness.{suffix}",
                                     list_out, parent=self, silence=True, sep=sep)
@@ -445,7 +479,7 @@ DATA''']
             warning.insert(0, f"{'-'*8}> {tree_base} <{'-'*8}|{'-'*8}> {aln_base} <{'-'*8}")
         return warning
 
-    def signal_to_noise(self, tre_msa, export_path, sep="\t", suffix="tsv",
+    def signal_to_noise(self, dict_trees, tre_msa, export_path, sep="\t", suffix="tsv",
                         seq_type="AUTO"):
         if sep== "\\t":
             sep = "\t"
@@ -454,7 +488,8 @@ DATA''']
         warnings = []
         for tree, msa in tre_msa:
             rcv, aln_spe = self.cal_rcv(msa, seq_type)
-            treeness, tree_spe = self.cal_treeness(tree)
+            ete_tree = dict_trees[tree]
+            treeness, tree_spe = self.cal_treeness(ete_tree)
             tree_base = os.path.splitext(os.path.basename(tree))[0]
             aln_base = os.path.splitext(os.path.basename(msa))[0]
             list_out.append([tree_base, aln_base, str(treeness/rcv), str(treeness), str(rcv)])
@@ -486,13 +521,13 @@ DATA''']
         self.factory.write_csv_file(f"{export_path}{os.sep}Species.RCV.{suffix}",
                                     list_out_individual, parent=self, silence=True, sep=sep)
 
-    def cal_r2t_brl(self, tree, filebase, outgroups=[]):
-        ete_tre = self.factory.read_tree(tree, parent=self)
-        if outgroups:
-            ete_tre = self.set_outgroups(ete_tre, outgroups)
-            # if set([i in ete_tre for i in outgroups]) == {True}:
-            #     outgroup_mca = ete_tre.get_common_ancestor(outgroups)
-            #     ete_tre.set_outgroup(outgroup_mca)
+    def cal_r2t_brl(self, ete_tre, filebase):
+        # ete_tre = self.factory.read_tree(tree, parent=self)
+        # if outgroups:
+        #     ete_tre = self.set_outgroups(ete_tre, outgroups)
+        #     # if set([i in ete_tre for i in outgroups]) == {True}:
+        #     #     outgroup_mca = ete_tre.get_common_ancestor(outgroups)
+        #     #     ete_tre.set_outgroup(outgroup_mca)
         list_ = []
         list_itol = []
         root_node = ete_tre.get_tree_root()
@@ -503,13 +538,13 @@ DATA''']
                 list_itol.append(f"{node.name}\t{round(dist, self.decimal)}")
         return list_, list_itol
 
-    def r2t_brl(self, trees, export_path, sep="\t", suffix="tsv", outgroups=[]):
+    def r2t_brl(self, dict_trees, export_path, sep="\t", suffix="tsv"):
         if sep=="\\t":
             sep = "\t"
         list_out = [["File", "Species", "root-to-tip branch length"]]
-        for tree in trees:
-            file_base = os.path.splitext(os.path.basename(tree))[0]
-            list_, list_itol = self.cal_r2t_brl(tree, file_base, outgroups=outgroups)
+        for tree_file, ete_tree in dict_trees.items():
+            file_base = os.path.splitext(os.path.basename(tree_file))[0]
+            list_, list_itol = self.cal_r2t_brl(ete_tree, file_base)
             list_out.extend(list_)
             itol = self.get_itol_header("Root to tip length")
             itol.extend(list_itol)
@@ -518,10 +553,10 @@ DATA''']
         self.factory.write_csv_file(f"{export_path}{os.sep}root-to-tip-branch-length.{suffix}",
                                     list_out, parent=self, silence=True, sep=sep)
 
-    def cal_lbs(self, tree, filebase, outgroups=[]):
-        ete_tre = self.factory.read_tree(tree, parent=self)
-        if outgroups:
-            ete_tre = self.set_outgroups(ete_tre, outgroups)
+    def cal_lbs(self, ete_tre, filebase):
+        # ete_tre = self.factory.read_tree(tree, parent=self)
+        # if outgroups:
+        #     ete_tre = self.set_outgroups(ete_tre, outgroups)
             # if set([i in ete_tre for i in outgroups]) == {True}:
             #     outgroup_mca = ete_tre.get_common_ancestor(outgroups)
             #     if outgroup_mca == ete_tre:
@@ -569,16 +604,16 @@ DATA''']
                        str(np.min(overall_lb_scores)), str(np.max(overall_lb_scores)),
                        str(stat.stdev(overall_lb_scores)), str(stat.variance(overall_lb_scores))], list_itol
 
-    def lbs(self, trees, export_path, sep="\t", suffix="tsv", outgroups=[]):
+    def lbs(self, dict_trees, export_path, sep="\t", suffix="tsv", outgroups=[]):
         if sep=="\\t":
             sep = "\t"
         list_out = [["File", "Species", "Long branch score"]]
         list_overall = [["Tree", "Mean", "Median", "25% percentile",
                          "75% percentile", "Minimum", "Maximum",
                          "Standard deviation", "Vriance"]]
-        for tree in trees:
-            file_base = os.path.splitext(os.path.basename(tree))[0]
-            list_, overall, list_itol = self.cal_lbs(tree, file_base, outgroups=outgroups)
+        for tree_file, ete_tree in dict_trees.items():
+            file_base = os.path.splitext(os.path.basename(tree_file))[0]
+            list_, overall, list_itol = self.cal_lbs(ete_tree, file_base)
             list_out.extend(list_)
             list_overall.append(overall)
             itol = self.get_itol_header("Long branch score")
@@ -591,10 +626,10 @@ DATA''']
         self.factory.write_csv_file(f"{export_path}{os.sep}Long branch scores overall.{suffix}",
                                     list_overall, parent=self, silence=True, sep=sep)
 
-    def cal_ss(self, tree, filebase, outgroups=[], factor=20):
-        ete_tre = self.factory.read_tree(tree, parent=self)
-        if outgroups:
-            ete_tre = self.set_outgroups(ete_tre, outgroups)
+    def cal_ss(self, ete_tre, filebase, factor=20):
+        # ete_tre = self.factory.read_tree(tree, parent=self)
+        # if outgroups:
+        #     ete_tre = self.set_outgroups(ete_tre, outgroups)
             # if set([i in ete_tre for i in outgroups]) == {True}:
             #     outgroup_mca = ete_tre.get_common_ancestor(outgroups)
             #     ete_tre.set_outgroup(outgroup_mca)
@@ -617,20 +652,21 @@ DATA''']
                 list_.append([filebase, spe, str(brl), str(median), str(threshold)])
         return list_
 
-    def spurious_spe_ident(self, trees, export_path, sep="\t", suffix="tsv",
-                           outgroups=[], factor=20):
+    def spurious_spe_ident(self, dict_trees, export_path, sep="\t", suffix="tsv",
+                           factor=20):
         if sep == "\\t":
             sep = "\t"
         list_out = [["File", "Species", "Branch length", "Median Branch length", "Threshold"]]
-        for tree in trees:
-            file_base = os.path.splitext(os.path.basename(tree))[0]
-            list_ = self.cal_ss(tree, file_base, outgroups=outgroups, factor=factor)
+        for tree_file, ete_tree in dict_trees.items():
+        # for tree in trees:
+            file_base = os.path.splitext(os.path.basename(tree_file))[0]
+            list_ = self.cal_ss(ete_tree, file_base, factor=factor)
             list_out.extend(list_)
         self.factory.write_csv_file(f"{export_path}{os.sep}Spurious species.{suffix}",
                                     list_out, parent=self, silence=True, sep=sep)
 
-    def cal_saturation(self, tree, msa, align_base, tree_base):
-        ete_tre = self.factory.read_tree(tree, parent=self)
+    def cal_saturation(self, ete_tre, msa, align_base, tree_base):
+        # ete_tre = self.factory.read_tree(tree, parent=self)
         parsefmt = Parsefmt()
         dict_fas = parsefmt.readfile(msa)
         ## 核验树的物种是不是和aln的完全一致
@@ -668,9 +704,14 @@ DATA''']
         # calculate linear regression
         y = list_difs
         x = list_discances
-        res = sm.OLS(
-            y, sm.add_constant(x), missing="drop"
-        ).fit()
+        data = pd.DataFrame({"y":y, "x":x})
+        # res = sm.OLS(
+        #     y, sm.add_constant(x), missing="drop"
+        # ).fit()
+        # https://stackoverflow.com/questions/51051460/fixing-the-intercept-in-statsmodels-ols
+        # Fit OLS without intercept: include "-1" in your formula
+        res = smf.ols("y ~ x - 1", data=data, missing="drop").fit()
+
         if self.make_plot:
             slope, intercept, r2, r2_adj, fvalue, f_pvalue, llihood, aic, bic = self.get_statsmodels_stats(res)
         else:
@@ -688,7 +729,7 @@ DATA''']
     def get_statsmodels_stats(self, res):
         r2 = res.rsquared
         r2_adj = res.rsquared_adj
-        intercept, slope = res.params
+        intercept, slope = res.params if len(res.params) == 2 else 0, res.params[0]
         fvalue = res.fvalue
         f_pvalue = res.f_pvalue
         aic = res.aic
@@ -700,11 +741,16 @@ DATA''']
         cmd = f'''
 import plotly.express as px
 import pandas as pd
+import plotly
 
 df = pd.read_csv(r"{self.exportPath}{os.sep}plot_data.tsv", sep="\\t")
+df.loc[:, "Tree"] = df.loc[:, "Tree"].astype(str)
+df.loc[:, "Alignment"] = df.loc[:, "Alignment"].astype(str)
 df = df.assign(file=df.loc[:, "Tree"] + " & " + df.loc[:, "Alignment"])
-fig = px.scatter(df, x="Partristic distance", y="Pairwise difference",
+fig = px.scatter(df, x="Patristic distance", y="Pairwise difference",
                  facet_col="file", trendline="ols",
+                 # if False, the trendline passes through the origin but if True a y-intercept is fitted.
+                 trendline_options={{"add_constant": False}},
                  facet_col_wrap={self.kwargs["col_num"]},
                  facet_col_spacing={self.kwargs["col_space"]},
                  facet_row_spacing={self.kwargs["col_space"]})
@@ -726,8 +772,8 @@ for num, a in enumerate(fig.layout.annotations):
     identifier = text.split("=")[1]
     stat_reg_model = results.loc[results["file"]==identifier,:]["px_fit_results"].iloc[0]
     r2 = round(stat_reg_model.rsquared, {self.decimal})
-    intercept, coef = stat_reg_model.params
-    ols = 'y = ' + str(round(coef, {self.decimal})) + 'x' + ' + ' + str(round(intercept, {self.decimal}))
+    coef = stat_reg_model.params[0]
+    ols = 'y = ' + str(round(coef, 3)) + 'x'
     a.text = f"{{a.text}}<br>{{ols}}; R square = {{r2}}"
 fig.for_each_annotation(lambda x: x.update(font={{"size": {self.kwargs["font_size"]},
                                                 "family": "{self.kwargs["font_fam"]}"}}))
@@ -766,10 +812,10 @@ fig.write_html(r"{self.kwargs["html"]}")
             self.logCMDSig.emit(draw_cmd)
             exec(draw_cmd)
 
-    def saturation(self, tre_msa, export_path, sep="\t", suffix="tsv"):
+    def saturation(self, dict_trees, tre_msa, export_path, sep="\t", suffix="tsv"):
         if sep== "\\t":
             sep = "\t"
-        list_out = [["Tree", "Alignment", "Species1", "Species2", "Partristic distance",
+        list_out = [["Tree", "Alignment", "Species1", "Species2", "Patristic distance",
                               "Pairwise difference", "Pairwise identity"]]
         if not self.make_plot:
             list_regression = [["Tree", "Alignment", "Slope", "Intercept", "r square",
@@ -782,7 +828,8 @@ fig.write_html(r"{self.kwargs["html"]}")
         for tree, msa in tre_msa:
             tree_base = os.path.splitext(os.path.basename(tree))[0]
             aln_base = os.path.splitext(os.path.basename(msa))[0]
-            list_, tree_spe, aln_spe, reg = self.cal_saturation(tree, msa, aln_base, tree_base)
+            ete_tree = dict_trees[tree]
+            list_, tree_spe, aln_spe, reg = self.cal_saturation(ete_tree, msa, aln_base, tree_base)
             list_out.extend(list_)
             list_regression.append(reg)
             warnings.extend(self.find_diff(tree_spe, aln_spe, tree_base, aln_base))
@@ -801,10 +848,10 @@ fig.write_html(r"{self.kwargs["html"]}")
                 f2.write("\n".join(warnings))
         return warnings
 
-    def cal_evo_rate(self, tree, outgroups):
-        ete_tre = self.factory.read_tree(tree, parent=self)
-        if outgroups:
-            ete_tre = self.set_outgroups(ete_tre, outgroups)
+    def cal_evo_rate(self, ete_tre):
+        # ete_tre = self.factory.read_tree(tree, parent=self)
+        # if outgroups:
+        #     ete_tre = self.set_outgroups(ete_tre, outgroups)
             # if set([i in ete_tre for i in outgroups]) == {True}:
             #     outgroup_mca = ete_tre.get_common_ancestor(outgroups)
             #     ete_tre.set_outgroup(outgroup_mca)
@@ -816,21 +863,22 @@ fig.write_html(r"{self.kwargs["html"]}")
             list_brls.append(node.dist)
         return sum(list_brls)/sum(list_leafs)
 
-    def evo_rate(self, trees, export_path, sep="\t", suffix="tsv", outgroups=""):
+    def evo_rate(self, dict_trees, export_path, sep="\t", suffix="tsv"):
         if sep=="\\t":
             sep = "\t"
         list_out = [["File", "Evolution rate"]]
-        for tree in trees:
-            file_base = os.path.splitext(os.path.basename(tree))[0]
-            evo_rate = self.cal_evo_rate(tree, outgroups)
+        # for tree in trees:
+        for tree_file, ete_tree in dict_trees.items():
+            file_base = os.path.splitext(os.path.basename(tree_file))[0]
+            evo_rate = self.cal_evo_rate(ete_tree)
             list_out.append([file_base, str(evo_rate)])
         self.factory.write_csv_file(f"{export_path}{os.sep}Evolution rate.{suffix}",
                                         list_out, parent=self, silence=True, sep=sep)
 
-    def cal_pair_dist(self, tree, outgroups, tree_base):
-        ete_tre = self.factory.read_tree(tree, parent=self)
-        if outgroups:
-            ete_tre = self.set_outgroups(ete_tre, outgroups)
+    def cal_pair_dist(self, ete_tre, tree_base):
+        # ete_tre = self.factory.read_tree(tree, parent=self)
+        # if outgroups:
+        #     ete_tre = self.set_outgroups(ete_tre, outgroups)
             # if set([i in ete_tre for i in outgroups]) == {True}:
             #     outgroup_mca = ete_tre.get_common_ancestor(outgroups)
             #     ete_tre.set_outgroup(outgroup_mca)
@@ -858,31 +906,32 @@ fig.write_html(r"{self.kwargs["html"]}")
                 list_pairs.append([leaf1, leaf2])
         return list_matrix, list_
 
-    def pair_dist(self, trees, export_path, sep="\t", suffix="tsv", outgroups=""):
+    def pair_dist(self, dict_trees, export_path, sep="\t", suffix="tsv"):
         if sep=="\\t":
             sep = "\t"
         list_out = [["File", "Species1", "Species2", "Patristic distance (branch length)"]]
-        for tree in trees:
-            file_base = os.path.splitext(os.path.basename(tree))[0]
-            matrix, list_ = self.cal_pair_dist(tree, outgroups, file_base)
+        # for tree in trees:
+        for tree_file, ete_tree in dict_trees.items():
+            file_base = os.path.splitext(os.path.basename(tree_file))[0]
+            matrix, list_ = self.cal_pair_dist(ete_tree, file_base)
             list_out.extend(list_)
             self.factory.write_csv_file(f"{export_path}{os.sep}{file_base} patristic distance matrix.{suffix}",
                                             matrix, parent=self, silence=True, sep=sep)
         self.factory.write_csv_file(f"{export_path}{os.sep}Patristic distance.{suffix}",
                                         list_out, parent=self, silence=True, sep=sep)
 
-    def unroot(self, trees, export_path):
-        for tree in trees:
-            file_base = os.path.splitext(os.path.basename(tree))[0]
-            ete_tre = self.factory.read_tree(tree, parent=self)
+    def unroot(self, dict_trees, export_path):
+        for tree_file, ete_tre in dict_trees.items():
+            file_base = os.path.splitext(os.path.basename(tree_file))[0]
+            # ete_tre = self.factory.read_tree(tree, parent=self)
             if ete_tre:
                 ete_tre.unroot()
             ete_tre.write(outfile=f"{export_path}{os.sep}{file_base}_unrooted.nwk", format=1)
 
-    def resolve_polytomy(self, trees, export_path):
-        for tree in trees:
-            file_base = os.path.splitext(os.path.basename(tree))[0]
-            ete_tre = self.factory.read_tree(tree, parent=self)
+    def resolve_polytomy(self, dict_trees, export_path):
+        for tree_file, ete_tre in dict_trees.items():
+            file_base = os.path.splitext(os.path.basename(tree_file))[0]
+            # ete_tre = self.factory.read_tree(tree, parent=self)
             if ete_tre:
                 ete_tre.resolve_polytomy(recursive=True)
             ete_tre.write(outfile=f"{export_path}{os.sep}{file_base}_non_polytomy.nwk", format=1)
@@ -951,37 +1000,35 @@ fig.write_html(r"{self.kwargs["html"]}")
                     self.qss_file,
                     self])
             warnings = []
+            # if self.dict_trees:
+            #     print(self.dict_trees.popitem()[1])
             if self.analysis == "Treeness":
-                self.treeness(self.trees, self.exportPath, sep=self.sep, suffix=self.suffix)
+                self.treeness(self.dict_trees, self.exportPath, sep=self.sep, suffix=self.suffix)
             elif self.analysis == "Signal-to-noise (Treeness over RCV)":
-                warnings = self.signal_to_noise(self.combine_tree_msa(self.trees, self.msas),
+                warnings = self.signal_to_noise(self.dict_trees, self.combine_tree_msa(list(self.dict_trees.keys()), self.msas),
                                      self.exportPath, sep=self.sep, suffix=self.suffix,
                                      seq_type=self.seq_type)
             elif self.analysis == "RCV (Relative composition variability)":
                 self.rcv(self.msas, self.exportPath, sep=self.sep, suffix=self.suffix,
                          seq_type=self.seq_type)
             elif self.analysis == "Root-to-tip branch length":
-                self.r2t_brl(self.trees, self.exportPath, sep=self.sep, suffix=self.suffix,
-                             outgroups=self.outgroups)
+                self.r2t_brl(self.dict_trees, self.exportPath, sep=self.sep, suffix=self.suffix)
             elif self.analysis == "Long branch score":
-                self.lbs(self.trees, self.exportPath, sep=self.sep, suffix=self.suffix,
-                             outgroups=self.outgroups)
+                self.lbs(self.dict_trees, self.exportPath, sep=self.sep, suffix=self.suffix)
             elif self.analysis == "Spurious species identification":
-                self.spurious_spe_ident(self.trees, self.exportPath, sep=self.sep, suffix=self.suffix,
-                         outgroups=self.outgroups, factor=self.factor)
+                self.spurious_spe_ident(self.dict_trees, self.exportPath, sep=self.sep,
+                                        suffix=self.suffix, factor=self.factor)
             elif self.analysis == "Saturation":
-                warnings = self.saturation(self.combine_tree_msa(self.trees, self.msas),
+                warnings = self.saturation(self.dict_trees, self.combine_tree_msa(list(self.dict_trees.keys()), self.msas),
                                      self.exportPath, sep=self.sep, suffix=self.suffix)
             elif self.analysis == "Evolutionary rate":
-                self.evo_rate(self.trees, self.exportPath, sep=self.sep, suffix=self.suffix,
-                                        outgroups=self.outgroups)
+                self.evo_rate(self.dict_trees, self.exportPath, sep=self.sep, suffix=self.suffix)
             elif self.analysis == "Pairwise patristic distance (branch length)":
-                self.pair_dist(self.trees, self.exportPath, sep=self.sep, suffix=self.suffix,
-                              outgroups=self.outgroups)
+                self.pair_dist(self.dict_trees, self.exportPath, sep=self.sep, suffix=self.suffix)
             elif self.analysis == "Unroot tree":
-                self.unroot(self.trees, self.exportPath)
+                self.unroot(self.dict_trees, self.exportPath)
             elif self.analysis == "Resolve polytomy":
-                self.resolve_polytomy(self.trees, self.exportPath)
+                self.resolve_polytomy(self.dict_trees, self.exportPath)
             elif self.analysis == "plot":
                 exec(self.plot_cmd)
             if not warnings:
@@ -1027,7 +1074,7 @@ fig.write_html(r"{self.kwargs["html"]}")
             # missed some field... not sure why?
             if isinstance(obj, QComboBox):
                 # save combobox selection to registry
-                if name not in ["comboBox_6", "comboBox_5", "comboBox_10"]:
+                if name not in ["comboBox_6", "comboBox_5"]:
                     index = obj.currentIndex()
                     self.TreeSuite_settings.setValue(name, index)
             if isinstance(obj, QCheckBox):

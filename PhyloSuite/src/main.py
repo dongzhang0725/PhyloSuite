@@ -38,9 +38,11 @@ from src.Lg_Mrbayes import MrBayes
 from src.Lg_SerhNCBI import SerhNCBI
 from src.Lg_addFiles import Lg_addFiles
 from src.Lg_displaySettings import DisplaySettings
+from src.Lg_dna_view import DNAViewer
 from src.Lg_drawGO import DrawGO
 from src.Lg_extractSettings import ExtractSettings
 from src.Lg_macse import MACSE
+from src.Lg_msa_view import MSAViewer
 from src.Lg_seqViewer import Seq_viewer
 from src.Lg_tiger import Tiger
 from src.Lg_trimAl import TrimAl
@@ -55,7 +57,15 @@ from src.handleGB import DetermineCopyGene, DetermineCopyGeneParallel, GbManager
 from src.Lg_extracter import ExtractGB
 from src.Lg_mafft import Mafft
 from src.Lg_Concatenate import Matrix
+from src.Lg_iTOL_editor import Itol_editor
+from src.Lg_MCMCTree import MCMCTree, MCMCTracer
+from src.Lg_treeview import TreeViewer
 import platform
+
+from src.Lg_muscle import MUSCLE
+
+from src.plugins import dict_plugin_settings
+
 if platform.system().lower() == "windows":
     ##windows下才导入这个
     from src.Lg_parseANNT import ParseANNT
@@ -73,7 +83,7 @@ import re
 from src.update import UpdateAPP
 import subprocess
 from io import StringIO
-from Bio.Alphabet import generic_dna, generic_protein, generic_rna
+# from Bio.Alphabet import generic_dna, generic_protein, generic_rna
 import time
 from src.Lg_RSCUfig import DrawRSCUfig
 
@@ -124,8 +134,9 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.mainwindow_settings.setFallbacksEnabled(False)
         self.setupUi(self)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            qss_file = f.read()
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     qss_file = f.read()
+        qss_file = self.factory.set_qss(self, noset=True)
         # 统一界面字体
         QSettings.setDefaultFormat(QSettings.IniFormat)
         font_settings = QSettings()
@@ -166,7 +177,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.restoreFolderSig.connect(self.recycled_restore)
         self.exception_signal.connect(lambda x: self.factory.popupException(self, x))
         self.warning_signal.connect(self.popupWarning)
-        self.updateSig.connect(self.UpdatesSlot)
+        # self.updateSig.connect(self.UpdatesSlot)
         self.openDisplaySetSig.connect(self.on_actionDisplay_triggered)
         self.display_checkSig.connect(lambda array: self.displayTableModel.updateModel(array))
         # 修改主界面version展示
@@ -180,10 +191,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         # 删除更新留下的旧文件，延迟2秒执行
         QTimer.singleShot(2000, lambda : WorkThread(self.removeOldApp, parent=self).start())
         ##检查版本
-        not_check_update = self.mainwindow_settings.value("not auto check update", "0")
-        if not self.factory.str2bool(not_check_update):
-            ##允许检查才检查
-            self.factory.checkUpdates(self.updateSig, self.exception_signal, mode="auto check", parent=self)
+        # not_check_update = self.mainwindow_settings.value("not auto check update", "0")
+        # if not self.factory.str2bool(not_check_update):
+        #     ##允许检查才检查
+        #     self.factory.checkUpdates(self.updateSig, self.exception_signal, mode="auto check", parent=self)
             # httpread = HttpRead(parent=self)
             # WorkThread(lambda: self.factory.checkUpdates(self.updateSig, self.exception_signal,
             #                                              mode="auto check", httpread=httpread), parent=self).start()
@@ -199,7 +210,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         #计算最长工作路径的有多长
         font_ = self.font()
         length = QFontMetrics(QFont(font_.family(), font_.pointSize())).width(max(workplace, key=len))
-        self.workplace_widget.DropDownMenu.setMinimumWidth(length+40) #让下拉菜单显示完全
+        self.workplace_widget.DropDownMenu.setMinimumWidth(int(length)+40) #让下拉菜单显示完全
         self.workplace_widget.DropDownMenu.addMenuItem(":/picture/resourses/other.png", "Others...")
         self.workplace_widget.DropDownMenu.tableWidget.itemClicked.connect(self.switchWorkPlace)
         self.workplace_widget.DropDownMenu.tableWidget.setWordWrap(True)
@@ -396,6 +407,9 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         extractGB = QAction(QIcon(":/picture/resourses/extract1.png"), "Extract", self,
                            statusTip="Extract GenBank file",
                            triggered=self.on_Extract_triggered)
+        DNA_view = QAction(QIcon(":/picture/resourses/Eye_Care_Services-512.png"), "Linear view", self,
+                            statusTip="Draw linear figure",
+                            triggered=self.on_dnaViewer_triggered)
         exportSelectID = QAction(QIcon(":/picture/resourses/if_10_Menu_List_Text_Line_Item_Bullet_Paragraph_2142684.png"), "Export GenBank", self,
                                       statusTip="Export select IDs as GenBank file",
                                       triggered=self.exportID)
@@ -426,6 +440,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         table_popMenu.addAction(reorderGBbyPos)
         table_popMenu.addAction(standard)
         table_popMenu.addAction(extractGB)
+        table_popMenu.addAction(DNA_view)
         table_popMenu.addSeparator()
         table_popMenu.addAction(exportSelectID)
         table_popMenu.addAction(exportID2fas)
@@ -465,10 +480,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         tree4_popMenu = QMenu(self)
         openFile = QAction(QIcon(":/seq_Viewer/resourses/field-Display.png"), "Open", self,
                            statusTip="open file",
-                           triggered=lambda : self.openResultsInWindow(self.treeView_4.model().filePath(self.treeView_4.currentIndex())))
+                           triggered=lambda: self.openResultsInWindow(self.treeView_4.model().filePath(self.treeView_4.currentIndex())))
         openInExplore = QAction(QIcon(":/picture/resourses/folder.png"), "Open in file explorer", self,
                            statusTip="open in file explorer",
-                           triggered=lambda : self.factory.openPath(os.path.dirname(self.treeView_4.model().filePath(self.treeView_4.currentIndex())), self))
+                           triggered=lambda: self.factory.openPath(os.path.dirname(self.treeView_4.model().filePath(self.treeView_4.currentIndex())),self))
         remove = QAction(QIcon(":/picture/resourses/if_Delete_1493279.png"), "Remove", self,
                            statusTip="Remove",
                            triggered=self.remove_treeview4)
@@ -478,6 +493,9 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         MACSE = QAction(QIcon(":/picture/resourses/M.png"), "Import to MACSE (for CDS)", self,
                         statusTip="Align with MACSE",
                         triggered=self.on_MACSE_triggered)
+        MUSCLE = QAction(QIcon(":/picture/resourses/muscle-filled.svg"), "Import to  MUSCLE", self,
+                            statusTip="Align with MUSCLE",
+                            triggered=self.on_actionMUSCLE_triggered)
         trimAl = QAction(QIcon(":/picture/resourses/icon--trim-confirm-0.png"), "Import to trimAl", self,
                          statusTip="trimAl",
                          triggered=self.on_actiontrimAl_triggered)
@@ -503,35 +521,45 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                           statusTip="Reconstruct tree with MrBayes",
                           triggered=self.on_actionMrBayes_triggered)
         partfind = QAction(QIcon(":/picture/resourses/pie-chart.png"), "Import to PartitionFinder2", self,
-                          statusTip="Select partition model with PartitionFinder2",
-                          triggered=self.on_actionPartitionFinder_triggered)
+                           statusTip="Select partition model with PartitionFinder2",
+                           triggered=self.on_actionPartitionFinder_triggered)
         rscu = QAction(QIcon(":/picture/resourses/if_7_2172765.png"), "Import to Draw RSCU figure", self,
-                           statusTip="Draw RSCU figure",
-                           triggered=self.on_actionRSCUfig_triggered)
+                       statusTip="Draw RSCU figure",
+                       triggered=self.on_actionRSCUfig_triggered)
         compareTable = QAction(QIcon(":/picture/resourses/ezsrokaxkrotbkoewfgb.png"), "Import to Compare Table", self,
-                       statusTip="Compare table",
-                       triggered=self.on_Compare_table_triggered)
+                               statusTip="Compare table",
+                               triggered=self.on_Compare_table_triggered)
         drawGO = QAction(QIcon(":/picture/resourses/round arrangement-fill.svg"), "Import to Draw gene order", self,
-                               statusTip="Draw gene order",
-                               triggered=self.on_actionDrawGO_triggered)
+                         statusTip="Draw gene order",
+                         triggered=self.on_actionDrawGO_triggered)
         rsl_dups = QAction(QIcon(":/picture/resourses/drag.png"), "Resolve gene duplicates", self,
-            statusTip="Resolve gene duplicates",
-            triggered=self.on_rsl_duplicates_triggered)
+                           statusTip="Resolve gene duplicates",
+                           triggered=self.on_rsl_duplicates_triggered)
         tree_suite = QAction(QIcon(":/Menu/resourses/Menu/echarts-tree.png"), "Import to Treesuite", self,
-                           statusTip="TreeSuite",
-                           triggered=self.on_TreeSuite_triggered)
-        ASTRAL = QAction(QIcon(":/picture/resourses/menu_icons/A2.png"), "Import to ASTRAL", self,
-                         statusTip="Reconstruct species tree with ASTRAL",
+                             statusTip="TreeSuite",
+                             triggered=self.on_TreeSuite_triggered)
+        ASTER = QAction(QIcon(":/picture/resourses/menu_icons/A2.png"), "Import to ASTER", self,
+                         statusTip="Reconstruct species tree with ASTER",
                          triggered=self.on_actionASTRAL_triggered)
         FastTree = QAction(QIcon(":/picture/resourses/menu_icons/fast.svg"), "Import to FastTree", self,
-                         statusTip="Reconstruct tree with FastTree",
-                         triggered=self.on_actionFastTree_triggered)
+                           statusTip="Reconstruct tree with FastTree",
+                           triggered=self.on_actionFastTree_triggered)
+        MDGUI = QAction(QIcon(":/picture/resourses/M.svg"), "Import to MDGUI", self,
+                             statusTip="MDGUI",
+                             triggered=self.on_MCMCTree_triggered)
+        TreeViewer = QAction(QIcon(":/Menu/resourses/Menu/StructTree.png"), "Import to TreeViewer", self,
+                             statusTip="TreeViewer",
+                             triggered=self.on_TreeViewer_triggered)
+        MCMCTracer = QAction(QIcon(":/picture/resourses/line_chart-512.png"), "Import to MCMCTracer", self,
+                             statusTip="Import to MCMCTracer",
+                             triggered=self.on_MCMCTracer_triggered)
         def popup(qpoint):
             index = self.treeView_4.indexAt(qpoint)
             if not index.isValid():
                 return
-            dict_ = {"extract_results": [mafft, MACSE, rscu, compareTable, drawGO, rsl_dups],
+            dict_ = {"extract_results": [mafft, MACSE, MUSCLE, rscu, compareTable, drawGO, rsl_dups],
                      "mafft_results": [MACSE, gblocks, trimAl, HmmCleaner, cvtFMT, catSeq, FastTree],
+                     "MUSCLE_results": [MACSE, gblocks, trimAl, HmmCleaner, cvtFMT, catSeq, FastTree],
                      "MACSE_results": [gblocks, trimAl, HmmCleaner, cvtFMT, catSeq, FastTree],
                      "concatenate_results": [gblocks, trimAl, HmmCleaner, iqtree, modelfinder, partfind, FastTree],
                      "PartFind_results": [iqtree, mrbayes],
@@ -539,13 +567,15 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                      "Gblocks_results": [cvtFMT, catSeq, FastTree],
                      "trimAl_results": [cvtFMT, catSeq, FastTree],
                      "HmmCleaner_results": [cvtFMT, catSeq, FastTree],
-                     "IQtree_results": [tree_suite, ASTRAL],
-                     "MrBayes_results": [tree_suite],
-                     "FastTree_results": [ASTRAL]
+                     "IQtree_results": [tree_suite, ASTER, MDGUI],
+                     "MrBayes_results": [tree_suite, MDGUI],
+                     "FastTree_results": [ASTER, MDGUI],
+                     "ASTER_results": [MDGUI],
+                     "MDGUI_results": [MCMCTracer]
                      }
             list_actions = [mafft, gblocks, trimAl, HmmCleaner, cvtFMT, catSeq, iqtree, FastTree,
                             modelfinder, partfind, MACSE, mrbayes, rscu, compareTable, drawGO,
-                            rsl_dups, tree_suite, ASTRAL]
+                            rsl_dups, tree_suite, MDGUI, ASTER, MUSCLE]
             filePath = self.treeView_4.model().filePath(index)
             topResultsName = os.path.basename(os.path.dirname(filePath))
             for action in list_actions:
@@ -559,6 +589,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         tree4_popMenu.addAction(remove)
         tree4_popMenu.addSeparator()
         tree4_popMenu.addAction(mafft)
+        tree4_popMenu.addAction(MUSCLE)
         tree4_popMenu.addAction(MACSE)
         tree4_popMenu.addAction(trimAl)
         if platform.system().lower() in ["darwin", "linux"]:
@@ -578,7 +609,9 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         tree4_popMenu.addAction(drawGO)
         tree4_popMenu.addAction(rsl_dups)
         tree4_popMenu.addAction(tree_suite)
-        tree4_popMenu.addAction(ASTRAL)
+        tree4_popMenu.addAction(MDGUI)
+        tree4_popMenu.addAction(ASTER)
+        tree4_popMenu.addAction(MCMCTracer)
         self.treeView_4.setContextMenuPolicy(Qt.CustomContextMenu)
         self.treeView_4.customContextMenuRequested.connect(popup)
         self.treeView_4.doubleClicked.connect(lambda index: self.openResultsInWindow(self.treeView_4.model().filePath(index)))
@@ -618,6 +651,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.alignment_widget._creatMenu(self)
         self.alignment_widget.DropDownMenu.addMenuItem(":/picture/resourses/mafft1.png",
                                                   "MAFFT")
+        self.alignment_widget.DropDownMenu.addMenuItem(":/picture/resourses/muscle-filled.svg",
+                                                 "MUSCLE")
         self.alignment_widget.DropDownMenu.addMenuItem(":/picture/resourses/M.png",
                                                        "MACSE (for CDS)")
         self.alignment_widget.DropDownMenu.addMenuItem(":/picture/resourses/icon--trim-confirm-0.png",
@@ -633,6 +668,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                                                        "Convert Sequence Format")
         self.alignment_widget.DropDownMenu.addMenuItem(":/seq_Viewer/resourses/field-Display.png",
                                                        "Sequence Viewer")
+        self.alignment_widget.DropDownMenu.addMenuItem(":/seq_Viewer/resourses/field-Display.png",
+                                                       "DNA Viewer")
+        self.alignment_widget.DropDownMenu.addMenuItem(":/seq_Viewer/resourses/field-Display.png",
+                                                       "Alignment Viewer")
         self.alignment_widget.DropDownMenu.tableWidget.itemClicked.connect(self.popFunction)
         self.phylogeny_widget._creatMenu(self)
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/picture/resourses/pie-chart.png",
@@ -646,13 +685,21 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/picture/resourses/2000px-Paris_RER_B_icon.svg.png",
                                                        "MrBayes")
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/picture/resourses/menu_icons/A2.png",
-                                                       "ASTRAL")
+                                                       "ASTRAL/CASTER/WASTER")
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/picture/resourses/sharpicons_Tiger.svg",
                                                        "Tiger")
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/Menu/resourses/Menu/tree_structure.png",
                                                        "Tree annotation")
         self.phylogeny_widget.DropDownMenu.addMenuItem(":/Menu/resourses/Menu/echarts-tree.png",
                                                        "TreeSuite")
+        self.phylogeny_widget.DropDownMenu.addMenuItem(":/picture/resourses/i.svg",
+                                                       "iTOL editor")
+        self.phylogeny_widget.DropDownMenu.addMenuItem(":/picture/resourses/M.svg",
+                                                       "MDGUI")
+        self.phylogeny_widget.DropDownMenu.addMenuItem(":/Menu/resourses/Menu/StructTree.png",
+                                                       "TimeTreeAnno")
+        self.phylogeny_widget.DropDownMenu.addMenuItem(":/picture/resourses/line_chart-512.png",
+                                                       "MCMCTracer")
         self.phylogeny_widget.DropDownMenu.tableWidget.itemClicked.connect(self.popFunction)
         self.mitogenome_widget._creatMenu(self)
         if platform.system().lower() == "windows":
@@ -677,10 +724,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                                                       "Color sets")
         self.settings_widget.DropDownMenu.addMenuItem(":/picture/resourses/settings.png",
                                                       "Settings")
-        self.settings_widget.DropDownMenu.addMenuItem(":/picture/resourses/update.png",
-                                                      "Check for Updates")
-        self.settings_widget.DropDownMenu.addMenuItem(":/picture/resourses/update.png",
-                                                      "Update manually")
+        # self.settings_widget.DropDownMenu.addMenuItem(":/picture/resourses/update.png",
+        #                                               "Check for Updates")
+        # self.settings_widget.DropDownMenu.addMenuItem(":/picture/resourses/update.png",
+        #                                               "Update manually")
         self.settings_widget.DropDownMenu.tableWidget.itemClicked.connect(self.popFunction)
         self.about_widget._creatMenu(self)
         self.about_widget.DropDownMenu.addMenuItem(":/picture/resourses/about-us.png",
@@ -1141,6 +1188,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             # self.seqViewer.setWindowModality(Qt.ApplicationModal)
             self.seqViewer.show()
         elif os.path.splitext(filePath)[1].upper() in [".TREEFILE", ".NWK", ".TRE"]:
+            set_NCBI_db = self.factory.checkNCBIdb(self)
+            if set_NCBI_db:
+                self.updateTaxonomyDB()
+                return
             tre = self.factory.read_tree(filePath, parent=self)
             if tre:
                 tre.show(name="PhyloSuite-ETE", parent=self)
@@ -1492,6 +1543,16 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.drawGO.show()
 
     @pyqtSlot()
+    def on_msaViewer_triggered(self):
+        filePath, workPath = self.fetchWorkPath(mode="all")
+        # autoInputs = self.factory.init_judge(mode="drawGO", filePath=filePath, parent=self)
+        self.msaView = MSAViewer(
+            workPath, self.focusSig, self)
+        # 添加最大化按钮
+        self.msaView.setWindowFlags(self.msaView.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        self.msaView.show()
+
+    @pyqtSlot()
     def on_actionWorkplace_triggered(self):
         self.actionWorkplace.menu().popup(QCursor.pos())
 
@@ -1717,6 +1778,32 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                 self.setting.exec_()
 
     @pyqtSlot()
+    def on_actionMUSCLE_triggered(self):
+        filePath, workPath = self.fetchWorkPath(mode="all")
+        MUSCLEPath = self.factory.programIsValid("MUSCLE", mode="tool")
+        if MUSCLEPath:
+            autoInputs = self.factory.init_judge(mode="MUSCLE", filePath=filePath, parent=self)
+            self.muscle = MUSCLE(workPath, self.focusSig, None, MUSCLEPath, autoInputs, self.clearFolderSig, self)
+            # 添加最大化按钮
+            self.muscle.setWindowFlags(self.muscle.windowFlags() | Qt.WindowMinMaxButtonsHint)
+            self.muscle.show()
+            if (not autoInputs) and (not self.factory.autoInputDisbled()):
+                self.muscle.popupAutoDec(init=True)
+        else:
+            reply = QMessageBox.information(
+                self,
+                "Information",
+                "<p style='line-height:25px; height:25px'>Please install MUSCLE first!</p>",
+                QMessageBox.Ok,
+                QMessageBox.Cancel)
+            if reply==QMessageBox.Ok:
+                self.setting = Setting(self)
+                self.setting.display_table(self.setting.listWidget.item(1))
+                # 隐藏？按钮
+                self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
+                self.setting.exec_()
+
+    @pyqtSlot()
     def on_actionMrBayes_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
         MBpath = self.factory.programIsValid("MrBayes", mode="tool")
@@ -1841,6 +1928,50 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         self.seqViewer.show()
 
     @pyqtSlot()
+    def on_dnaViewer_triggered(self):
+        treeIndex = self.treeView.currentIndex()
+        if treeIndex.isValid():
+            indices = self.tableView.selectedIndexes()
+            currentModel = self.tableView.model()
+            if indices:
+                self.progressDialog = self.factory.myProgressDialog(
+                    "Please Wait", "preparing...", parent=self)
+                self.progressDialog.show()
+                currentData = currentModel.arraydata
+                rows = sorted(set(index.row() for index in indices))
+                self.progressSig.emit(5)
+                # list_names = []
+                # list_IDs = []
+                dict_name_GB_path = {}
+                filePath = self.tree_model.filePath(treeIndex)
+                gbManager = GbManager(filePath, parent=self)
+                for num, row in enumerate(rows):
+                    # list_IDs.append(currentData[row][0])
+                    # list_names.append(currentData[row][1] + " " + currentData[row][0])
+                    dict_name_GB_path[currentData[row][1] + " " + currentData[row][0]] = gbManager.fetchRecordPath(currentData[row][0])
+                    self.progressSig.emit(5 + (num+1)*95/len(rows))
+                # listGB_paths = [gbManager.fetchRecordPath(ID) for ID in list_IDs]
+                totalID = len(dict_name_GB_path)
+                self.progressDialog.close()
+                self.dnaViewer = DNAViewer(
+                    dict_name_GB_path=dict_name_GB_path,
+                    # list_names=list_names,
+                    workPath=filePath,
+                    totleID=totalID,
+                    focusSig=self.focusSig,
+                    parent=self)
+                # 添加最大化按钮
+                self.dnaViewer.setWindowFlags(self.dnaViewer.windowFlags() | Qt.WindowMinMaxButtonsHint)
+                self.dnaViewer.show()
+            else:
+                QMessageBox.information(
+                    self,
+                    "Information",
+                    "<p style='line-height:25px; height:25px'>Please select ID(s) first</p>")
+                if hasattr(self, "tableView") and self.tableView.model() and self.tableView.model().arraydata:
+                    self.tableView.selectAll()
+
+    @pyqtSlot()
     def on_MACSE_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
         JAVApath = self.factory.programIsValid("java", mode="tool")
@@ -1947,6 +2078,10 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
     @pyqtSlot()
     def on_TreeAnnotation_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
+        set_NCBI_db = self.factory.checkNCBIdb(self)
+        if set_NCBI_db:
+            self.updateTaxonomyDB()
+            return
         GUI_TIMEOUT = None
         # autoInputs = self.factory.init_judge(mode="format conversion", filePath=filePath, parent=self)
         scene = _TreeScene()
@@ -1977,11 +2112,127 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             self.TreeSuite.popupAutoDec(init=True)
 
     @pyqtSlot()
+    def on_iTOL_editor_triggered(self):
+        filePath, workPath = self.fetchWorkPath(mode="all")
+        # GUI_TIMEOUT = None
+        # autoInputs = self.factory.init_judge(mode="tree suite", filePath=filePath, parent=self)
+        set_NCBI_db = self.factory.checkNCBIdb(self)
+        if set_NCBI_db:
+            self.updateTaxonomyDB()
+            return
+        else:
+            self.iTOL_editor = Itol_editor(workPath=workPath,
+                                       focusSig=self.focusSig,
+                                       parent=self)
+            self.iTOL_editor.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.iTOL_editor.windowFlags())
+            self.iTOL_editor.show()
+        # if (not autoInputs) and (not self.factory.autoInputDisbled()):
+        #     self.iTOL_editor.popupAutoDec(init=True)
+
+    @pyqtSlot()
+    def on_MCMCTree_triggered(self):
+        filePath, workPath = self.fetchWorkPath(mode="all")
+        mcmctreeEXE = self.factory.programIsValid("PAML", mode="tool")
+        if mcmctreeEXE:
+            # 有时候用户选择的是其它exe
+            if platform.system().lower()=="windows":
+                target = "target_win"
+            elif platform.system().lower()=="darwin":
+                target = "target_mac"
+            elif platform.system().lower()=="linux":
+                target = "target_linux"
+            target_exe = dict_plugin_settings["PAML"][target]
+            mcmctreeEXE = os.path.join(os.path.dirname(mcmctreeEXE), target_exe)
+            if platform.system().lower() != "windows":
+                r8sEXE = self.factory.programIsValid("r8s", mode="tool")
+            else:
+                r8sEXE = None
+            # set_NCBI_db = self.factory.checkNCBIdb(self)
+            # if set_NCBI_db:
+            #     self.updateTaxonomyDB()
+            #     return
+            def startMT(autoInputs, workPath, focusSig, r8sEXE, mcmctreeEXE, parent):
+                self.MCMCTree = MCMCTree(workPath=workPath,
+                                         focusSig=focusSig,
+                                         r8sEXE=r8sEXE,
+                                         mcmctreeEXE=mcmctreeEXE,
+                                         autoInputs=autoInputs,
+                                         parent=parent)
+                self.MCMCTree.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.MCMCTree.windowFlags())
+                self.MCMCTree.show()
+            # if mcmctreeEXE:
+            autoInputs = self.factory.init_judge(mode="MDGUI", filePath=filePath, parent=self)
+            tree, msa = autoInputs if autoInputs else [None, None]
+            if msa:
+                self.progressDialog = self.factory.myProgressDialog(
+                    "Please Wait", "Converting format...", busy=True, parent=self)
+                self.progressDialog.show()
+                self.convertfmt = Convertfmt(**{"export_path": os.path.dirname(msa[0]), "files": [msa[0]],
+                                                "export_paml": True,
+                                                "exception_signal": self.exception_signal})
+                gbWorker = WorkThread(
+                    lambda: self.convertfmt.exec_(),
+                    parent=self)
+                gbWorker.finished.connect(
+                    lambda: [self.progressDialog.close(),
+                             startMT([tree, [self.convertfmt.f4]], workPath, self.focusSig,
+                                     r8sEXE, mcmctreeEXE, self)])
+                gbWorker.start()
+            else:
+                startMT(autoInputs,
+                        workPath, self.focusSig, r8sEXE, mcmctreeEXE, self)
+                if (not tree) and (not self.factory.autoInputDisbled()):
+                    self.MCMCTree.popupAutoDec(init=True)
+        else:
+            reply = QMessageBox.information(
+                self,
+                "Information",
+                "<p style='line-height:25px; height:25px'>Please install PAML first!</p>",
+                QMessageBox.Ok,
+                QMessageBox.Cancel)
+            if reply == QMessageBox.Ok:
+                self.setting = Setting(self)
+                self.setting.display_table(self.setting.listWidget.item(1))
+                # 隐藏？按钮
+                self.setting.setWindowFlags(self.setting.windowFlags() | Qt.WindowMinMaxButtonsHint)
+                self.setting.exec_()
+
+    @pyqtSlot()
+    def on_TreeViewer_triggered(self):
+        filePath, workPath = self.fetchWorkPath(mode="all")
+        set_NCBI_db = self.factory.checkNCBIdb(self)
+        if set_NCBI_db:
+            self.updateTaxonomyDB()
+            return
+        else:
+            self.TreeViewer = TreeViewer(workPath=workPath,
+                                         focusSig=self.focusSig,
+                                         parent=self)
+            self.TreeViewer.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.TreeViewer.windowFlags())
+            self.TreeViewer.show()
+
+    @pyqtSlot()
+    def on_MCMCTracer_triggered(self):
+        filePath, workPath = self.fetchWorkPath(mode="all")
+        # set_NCBI_db = self.factory.checkNCBIdb(self)
+        # if set_NCBI_db:
+        #     self.updateTaxonomyDB()
+        #     return
+        # else:
+        autoInputs = self.factory.init_judge(mode="MCMCTracer", filePath=filePath, parent=self)
+        self.MCMCTracer = MCMCTracer(workPath=workPath,
+                                     focusSig=self.focusSig,
+                                     autoInputs=autoInputs,
+                                     parent=self)
+        self.MCMCTracer.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | self.MCMCTracer.windowFlags())
+        self.MCMCTracer.show()
+
+    @pyqtSlot()
     def on_actionASTRAL_triggered(self):
         filePath, workPath = self.fetchWorkPath(mode="all")
-        ASTRALPATH = self.factory.programIsValid("ASTRAL", mode="tool")
+        ASTRALPATH = self.factory.programIsValid("ASTRAL/CASTER/WASTER", mode="tool")
         if ASTRALPATH:
-            autoInputs = self.factory.init_judge(mode="ASTRAL", filePath=filePath, parent=self)
+            autoInputs = self.factory.init_judge(mode="ASTRAL/CASTER/WASTER", filePath=filePath, parent=self)
             self.ASTRAL = ASTRAL(autoInputs, workPath, ASTRALPATH,
                                  self.focusSig, False, self)
             # 添加最大化按钮
@@ -1993,7 +2244,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             reply = QMessageBox.information(
                 self,
                 "Information",
-                "<p style='line-height:25px; height:25px'>Please install ASTRAL first!</p>",
+                "<p style='line-height:25px; height:25px'>Please install ASTER first!</p>",
                 QMessageBox.Ok,
                 QMessageBox.Cancel)
             if reply == QMessageBox.Ok:
@@ -2078,13 +2329,13 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
                     record.name = name
                 list_names.append(record.name)
                 seq_type = parseFMT.judge(str(record.seq)) if not seq_type else seq_type
-                if seq_type == "DNA":
-                    alphabet = generic_dna
-                elif seq_type == "RNA":
-                    alphabet = generic_rna
-                else:
-                    alphabet = generic_protein
-                record.seq.alphabet = alphabet
+                # if seq_type == "DNA":
+                #     alphabet = generic_dna
+                # elif seq_type == "RNA":
+                #     alphabet = generic_rna
+                # else:
+                #     alphabet = generic_protein
+                # record.seq.alphabet = alphabet
                 if id:
                     record.id = id
                 record.annotations["organism"] = record.id if not organism else organism
@@ -2481,7 +2732,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
 
     def guiRestore(self):
         # Restore geometry
-        self.resize(self.mainwindow_settings.value('size', QSize(1195, 650)))
+        # self.resize(self.mainwindow_settings.value('size', QSize(1250, 750)))
+        self.factory.resize_window(self, 0.8, 0.7)
         self.factory.centerWindow(self)
         if self.width() < 1120:
             self.resize(QSize(1195, 650))
@@ -2529,6 +2781,9 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         mafft = QAction(QIcon(":/picture/resourses/mafft1.png"), "Import to MAFFT", self,
                         statusTip="Align with MAFFT",
                         triggered=self.on_Mafft_triggered)
+        MUSCLE = QAction(QIcon(":/picture/resourses/mafft1.png"), "Import to MUSCLE", self,
+                                statusTip="Align with MUSCLE",
+                                triggered=self.on_actionMUSCLE_triggered)
         MACSE = QAction(QIcon(":/picture/resourses/M.png"), "Import to MACSE (for CDS)", self,
                         statusTip="Align with MACSE",
                         triggered=self.on_MACSE_triggered)
@@ -2559,8 +2814,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         parseANNT = QAction(QIcon(":/picture/resourses/WORD.png"), "Import to Parse Annotation", self,
                             statusTip="Parse Annotation",
                             triggered=self.on_ParseANNT_triggered)
-        ASTRAL = QAction(QIcon(":/picture/resourses/menu_icons/A2.png"), "Import to ASTRAL", self,
-                            statusTip="Reconstruct species tree with ASTRAL",
+        ASTER = QAction(QIcon(":/picture/resourses/menu_icons/A2.png"), "Import to ASTER", self,
+                            statusTip="Reconstruct species tree with ASTER",
                             triggered=self.on_actionASTRAL_triggered)
         if platform.system().lower() in ["darwin", "linux"]:
             HmmCleaner.setVisible(True)
@@ -2572,6 +2827,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         tableView_2_popMenu.addAction(removeFile)
         tableView_2_popMenu.addSeparator()
         tableView_2_popMenu.addAction(mafft)
+        tableView_2_popMenu.addAction(MUSCLE)
         tableView_2_popMenu.addAction(MACSE)
         tableView_2_popMenu.addAction(trimAl)
         tableView_2_popMenu.addAction(HmmCleaner)
@@ -2583,7 +2839,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
         tableView_2_popMenu.addAction(iqtree)
         tableView_2_popMenu.addAction(mrbayes)
         tableView_2_popMenu.addAction(parseANNT)
-        tableView_2_popMenu.addAction(ASTRAL)
+        tableView_2_popMenu.addAction(ASTER)
         if os.name != "nt":
             parseANNT.setVisible(False)
 
@@ -3182,6 +3438,8 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             self.on_SerhNCBI_triggered()
         elif item.text() == "MAFFT":
             self.on_Mafft_triggered()
+        elif item.text() == "MUSCLE":
+            self.on_actionMUSCLE_triggered()
         elif item.text() == "MACSE (for CDS)":
             self.on_MACSE_triggered()
         elif item.text() == "trimAl":
@@ -3204,7 +3462,7 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             self.on_actionFastTree_triggered()
         elif item.text() == "MrBayes":
             self.on_actionMrBayes_triggered()
-        elif item.text() == "ASTRAL":
+        elif item.text() == "ASTRAL/CASTER/WASTER":
             self.on_actionASTRAL_triggered()
         elif item.text() == "Tiger":
             self.on_Tiger_triggered()
@@ -3212,6 +3470,14 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             self.on_TreeAnnotation_triggered()
         elif item.text() == "TreeSuite":
             self.on_TreeSuite_triggered()
+        elif item.text() == "iTOL editor":
+            self.on_iTOL_editor_triggered()
+        elif item.text() == "MDGUI":
+            self.on_MCMCTree_triggered()
+        elif item.text() == "TimeTreeAnno":
+            self.on_TreeViewer_triggered()
+        elif item.text() == "MCMCTracer":
+            self.on_MCMCTracer_triggered()
         elif item.text() == "Parse Annotation":
             self.on_ParseANNT_triggered()
         elif item.text() == "Compare Table":
@@ -3228,14 +3494,18 @@ class MyMainWindow(QMainWindow, Ui_MainWindow, object):
             self.on_settings_triggered()
         elif item.text() == "Sequence Viewer":
             self.on_seqViewer_triggered()
+        elif item.text() == "DNA Viewer":
+            self.on_dnaViewer_triggered()
+        elif item.text() == "Alignment Viewer":
+            self.on_msaViewer_triggered()
         elif item.text() == "GenBank File Extracting":
             self.on_GBextSetting_triggered()
         elif item.text() == "Color sets":
             self.on_colorsets_triggered()
-        elif item.text() == "Check for Updates":
-            self.on_UpdateApp_triggered()
-        elif item.text() == "Update manually":
-            self.on_manualUpdate_triggered()
+        # elif item.text() == "Check for Updates":
+        #     self.on_UpdateApp_triggered()
+        # elif item.text() == "Update manually":
+        #     self.on_manualUpdate_triggered()
         elif item.text() == "About":
             self.on_About_triggered()
         elif item.text() == "Documentation":
@@ -3633,7 +3903,7 @@ NC_034937.1
 
     def removeOldApp(self):
         ##删除更新留下的旧文件
-        self.factory.remove_old_files(self.thisPath)
+        self.factory.remove_old_files(self.factory.src_path)
         ##导入新的设置的旧文件
         self.factory.remove_old_files(self.thisPath + os.sep + "settings")
         self.factory.remove_old_files(self.thisPath + os.sep + "plugins")
@@ -3846,7 +4116,7 @@ NC_034937.1
         if qtext.strip() == "XML":
             fileName = QFileDialog.getSaveFileName(
                 self, "PhyloSuite", "PhyloSuite_citation", "XML Format(*.xml)")
-            xml_path = self.thisPath + os.sep + "PhyloSuite_citation.xml"
+            xml_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation.xml"
             if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(xml_path)):
                 shutil.copy(xml_path, fileName[0])
                 QMessageBox.information(
@@ -3856,7 +4126,7 @@ NC_034937.1
         elif qtext.strip() == "RIS":
             fileName = QFileDialog.getSaveFileName(
                 self, "PhyloSuite", "PhyloSuite_citation", "RIS Format(*.ris)")
-            ris_path = self.thisPath + os.sep + "PhyloSuite_citation.ris"
+            ris_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation.ris"
             if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(ris_path)):
                 shutil.copy(ris_path, fileName[0])
                 QMessageBox.information(
@@ -3866,7 +4136,37 @@ NC_034937.1
         elif qtext.strip() == "ENW":
             fileName = QFileDialog.getSaveFileName(
                 self, "PhyloSuite", "PhyloSuite_citation", "ENW Format(*.enw)")
-            ris_path = self.thisPath + os.sep + "PhyloSuite_citation.enw"
+            ris_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation.enw"
+            if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(ris_path)):
+                shutil.copy(ris_path, fileName[0])
+                QMessageBox.information(
+                    self,
+                    "PhyloSuite",
+                    "<p style='line-height:25px; height:25px'>File saved successfully!</p>")
+        elif qtext.strip() == "XML_imeta":
+            fileName = QFileDialog.getSaveFileName(
+                self, "PhyloSuite", "PhyloSuite_citation_iMeta", "XML Format(*.xml)")
+            xml_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation_imeta.xml"
+            if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(xml_path)):
+                shutil.copy(xml_path, fileName[0])
+                QMessageBox.information(
+                    self,
+                    "PhyloSuite",
+                    "<p style='line-height:25px; height:25px'>File saved successfully!</p>")
+        elif qtext.strip() == "RIS_imeta":
+            fileName = QFileDialog.getSaveFileName(
+                self, "PhyloSuite", "PhyloSuite_citation_iMeta", "RIS Format(*.ris)")
+            ris_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation_imeta.ris"
+            if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(ris_path)):
+                shutil.copy(ris_path, fileName[0])
+                QMessageBox.information(
+                    self,
+                    "PhyloSuite",
+                    "<p style='line-height:25px; height:25px'>File saved successfully!</p>")
+        elif qtext.strip() == "ENW_imeta":
+            fileName = QFileDialog.getSaveFileName(
+                self, "PhyloSuite", "PhyloSuite_citation_iMeta", "ENW Format(*.enw)")
+            ris_path = f"{self.factory.src_path}{os.sep}citation{os.sep}PhyloSuite_citation_imeta.enw"
             if fileName[0] and (os.path.normpath(fileName[0]) != os.path.normpath(ris_path)):
                 shutil.copy(ris_path, fileName[0])
                 QMessageBox.information(

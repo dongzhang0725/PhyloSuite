@@ -36,9 +36,10 @@ class ParANNT_settings(QDialog, Ui_ParAnnt_settings, object):
         # File only, no fallback to registry or or.
         self.parseANNT_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 设置比例
         self.splitter.setStretchFactor(1, 7)
         items = ["tRNA Abbreviation",
@@ -320,7 +321,12 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
             " -p " + self.outpath + " -a s -a b -V vb" + self.release_date
         with open(self.outpath + os.sep + "commands.txt", "w", errors="ignore") as f:
             f.write(commands)
-        os.system(commands)
+        self.factory = self.dict_args["factory"]
+        self.ps_popen = self.factory.init_popen(commands)
+        self.factory.getSTDOUT(self.ps_popen)
+        # os.system(commands)
+        # self.worker = WorkThread(self.run_command, parent=self)
+        # self.worker.start()
         self.dict_args["progressSig"].emit(100)
         os.remove(self.xml_11)
 
@@ -354,7 +360,7 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
             r'COX[1-3]|NAD4L|NAD[1-6]|ND[1-6]|COB|CYTB|ATP[68]', re.I)  # 忽略大小写
         match = p.search(name)
         sign = 'H'
-        print(name, size, seq, pro)
+        # print(name, size, seq, pro)
         assert name
         flag, dupl, cleanName = self.if_duplicated(name)
         if name[0] == '-':
@@ -403,18 +409,18 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
             self.match_genes(name)
             return name, '', '', '', sign, seq, pro  # 序列也要返回
 
-    def ser_leu(self, feature, i):  # 处理LEU，SER的简写
+    def ser_leu(self, feature, i, dupl=None):  # 处理LEU，SER的简写
         if re.search(r'\s[TU]AG\s', i, re.I):
-            feature = 'L1'
+            feature = 'L1' if not dupl else f'L1{dupl}'
             cr = 'CUN'
         elif re.search(r'\s[TU]AA\s', i, re.I):
-            feature = 'L2'
+            feature = 'L2' if not dupl else f'L2{dupl}'
             cr = 'UUR'
         elif re.search(r'\s[GTUA]C[TU]\s', i, re.I):
-            feature = 'S1'
+            feature = 'S1' if not dupl else f'S1{dupl}'
             cr = 'AGN'
         elif re.search(r'\s[TU]GA\s', i, re.I):
-            feature = 'S2'
+            feature = 'S2' if not dupl else f'S2{dupl}'
             cr = 'UCN'
         else:
             feature = feature
@@ -431,6 +437,7 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
         else:
             insert_ = "\t".join(item[0].split("\t")[:2])  # 前面2个索引12025\t12850
             index = []
+            # print(list_dict, name,item)
             if list_dict.index(name) == 0:  # 如果是第一个item，就要特殊处理
                 if self.count_1st_item == 0:  # 第一次
                     self.first_index = "\t".join(
@@ -471,7 +478,7 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
                     # 必须加上数字，因为之前添加内容以后索引就变了
                     self.dict_tbl[name].insert(each_index + numb, insert_)
 
-    def forSqn(self, i, flag, cleanName):
+    def forSqn(self, i, flag, cleanName, dupl=None):
         # 只识别蛋白基因、tRNA和rRNA到gb文件
         #i = 'cox1    1    1644    1644        ATG    TAA        +    sequence'
         match = re.match(
@@ -482,9 +489,9 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
                 if re.match(r'tRNA-Leu|tRNA-Ser', i, re.I):
                     feature = ''
                     item_tbl = '%s\t%s\ttRNA\n\t\t\tproduct\t%s\n\t\t\tcodon_recognized\t%s\n'\
-                        % (list_line[2], list_line[1], cleanName, self.ser_leu(feature, i)[1])
+                        % (list_line[2], list_line[1], cleanName, self.ser_leu(feature, i, dupl=dupl)[1])
                     self.add_table(
-                        self.ser_leu(feature, i)[0], item_tbl.split("\n")[:-1])
+                        self.ser_leu(feature, i, dupl=dupl)[0], item_tbl.split("\n")[:-1])
                 else:
                     item_tbl = '%s\t%s\ttRNA\n\t\t\tproduct\t%s\n'\
                         % (list_line[2], list_line[1], cleanName)
@@ -494,9 +501,9 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
                 if re.match(r'tRNA-Leu|tRNA-Ser', i, re.I):
                     feature = ''
                     item_tbl = '%s\t%s\ttRNA\n\t\t\tproduct\t%s\n\t\t\tcodon_recognized\t%s\n'\
-                        % (list_line[1], list_line[2], cleanName, self.ser_leu(feature, i)[1])
+                        % (list_line[1], list_line[2], cleanName, self.ser_leu(feature, i, dupl=dupl)[1])
                     self.add_table(
-                        self.ser_leu(feature, i)[0], item_tbl.split("\n")[:-1])
+                        self.ser_leu(feature, i, dupl=dupl)[0], item_tbl.split("\n")[:-1])
                 else:
                     item_tbl = '%s\t%s\ttRNA\n\t\t\tproduct\t%s\n'\
                         % (list_line[1], list_line[2], cleanName)
@@ -554,7 +561,7 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
                         list_line[0], item_tbl.split("\n")[:-1])
 
         # 如果是L1\S1等，就要判断一下
-        dict_key = self.ser_leu(feature, i)[0] if re.match(
+        dict_key = self.ser_leu(feature, i, dupl=dupl)[0] if re.match(
             r'tRNA-Leu|tRNA-Ser', i, re.I) else list_line[0]
         # 重复基因加一个note
         if flag:
@@ -614,7 +621,7 @@ class Parse_annotation(Factory):  # 解析线粒体注释文件
             list_ = [new_name, str(start), str(
                 stop), size, space, ini, ter, inv_codon, sign, seq1]
             # 用于生成SQN文件的
-            self.forSqn("\t".join(list_), flag, cleanName)
+            self.forSqn("\t".join(list_), flag, cleanName, dupl=dupl)
             # 生成csv  table
             if cleanName.startswith("tRNA"):
                 if re.match(r'tRNA-Leu|tRNA-Ser', cleanName, re.I):
@@ -768,9 +775,10 @@ class ParseANNT(QDialog, Ui_parseANNT, Factory):
         self.dict_product = dict(dict_data["Protein Gene Full Name"])
         self.dict_replace = dict(dict_data["Name From Word"])
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.startButtonStatusSig.connect(self.factory.ctrl_startButton_status)
         self.progressSig.connect(self.runProgress)
         # 信号槽
@@ -931,6 +939,7 @@ class ParseANNT(QDialog, Ui_parseANNT, Factory):
                     self.dict_args["exportPath"],
                     self.qss_file,
                     self])
+            self.dict_args["factory"] = self.factory
             parseANNT = Parse_annotation(**self.dict_args)
             self.startButtonStatusSig.emit(
                 [
@@ -945,7 +954,7 @@ class ParseANNT(QDialog, Ui_parseANNT, Factory):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                   str(time_end - time_start))
             with open(self.dict_args["exportPath"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
+                f.write(f"If you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n" + self.time_used_des)
         except BaseException:
             self.exceptionInfo = ''.join(
                 traceback.format_exception(

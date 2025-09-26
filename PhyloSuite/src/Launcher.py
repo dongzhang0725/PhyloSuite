@@ -26,9 +26,10 @@ class Launcher(QDialog, Ui_launcher, object):
         # File only, no fallback to registry or or.
         self.launcher_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.setupUi(self)
         self.guiRestore()
         if platform.system().lower() == "darwin":
@@ -100,7 +101,8 @@ class Launcher(QDialog, Ui_launcher, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.launcher_settings.value('size', QSize(457, 20)))
+        # self.resize(self.launcher_settings.value('size', QSize(457, 20)))
+        self.factory.resize_window(self, 0.35, 0.25)
         self.factory.centerWindow(self)
         # self.move(self.launcher_settings.value('pos', QPoint(875, 254)))
 

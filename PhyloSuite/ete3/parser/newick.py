@@ -135,7 +135,7 @@ NW_FORMAT = {
 
 def format_node(node, node_type, format, dist_formatter=None,
                 support_formatter=None, name_formatter=None,
-                quoted_names=False):
+                quoted_names=False, no_replace=False):
     if dist_formatter is None: dist_formatter = FLOAT_FORMATTER
     if support_formatter is None: support_formatter = FLOAT_FORMATTER
     if name_formatter is None: name_formatter = NAME_FORMATTER
@@ -155,7 +155,7 @@ def format_node(node, node_type, format, dist_formatter=None,
 
     if converterFn1 == str:
         try:
-            if not quoted_names:
+            if (not quoted_names) and (not no_replace):
                 FIRST_PART = re.sub("["+_ILEGAL_NEWICK_CHARS+"]", "_", \
                                     str(getattr(node, container1)))
             else:
@@ -447,7 +447,7 @@ def _read_node_data(subnw, current_node, node_type, matcher, formatcode):
 
 def write_newick(rootnode, features=None, format=1, format_root_node=True,
                  is_leaf_fn=None, dist_formatter=None, support_formatter=None,
-                 name_formatter=None, quoted_names=False):
+                 name_formatter=None, quoted_names=False, no_replace=False):
     """ Iteratively export a tree structure and returns its NHX
     representation. """
     newick = []
@@ -460,7 +460,8 @@ def write_newick(rootnode, features=None, format=1, format_root_node=True,
                                           dist_formatter=dist_formatter,
                                           support_formatter=support_formatter,
                                           name_formatter=name_formatter,
-                                          quoted_names=quoted_names))
+                                          quoted_names=quoted_names,
+                                          no_replace=no_replace))
                 newick.append(_get_features_string(node, features))
         else:
             if node is not rootnode and node != node.up.children[0]:
@@ -471,7 +472,8 @@ def write_newick(rootnode, features=None, format=1, format_root_node=True,
                                           dist_formatter=dist_formatter,
                                           support_formatter=support_formatter,
                                           name_formatter=name_formatter,
-                                          quoted_names=quoted_names))
+                                          quoted_names=quoted_names,
+                                          no_replace=no_replace))
                 newick.append(_get_features_string(node, features))
             else:
                 newick.append("(")

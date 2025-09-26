@@ -70,9 +70,10 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         # File only, no fallback to registry or or.
         self.gblocks_settings.setFallbacksEnabled(False)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # 恢复用户的设置
         self.guiRestore()
         # 判断程序的版本
@@ -258,7 +259,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                                                                                            self.time_used)
             with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(self.description +
-                        "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                        f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n"
                         "If you use Gblocks, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if not self.interrupt:
                 if self.workflow:
@@ -343,6 +344,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if name not in ["comboBox_10", "comboBox_2"]:
                     allItems = [obj.itemText(i) for i in range(obj.count())]
                     values = self.gblocks_settings.value(name, allItems)
@@ -375,6 +377,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                     name, "_gb")  # get stored value from registry
                 obj.setText(value)
             if isinstance(obj, QSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 value = self.gblocks_settings.value(
                     name)  # get stored value from registry
                 if value:
@@ -478,6 +481,10 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
+
         return super(Gblocks, self).eventFilter(obj, event)  # 0
 
     def input(self, infiles):
@@ -488,6 +495,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
         self.comboBox_10.setDisabled(False)
         self.comboBox_2.setDisabled(False)
         new_infiles = []  # 预防有时候有些文件无效
+        one_seq_files = []
         for i in infiles:
             if not os.path.exists(i):
                 continue
@@ -499,6 +507,9 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                         "The file %s is not in fasta format!" % (os.path.basename(i)))
                     self.comboBox_4.refreshInputs([])
                     return
+                if self.seq_num == 1:
+                    one_seq_files.append(os.path.basename(i))
+                    continue
                 try:
                     if re.search(r"(?m)^\n(?!\>)", content):
                         # 序列内部有空行
@@ -516,6 +527,12 @@ class Gblocks(QDialog, Ui_Gblocks, object):
                 dict_taxon_num.setdefault(
                     self.seq_num, []).append(os.path.basename(i))
             new_infiles.append(i)
+        if one_seq_files:
+            QMessageBox.warning(
+                self,
+                "Gblocks",
+                f"<p style='line-height:25px; height:25px'>The following {len(one_seq_files)} files contain only one sequence and "
+                "won't be processed by Gblocks:[<span style='font-weight:600; color:#ff0000;'>%s</span>]</p>"%"</span>, <span style=\"font-weight:600; color:#ff0000;\">".join(one_seq_files))
         if not new_infiles:  # 如果没有有效的文件
             return
         if len(dict_taxon_num) > 1:
@@ -542,7 +559,7 @@ class Gblocks(QDialog, Ui_Gblocks, object):
             else:
                 return
         # 输入序列
-        self.comboBox_4.refreshInputs(infiles)
+        self.comboBox_4.refreshInputs(new_infiles)
 
     def comboLink(self, text):
         if text:  # 有时候清空combobox会报错

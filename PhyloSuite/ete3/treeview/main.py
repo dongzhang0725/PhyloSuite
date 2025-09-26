@@ -112,7 +112,7 @@ class _Border(object):
             else:
                 pen = QPen(Qt.NoPen)
             set_pen_style(pen, self.type)
-            pen.setWidth(self.width)
+            pen.setWidth(int(self.width))
             pen.setCapStyle(Qt.FlatCap)
             border.setPen(pen)
             return border

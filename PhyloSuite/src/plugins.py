@@ -19,16 +19,18 @@ dict_url = {
                 "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_win.zip",
                 "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-win64.zip",
                 "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mrbayes-win.zip",
-                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win64.zip",
+                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/PartitionFinder_win64.zip",
                 "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder.zip",
                 "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse.jar.zip",
                 "trimAl": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/trimal.zip",
                 "tbl2asn": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/tbl2asn.zip",
                 "CodonW": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Win32CodonW.zip",
-                "ASTRAL": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
-                "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
+                "ASTRAL/CASTER/WASTER": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTER-Windows.zip",
+                # "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTER-Windows.zip",
                 "FastTree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/FastTree_win.zip",
-                "plot engine": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/plot_engine_Win64.zip"
+                "PAML": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/paml-4.10.9-win-x86_64.zip",
+                "MUSCLE": "https://github.com/dongzhang0725/PhyloSuite_plugins/raw/refs/heads/main/muscle-WINDOWS.zip",
+                "plot engine": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/plot_engine_Win64.zip"
             },
             "Gitlab": {
                 "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-win64.zip",
@@ -43,9 +45,10 @@ dict_url = {
                 "trimAl": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/trimal.zip",
                 "tbl2asn": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/tbl2asn.zip",
                 "CodonW": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/Win32CodonW.zip",
-                "ASTRAL": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTRAL_win.zip",
-                "ASTRAL-PRO": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTRAL_win.zip",
+                "ASTRAL/CASTER/WASTER": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTER-Windows.zip",
+                # "ASTRAL-PRO": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTER-Windows.zip",
                 "FastTree": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/FastTree_win.zip",
+                "PAML": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/paml-4.10.9-win-x86_64.zip",
                 "plot engine": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/plot_engine_Win64.zip"
             },
             "Coding": {
@@ -61,8 +64,8 @@ dict_url = {
                 "trimAl": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/trimal.zip",
                 "tbl2asn": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/tbl2asn.zip",
                 "CodonW": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/Win32CodonW.zip",
-                "ASTRAL": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTRAL_win.zip",
-                "ASTRAL-PRO": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTRAL_win.zip",
+                "ASTRAL/CASTER/WASTER": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTER-Windows.zip",
+                # "ASTRAL-PRO": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTER-Windows.zip",
                 "FastTree": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/FastTree_win.zip",
                 "plot engine": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/plot_engine_Win64.zip"
             },
@@ -79,9 +82,11 @@ dict_url = {
                 "trimAl": "http://phylosuite.jushengwu.com/plugins/trimal.zip",
                 "tbl2asn": "http://phylosuite.jushengwu.com/plugins/tbl2asn.zip",
                 "CodonW": "http://phylosuite.jushengwu.com/plugins/Win32CodonW.zip",
-                "ASTRAL": "http://phylosuite.jushengwu.com/plugins/ASTRAL_win.zip",
-                "ASTRAL-PRO": "http://phylosuite.jushengwu.com/plugins/ASTRAL_win.zip",
+                "ASTRAL/CASTER/WASTER": "http://phylosuite.jushengwu.com/plugins/ASTER-Windows.zip",
+                # "ASTRAL-PRO": "http://phylosuite.jushengwu.com/plugins/ASTER-Windows.zip",
                 "FastTree": "http://phylosuite.jushengwu.com/plugins/FastTree_win.zip",
+                "PAML": "http://phylosuite.jushengwu.com/plugins/paml-4.10.9-win-x86_64.zip",
+                "MUSCLE": "http://phylosuite.jushengwu.com/plugins/muscle-WINDOWS.zip",
                 "plot engine": "http://phylosuite.jushengwu.com/plugins/plot_engine_Win64.zip"
             }
         },
@@ -93,16 +98,18 @@ dict_url = {
                 "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_win.zip",
                 "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-win32.zip",
                 "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mrbayes-win.zip",
-                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_win32.zip",
+                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/PartitionFinder_win32.zip",
                 "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder.zip",
                 "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse.jar.zip",
                 "trimAl": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/trimal.zip",
                 "tbl2asn": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/tbl2asn.zip",
                 "CodonW": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Win32CodonW.zip",
-                "ASTRAL": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
-                "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_win.zip",
+                "ASTRAL/CASTER/WASTER": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTER-Windows.zip",
+                # "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTER-Windows.zip",
                 "FastTree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/FastTree_win.zip",
-                "plot engine": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/plot_engine_Win32.zip"
+                "PAML": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/paml-4.10.9-win-x86_64.zip",
+                "MUSCLE": "https://github.com/dongzhang0725/PhyloSuite_plugins/raw/refs/heads/main/muscle-WINDOWS.zip",
+                "plot engine": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/plot_engine_Win32.zip"
             },
             "Gitlab": {
                 "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-win32.zip",
@@ -117,9 +124,10 @@ dict_url = {
                 "trimAl": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/trimal.zip",
                 "tbl2asn": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/tbl2asn.zip",
                 "CodonW": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/Win32CodonW.zip",
-                "ASTRAL": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTRAL_win.zip",
-                "ASTRAL-PRO": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTRAL_win.zip",
+                "ASTRAL/CASTER/WASTER": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTER-Windows.zip",
+                # "ASTRAL-PRO": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTER-Windows.zip",
                 "FastTree": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/FastTree_win.zip",
+                "PAML": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/paml-4.10.9-win-x86_64.zip",
                 "plot engine": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/plot_engine_Win32.zip"
             },
             "Coding": {
@@ -135,8 +143,8 @@ dict_url = {
                 "trimAl": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/trimal.zip",
                 "tbl2asn": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/tbl2asn.zip",
                 "CodonW": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/Win32CodonW.zip",
-                "ASTRAL": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTRAL_win.zip",
-                "ASTRAL-PRO": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTRAL_win.zip",
+                "ASTRAL/CASTER/WASTER": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTER-Windows.zip",
+                # "ASTRAL-PRO": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTER-Windows.zip",
                 "FastTree": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/FastTree_win.zip",
                 "plot engine": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/plot_engine_Win32.zip"
             },
@@ -153,9 +161,11 @@ dict_url = {
                 "trimAl": "http://phylosuite.jushengwu.com/plugins/trimal.zip",
                 "tbl2asn": "http://phylosuite.jushengwu.com/plugins/tbl2asn.zip",
                 "CodonW": "http://phylosuite.jushengwu.com/plugins/Win32CodonW.zip",
-                "ASTRAL": "http://phylosuite.jushengwu.com/plugins/ASTRAL_win.zip",
-                "ASTRAL-PRO": "http://phylosuite.jushengwu.com/plugins/ASTRAL_win.zip",
+                "ASTRAL/CASTER/WASTER": "http://phylosuite.jushengwu.com/plugins/ASTER-Windows.zip",
+                # "ASTRAL-PRO": "http://phylosuite.jushengwu.com/plugins/ASTER-Windows.zip",
                 "FastTree": "http://phylosuite.jushengwu.com/plugins/FastTree_win.zip",
+                "PAML": "http://phylosuite.jushengwu.com/plugins/paml-4.10.9-win-x86_64.zip",
+                "MUSCLE": "http://phylosuite.jushengwu.com/plugins/muscle-WINDOWS.zip",
                 "plot engine": "http://phylosuite.jushengwu.com/plugins/plot_engine_Win32.zip"
             }
         }
@@ -169,14 +179,16 @@ dict_url = {
                 "gblocks": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/Gblocks_OSX_0.91b.zip",
                 "iq-tree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/iqtree-mac64.zip",
                 "MrBayes": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/mrbayes-mac64.zip",
-                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_plugins/master/PartitionFinder_mac.zip",
+                "compiled PF2": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/PartitionFinder_mac.zip",
                 "PF2": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/partitionfinder.zip",
                 "macse": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/macse.jar.zip",
                 "CodonW": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/MacOSCodonW.zip",
-                "ASTRAL": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_mac.zip",
-                "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTRAL_mac.zip",
+                "ASTRAL/CASTER/WASTER": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTER-MacOS.zip",
+                # "ASTRAL-PRO": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/ASTER-MacOS.zip",
                 "FastTree": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/FastTree_mac.zip",
-                "plot engine": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/plot_engine_Mac.zip"
+                "PAML": "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_plugins/master/paml-4.10.9-mac-arm64.zip",
+                "MUSCLE": "https://github.com/dongzhang0725/PhyloSuite_plugins/raw/refs/heads/main/muscle-MAC.zip",
+                "plot engine": "https://media.githubusercontent.com/media/dongzhang0725/PhyloSuite_large_plugins/main/plot_engine_Mac.zip"
             },
             "Gitlab": {
                 "mafft": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/mafft-mac64.zip",
@@ -189,9 +201,10 @@ dict_url = {
                 "PF2": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/partitionfinder.zip",
                 "macse": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/macse.jar.zip",
                 "CodonW": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/MacOSCodonW.zip",
-                "ASTRAL": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTRAL_mac.zip",
-                "ASTRAL-PRO": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTRAL_mac.zip",
+                "ASTRAL/CASTER/WASTER": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTER-MacOS.zip",
+                # "ASTRAL-PRO": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/ASTER-MacOS.zip",
                 "FastTree": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/FastTree_mac.zip",
+                "PAML": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/paml-4.10.9-mac-arm64.zip",
                 "plot engine": "https://gitlab.com/PhyloSuite/PhyloSuite_plugins/raw/master/plot_engine_Mac.zip"
             },
             "Coding": {
@@ -205,8 +218,8 @@ dict_url = {
                 "PF2": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/partitionfinder.zip",
                 "macse": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/macse.jar.zip",
                 "CodonW": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/MacOSCodonW.zip",
-                "ASTRAL": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTRAL_mac.zip",
-                "ASTRAL-PRO": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTRAL_mac.zip",
+                "ASTRAL/CASTER/WASTER": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTER-MacOS.zip",
+                # "ASTRAL-PRO": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/ASTER-MacOS.zip",
                 "FastTree": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/FastTree_mac.zip",
                 "plot engine": "https://phylosuite.coding.net/p/PhyloSuite_plugins/d/PhyloSuite_plugins/git/raw/master/plot_engine_Mac.zip"
             },
@@ -221,9 +234,11 @@ dict_url = {
                 "PF2": "http://phylosuite.jushengwu.com/plugins/partitionfinder.zip",
                 "macse": "http://phylosuite.jushengwu.com/plugins/macse.jar.zip",
                 "CodonW": "http://phylosuite.jushengwu.com/plugins/MacOSCodonW.zip",
-                "ASTRAL": "http://phylosuite.jushengwu.com/plugins/ASTRAL_mac.zip",
-                "ASTRAL-PRO": "http://phylosuite.jushengwu.com/plugins/ASTRAL_mac.zip",
+                "ASTRAL/CASTER/WASTER": "http://phylosuite.jushengwu.com/plugins/ASTER-MacOS.zip",
+                # "ASTRAL-PRO": "http://phylosuite.jushengwu.com/plugins/ASTER-MacOS.zip",
                 "FastTree": "http://phylosuite.jushengwu.com/plugins/FastTree_mac.zip",
+                "PAML": "http://phylosuite.jushengwu.com/plugins/paml-4.10.9-mac-arm64.zip",
+                "MUSCLE": "http://phylosuite.jushengwu.com/plugins/muscle-MAC.zip",
                 "plot engine": "http://phylosuite.jushengwu.com/plugins/plot_engine_Mac.zip"
             }
         }
@@ -237,100 +252,104 @@ dict_url = {
 ## zipFileName_win 和 zipFileName_mac 必须保持一致
 ## link_linux和link_mac里面如果有If download failed, 将会显示下载按钮和下载源的combobox，如果没有，将会隐藏他们
 ### 或许改成通过label3来判断？根据它是configure还是download
+## 下面信息比较简略的是以前配置好的插件，如果要新添加插件，需要用类似ASTRAL这样配置的信息
 dict_plugin_settings = {
-    "ASTRAL": {
+    "MUSCLE": {
         ### macOSx86bin 下的所有文件都可以在mac里面直接用，但是需要是老的x86的mac，新的mac是arm的。
         ### 不管什么版本的mac，都可以cd进去make，这样就有可执行文件在bin文件夹里面生成
-        "plugin_name": "ASTRAL", # 必须和键一样
-        "version": "1.10.2.1",
-        "description": "ASTRAL is a tool for estimating an unrooted species tree given a set of unrooted gene trees",
-        "label1":"<html><head/><body><p>If you have <span style=\"color:red\">ASTRAL v1.8.1.0</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>",
-        "label2":"ASTRAL:",
-        "label3":"<html><head/><body><p>If you don\'t have ASTRAL, please <span style=\" font-weight:600; color:#ff0000;\">configure</span>.</p></body></html>",
-        "placeholdertext_win": "C:\\ASTRAL\\exe\\astral.exe",
-        "placeholdertext_mac": "../ASTRAL/bin/astral",
-        "placeholdertext_linux": "../ASTRAL/bin/astral",
+        "plugin_name": "MUSCLE", # 必须和键一样
+        "version": "5.3",
+        "description": "A widely-used software for making multiple alignments of biological sequences",
+        "label1":"<html><head/><body><p>If you have <span style=\"color:red\">MUSCLE v5.3</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>",
+        "label2":"MUSCLE:",
+        "label3":"<html><head/><body><p>If you don\'t have MUSCLE, please <span style=\" font-weight:600; color:#ff0000;\">configure</span>.</p></body></html>",
+        "placeholdertext_win": "C:\\muscle-WINDOWS\\muscle-win64.v5.3.exe",
+        "placeholdertext_mac": "../muscle-MAC/muscle-osx-x86.v5.3",
+        "placeholdertext_linux": "../muscle-Linux/muscle-linux-x86.v5.3",
+        "target_win": "muscle-win64.v5.3.exe",
+        "target_mac": "muscle-osx-x86.v5.3",
+        "target_linux": "muscle-linux-x86.v5.3",
+        # 如果没有自动下载的链接，就用这个。否则就在Lg_settings里面设置即可
+        "link_mac": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">" \
+                    "If download failed, click " \
+                    "<a href=\"https://github.com/rcedgar/muscle/releases/tag/v5.3\">" \
+                    "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>"
+                    " to download manually and then specify the path as indicated above. " \
+                    "If you are adding MUSCLE to environment variables, when you finish the installation, " \
+                    "you need to close and reopen PhyloSuite to see if it installed successfully" \
+                    " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the MUSCLE executable" \
+                    " file (<span style=\" font-weight:600; color:#ff0000;\">muscle-osx-x86.v5.3</span>) manually (using options above).</p>" \
+                    "</body></html>",
+        "link_linux": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">If you already have " \
+                      "<a href=\"https://docs.conda.io/en/latest/\">Conda</a> installed, " \
+                      "you can install MUSCLE via the \"conda install bioconda::muscle\" or " \
+                      "\"conda install bioconda/label/cf201901::muscle\" command. </span><br>" \
+                      "If you don't have Conda, you need to download MUSCLE " \
+                      "<a href=\"https://github.com/rcedgar/muscle/releases/tag/v5.3\">" \
+                      "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>. " \
+                      "If you are adding MUSCLE to environment variables, when you finish the installation, " \
+                      "you need to close and reopen PhyloSuite to see if it installed successfully" \
+                      " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the MUSCLE executable" \
+                      " file (<span style=\" font-weight:600; color:#ff0000;\">muscle-osx-x86.v5.3</span>) manually (using options above).</p>" \
+                      "</body></html>",
+        # 卸载相关
+        "zipFileName_win": "muscle-WINDOWS.zip",
+        "zipFileName_mac": "muscle-MAC.zip",
+        "zipFolder_win": "muscle-WINDOWS",
+        "zipFolder_mac": "muscle-MAC",
+        ## 用于给glob匹配软件的名字
+        "zipFolderFlag": "muscle-",
+        # 判断路径相关
+        "relative_path_win": "muscle-WINDOWS/muscle-win64.v5.3.exe",
+        "relative_path_mac": "muscle-MAC/muscle-osx-x86.v5.3",
+        "relative_path_linux": "muscle-Linux/muscle-linux-x86.v5.3",
+    },
+    "ASTRAL/CASTER/WASTER": {
+        ### macOSx86bin 下的所有文件都可以在mac里面直接用，但是需要是老的x86的mac，新的mac是arm的。
+        ### 不管什么版本的mac，都可以cd进去make，这样就有可执行文件在bin文件夹里面生成
+        "plugin_name": "ASTRAL/CASTER/WASTER", # 必须和键一样
+        "version": "1.23",
+        "description": "Accurate Species Tree EstimatoR",
+        "label1":"<html><head/><body><p>If you have <span style=\"color:red\">ASTER v1.23</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>",
+        "label2":"ASTER:",
+        "label3":"<html><head/><body><p>If you don\'t have ASTER, please <span style=\" font-weight:600; color:#ff0000;\">configure</span>.</p></body></html>",
+        "placeholdertext_win": "C:\\ASTER-Windows\\exe\\astral.exe",
+        "placeholdertext_mac": "../ASTER-MacOS/bin/astral",
+        "placeholdertext_linux": "../ASTER-Linux/bin/astral",
         "target_win": "astral.exe",
         "target_mac": "astral",
         "target_linux": "astral",
         # 如果没有自动下载的链接，就用这个。否则就在Lg_settings里面设置即可
         "link_mac": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">" \
                     "If download failed, click " \
-                    "<a href=\"https://github.com/chaoszhang/ASTER/blob/master/tutorial/astral.md\">" \
+                    "<a href=\"https://github.com/chaoszhang/ASTER/releases\">" \
                     "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>"
                     " to download manually and then specify the path as indicated above. " \
-                    "If you are adding ASTRAL to environment variables, when you finish the installation, " \
+                    "If you are adding ASTER to environment variables, when you finish the installation, " \
                     "you need to close and reopen PhyloSuite to see if it installed successfully" \
-                    " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the ASTRAL executable" \
+                    " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the ASTER executable" \
                     " file (<span style=\" font-weight:600; color:#ff0000;\">astral</span>) manually (using options above).</p>" \
                     "</body></html>",
         "link_linux": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">" \
-                    "If you don't have ASTRAL, you need to install it following " \
-                    "<a href=\"https://github.com/chaoszhang/ASTER/blob/master/tutorial/astral.md\">" \
+                    "If you don't have ASTER, you need to install it following " \
+                    "<a href=\"https://github.com/chaoszhang/ASTER/releases\">" \
                     "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">this tutorial</span></a>. " \
-                    "If you are adding ASTRAL to environment variables, when you finish the installation, " \
+                    "If you are adding ASTER to environment variables, when you finish the installation, " \
                     "you need to close and reopen PhyloSuite to see if it installed successfully" \
-                    " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the ASTRAL executable" \
+                    " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the ASTER executable" \
                     " file (<span style=\" font-weight:600; color:#ff0000;\">astral</span>) manually (using options above).</p>" \
                     "</body></html>",
         # 卸载相关
-        "zipFileName_win": "ASTRAL.zip",
-        "zipFileName_mac": "ASTRAL.zip",
-        "zipFolder_win": "ASTRAL",
-        "zipFolder_mac": "ASTRAL",
+        "zipFileName_win": "ASTER-Windows.zip",
+        "zipFileName_mac": "ASTER-MacOS.zip",
+        "zipFolder_win": "ASTER-Windows",
+        "zipFolder_mac": "ASTER-MacOS",
         ## 用于给glob匹配软件的名字
-        "zipFolderFlag": "ASTRAL",
+        "zipFolderFlag": "ASTER",
         # 判断路径相关
-        "relative_path_win": "ASTRAL/exe/astral.exe",
-        "relative_path_mac": "ASTRAL/bin/astral",
-        "relative_path_linux": "ASTRAL/bin/astral",
-    },
-    "ASTRAL-PRO": {
-        ### macOSx86bin 下的所有文件都可以在mac里面直接用，但是需要是老的x86的mac，新的mac是arm的。
-        ### 不管什么版本的mac，都可以cd进去make，这样就有可执行文件在bin文件夹里面生成
-        "plugin_name": "ASTRAL-PRO", # 必须和键一样
-        "version": "1.10.2.1",
-        "description": "ASTRAL-Pro stands for ASTRAL for PaRalogs and Orthologs",
-        "label1":"<html><head/><body><p>If you have <span style=\"color:red\">ASTRAL-PRO v1.8.1.0</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>",
-        "label2":"ASTRAL-PRO:",
-        "label3":"<html><head/><body><p>If you don\'t have ASTRAL-PRO, please <span style=\" font-weight:600; color:#ff0000;\">configure</span>.</p></body></html>",
-        "placeholdertext_win": "C:\\ASTRAL\\exe\\astral-pro.exe",
-        "placeholdertext_mac": "../ASTRAL/bin/astral-pro",
-        "placeholdertext_linux": "../ASTRAL/bin/astral-pro",
-        "target_win": "astral-pro.exe",
-        "target_mac": "astral-pro",
-        "target_linux": "astral-pro",
-        # 如果没有自动下载的链接，就用这个。否则就在Lg_settings里面设置即可
-        "link_mac": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">" \
-                    "If download failed, click " \
-                    "<a href=\"https://github.com/chaoszhang/ASTER/blob/master/tutorial/astral.md\">" \
-                    "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>"
-                    " to download manually and then specify the path as indicated above. " \
-                    "If you are adding ASTRAL to environment variables, when you finish the installation, " \
-                    "you need to close and reopen PhyloSuite to see if it installed successfully" \
-                    " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the ASTRAL executable" \
-                    " file (<span style=\" font-weight:600; color:#ff0000;\">astral</span>) manually (using options above).</p>" \
-                    "</body></html>",
-        "link_linux": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">" \
-                      "If you don't have ASTRAL-PRO, you need to install it following " \
-                      "<a href=\"https://github.com/chaoszhang/ASTER/blob/master/tutorial/astral-pro.md\">" \
-                      "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">this tutorial</span></a>. " \
-                      "If you are adding ASTRAL-PRO to environment variables, when you finish the installation, " \
-                      "you need to close and reopen PhyloSuite to see if it installed successfully" \
-                      " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the ASTRAL-PRO executable" \
-                      " file (<span style=\" font-weight:600; color:#ff0000;\">astral</span>) manually (using options above).</p>" \
-                      "</body></html>",
-        # 卸载相关
-        "zipFileName_win": "ASTRAL.zip",
-        "zipFileName_mac": "ASTRAL.zip",
-        "zipFolder_win": "ASTRAL",
-        "zipFolder_mac": "ASTRAL",
-        ## 用于给glob匹配软件的名字
-        "zipFolderFlag": "ASTRAL",
-        # 判断路径相关
-        "relative_path_win": "ASTRAL/exe/astral-pro.exe",
-        "relative_path_mac": "ASTRAL/bin/astral-pro",
-        "relative_path_linux": "ASTRAL/bin/astral-pro",
+        "relative_path_win": "ASTER-Windows/exe/astral.exe",
+        "relative_path_mac": "ASTER-MacOS/bin/astral",
+        "relative_path_linux": "ASTER-Linux/bin/astral",
     },
     "FastTree": {
         ### macOSx86bin 下的所有文件都可以在mac里面直接用，但是需要是老的x86的mac，新的mac是arm的。
@@ -358,7 +377,7 @@ dict_plugin_settings = {
                     "If you are adding FastTree to environment variables, when you finish the installation, " \
                     "you need to close and reopen PhyloSuite to see if it installed successfully" \
                     " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the FastTree executable" \
-                    " file (<span style=\" font-weight:600; color:#ff0000;\">CodonW</span>) manually (using options above).</p>" \
+                    " file (<span style=\" font-weight:600; color:#ff0000;\">FastTree.exe</span>) manually (using options above).</p>" \
                     "</body></html>",
         "link_linux": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">If you already have " \
                       "<a href=\"https://docs.conda.io/en/latest/\">Conda</a> installed, " \
@@ -384,6 +403,54 @@ dict_plugin_settings = {
         "relative_path_mac": "FastTree/fasttree",
         "relative_path_linux": "FastTree/fasttree",
     },
+    "PAML": {
+        ### macOSx86bin 下的所有文件都可以在mac里面直接用，但是需要是老的x86的mac，新的mac是arm的。
+        ### 不管什么版本的mac，都可以cd进去make，这样就有可执行文件在bin文件夹里面生成
+        "plugin_name": "PAML", # 必须和键一样
+        "version": "4.10.9",
+        "description": "PAML is a program package for model fitting and phylogenetic tree reconstruction using DNA and protein sequence data.",
+        "label1":"<html><head/><body><p>If you have <span style=\"color:red\">PAML v4.10.9</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>",
+        "label2":"PAML:",
+        "label3":"<html><head/><body><p>If you don\'t have PAML, please <span style=\" font-weight:600; color:#ff0000;\">configure</span>.</p></body></html>",
+        "placeholdertext_win": "C:\\paml-4.10.9-win-x86_64\\bin\\mcmctree.exe",
+        "placeholdertext_mac": "../paml-4.10.9-mac-arm64/bin/mcmctree",
+        "placeholdertext_linux": "../paml-4.10.9-linux-x86_64/bin/mcmctree",
+        "target_win": "mcmctree.exe",
+        "target_mac": "mcmctree",
+        "target_linux": "mcmctree",
+        # 如果没有自动下载的链接，就用这个。否则就在Lg_settings里面设置即可
+        "link_mac": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">" \
+                    "If download failed, click " \
+                    "<a href=\"https://github.com/chaoszhang/ASTER/blob/master/tutorial/astral.md\">" \
+                    "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>"
+                    " to download manually and then specify the path as indicated above. " \
+                    "If you are adding PAML to environment variables, when you finish the installation, " \
+                    "you need to close and reopen PhyloSuite to see if it installed successfully" \
+                    " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the PAML executable" \
+                    " file (<span style=\" font-weight:600; color:#ff0000;\">astral</span>) manually (using options above).</p>" \
+                    "</body></html>",
+        "link_linux": "<html><head/><body><p><span style=\" font-weight:600; color:#ff0000;\">" \
+                      "If download failed, click " \
+                      "<a href=\"https://github.com/chaoszhang/ASTER/blob/master/tutorial/astral.md\">" \
+                      "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</span></a>"
+                      " to download manually and then specify the path as indicated above. " \
+                      "If you are adding PAML to environment variables, when you finish the installation, " \
+                      "you need to close and reopen PhyloSuite to see if it installed successfully" \
+                      " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the PAML executable" \
+                      " file (<span style=\" font-weight:600; color:#ff0000;\">astral</span>) manually (using options above).</p>" \
+                      "</body></html>",
+        # 卸载相关
+        "zipFileName_win": "paml-4.10.9-win-x86_64.zip",
+        "zipFileName_mac": "paml-4.10.9-mac-arm64.zip",
+        "zipFolder_win": "paml-4.10.9-win-x86_64",
+        "zipFolder_mac": "paml-4.10.9-mac-arm64",
+        ## 用于给glob匹配软件的名字,用于模糊匹配
+        "zipFolderFlag": "paml",
+        # 判断路径相关
+        "relative_path_win": "paml-4.10.9-win-x86_64/bin/mcmctree.exe",
+        "relative_path_mac": "/paml-4.10.9-mac-arm64/bin/mcmctree",
+        "relative_path_linux": "/paml-4.10.9-linux-x86_64/bin/mcmctree",
+    },
     "mafft": {
         "target_win": "mafft.bat",
         "target_mac": "mafft.bat",
@@ -405,9 +472,9 @@ dict_plugin_settings = {
         "target_linux": "trimal",
     },
     "iq-tree": {
-        "target_win": ["iqtree.exe", "iqtree2.exe"],
-        "target_mac": ["iqtree", "iqtree2"],
-        "target_linux": ["iqtree", "iqtree2"],
+        "target_win": ["iqtree.exe", "iqtree2.exe", "iqtree3.exe"],
+        "target_mac": ["iqtree", "iqtree2", "iqtree3"],
+        "target_linux": ["iqtree", "iqtree2", "iqtree3"],
     },
     "MrBayes": {
         "target_win": ["mrbayes_x64.exe", "mb.3.2.7-win64.exe"] if platform.machine().endswith('64') \
@@ -424,6 +491,6 @@ dict_plugin_settings = {
         "target_win": ["CodonW.exe"],
         "target_mac": ["codonw"],
         "target_linux": ["codonw"],
-    },
+    }
 }
 

@@ -18,7 +18,7 @@ from multiprocessing import set_start_method, get_context
 # set_start_method("spawn", force=True)
 
 from Bio import SeqIO, Entrez, SeqFeature, AlignIO
-from Bio.Alphabet import generic_dna
+# from Bio.Alphabet import generic_dna
 from Bio.Phylo.TreeConstruction import DistanceCalculator
 
 from src.Lg_mafft import CodonAlign
@@ -810,13 +810,16 @@ class SeqGrab(object):  # 统计序列
         codon_ffds_site = []
         # judge first codon site
         AAs = [str(Seq("".join([i, list_codon[1], list_codon[2]])).translate(table=code_table)) for i in nuc]
-        if len(set(AAs)) == 1: codon_ffds_site.append(0)
+        if len(set(AAs)) == 1:
+            codon_ffds_site.append(0)
         # judge second codon site
         AAs = [str(Seq("".join([list_codon[0], i, list_codon[2]])).translate(table=code_table)) for i in nuc]
-        if len(set(AAs)) == 1: codon_ffds_site.append(1)
+        if len(set(AAs)) == 1:
+            codon_ffds_site.append(1)
         # judge third codon site
         AAs = [str(Seq("".join([list_codon[0], list_codon[1], i])).translate(table=code_table)) for i in nuc]
-        if len(set(AAs)) == 1: codon_ffds_site.append(2)
+        if len(set(AAs)) == 1:
+            codon_ffds_site.append(2)
         return codon_ffds_site
 
     def extract_ffds1(self, code_table):
@@ -844,14 +847,16 @@ class SeqGrab(object):  # 统计序列
         dict_ffds = {} # {'TCT': [3], 'TCC': [3]}
         for codon in codons:
             codon_ffds_site = self.judge_ddfs(list(codon), code_table)
-            if codon_ffds_site: dict_ffds[codon] = codon_ffds_site
+            if codon_ffds_site:
+                dict_ffds[codon] = codon_ffds_site
         # print(dict_ffds)
-        ffds = ""
+        ffds = []
         if len(self.sequence)%3 == 0:
             for a, b, c in zip(*[iter(self.sequence)]*3):
                 codon_ = "".join([a, b, c])
-                if codon_ in dict_ffds: ffds += "".join([codon_[site] for site in dict_ffds[codon_]])
-        return ffds
+                if codon_ in dict_ffds:
+                    ffds.append("".join([codon_[site] for site in dict_ffds[codon_]]))
+        return "".join(ffds)
 
 
 class CodonBias(object):
@@ -1015,21 +1020,24 @@ class CodonBias(object):
 
 
 class Order2itol(object):
-    def __init__(self, dict_order, dict_args):
+    def __init__(self, dict_order=None, dict_args=None):
         self.dict_args = dict_args
         self.dict_order = dict_order
-        self.align_order()
-        self.number_NCR()
-        self.exec()
-        self.make_header()
+        if dict_order and dict_args:
+            self.align_order()
+            self.number_NCR()
+            self.exec()
+            self.make_header()
 
-    def align_order(self):
+    def align_order(self, dict_order=None):
+        self.dict_order = dict_order if dict_order else self.dict_order
         for i in self.dict_order:
             list_order = self.dict_order[i]
             for num, j in enumerate(list_order):
                 if self.dict_args["start_gene_with"] in j:
                     self.dict_order[i] = list_order[num:] + list_order[:num]
                     break
+        return self.dict_order
 
     def number_NCR(self):
         list_dict_order = list(self.dict_order.keys())
@@ -1256,13 +1264,13 @@ class GbManager(QObject, object):
         return merged_index
 
     def merge_file_contents(self, files, base=None, proportion=None, processSig=None):
-        all_content = ""
+        all_content = []
         for num, file in enumerate(files):
             with open(file, encoding="utf-8", errors='ignore') as f:
-                all_content += f.read()
+                all_content.append(f.read())
             if processSig:
                 processSig.emit(base + (num+1)*proportion/len(files))
-        return all_content
+        return "".join(all_content)
 
     def fetchLineages(self, list_taxonomy, organism, source_feature, updateMode=False):
         ##update是更新界面数据，这种情况下，不能以source的分类群注释为准
@@ -3247,7 +3255,7 @@ class GBextract(object):
                 self.ID = gb_record.id
                 self.seq = gb_record.seq
                 self.str_seq = str(self.seq)
-                self.rvscmp_seq = str(Seq(self.str_seq, generic_dna).reverse_complement())
+                self.rvscmp_seq = str(Seq(self.str_seq).reverse_complement())
                 self.dict_type_genes = OrderedDict()
                 self.init_args_each()
                 self.plus_coding_seq = []  # 正链编码的序列，负链编码基因的序列会被反向互补并与这个一起
@@ -4032,6 +4040,7 @@ class GBextract(object):
         filesPath = self.factory.creat_dirs(self.exportPath + os.sep + 'files')
         with open(filesPath + os.sep + 'linear_order.txt', 'w', encoding="utf-8") as f:
             t = "\t"
+            self.dict_order = Order2itol(dict_args=self.dict_args).align_order(self.dict_order)
             linear_order = "\n".join([f">{species}\n{t.join(self.dict_order[species])}"
                                       for species in self.dict_order])
             f.write(linear_order)
@@ -4447,7 +4456,7 @@ class GBextract(object):
                 self.plus_coding_gene_only.append(seq[overlap_start_index:])
             # 如果space负的，就是重叠区，如果是正链的基因，就从序列头部减掉overlapping，如果是负链的基因，就从序列的尾部减去
             else:
-                self.plus_coding_seq.append(str(Seq(seq, generic_dna).reverse_complement())[overlap_start_index:])
+                self.plus_coding_seq.append(str(Seq(seq).reverse_complement())[overlap_start_index:])
         # else:
         #     self.NCR_seq.append(seq)
 
@@ -5119,6 +5128,7 @@ class DetermineCopyGeneParallel(object):
                 new_dict_GO[spe] = list_new_GOs
                 result_array.extend(list_array)
                 # progressSig.emit(5 + ((num+1)/total)*90)
+            pool.join()  # 等待所有进程结束
         except KeyboardInterrupt:
             pool.terminate()
         finally:
@@ -5506,18 +5516,26 @@ class DetermineCopyGeneParallel(object):
                                                     total, queue)) for spe in dict_gene_order]
             pool.close()
             # count = 0
+            error = False
             for item in r:
                 item.wait(timeout=9999)  # Without a timeout, you can't interrupt this.
-                spe, spe_copied_genes = item.get()
-                # new_dict_GO[spe] = list_new_GOs
-                dict_spe_copied_genes[spe] = spe_copied_genes
-                # result_array += list_array
-                # count += 1
-                # if progressSig:
-                #     if timer.elapsed()>500: # 必须过一段时间再发送，不然报错
-                #         progressSig.emit(5 + (count/total)*90)
-                #         timer.restart()
-                # print(f"{spe}, {count}/{total} finished !")
+                result = item.get()
+                if result:
+                    spe, spe_copied_genes = result
+                    # new_dict_GO[spe] = list_new_GOs
+                    dict_spe_copied_genes[spe] = spe_copied_genes
+                    # result_array += list_array
+                    # count += 1
+                    # if progressSig:
+                    #     if timer.elapsed()>500: # 必须过一段时间再发送，不然报错
+                    #         progressSig.emit(5 + (count/total)*90)
+                    #         timer.restart()
+                    # print(f"{spe}, {count}/{total} finished !")
+                else:
+                    error = True
+            pool.join()  # 等待所有进程结束
+            if error and exception_signal:
+                exception_signal.emit(f"Error happened, check {work_dir}/log.txt")
         except:
             exceptionInfo = ''.join(
                 traceback.format_exception(
@@ -5804,6 +5822,7 @@ class DetermineCopyGeneParallel(object):
                         rep_name = target_gene.replace("trn", "")
                         target_name = rep_name if rep_name in list_new_GOs else f"-{rep_name}"
                         # print(list_new_GOs, target_name, target_gene)
+                        # print(spe, list_new_GOs, target_name)
                         target_gene_index = list_new_GOs.index(target_name)
                         list_new_GOs[target_gene_index] = list_new_GOs[target_gene_index].split("_copy")[0]
                         list_copied_genes = [target_gene] + list_copied_gene_names
@@ -5828,6 +5847,7 @@ class DetermineCopyGeneParallel(object):
             exceptionInfo = ''.join(
                 traceback.format_exception(
                     *sys.exc_info()))
+            # print(spe, list_new_GOs, target_name)
             self.save2log(f"{work_dir}/log.txt", exceptionInfo)
 
     def send_progress(self, work_dir, total, queue):
@@ -7103,18 +7123,7 @@ class DetermineCopyGeneParallel(object):
 #             f.write(self.linear_order)
 #         with open(filesPath + os.sep + 'complete_seq.fas', 'w', encoding="utf-8") as f:
 #             f.write(self.complete_seq)
-#         with open(filesPath + os.sep + 'PCG_seqs.fas', 'w', encoding="utf-8") as f6:
-#             f6.write(self.PCG_seq)
-#         with open(filesPath + os.sep + 'tRNA_seqs.fas', 'w', encoding="utf-8") as f7:
-#             f7.write(self.tRNA_seqs)
-#         with open(filesPath + os.sep + 'rRNA_seqs.fas', 'w', encoding="utf-8") as f8:
-#             f8.write(self.rRNA_seqs)
-#         # super(GBextract_MT, self).saveGeneralFile()
-#
-#     def saveItolFiles(self):
-#         itolPath = self.factory.creat_dirs(self.exportPath + os.sep + 'itolFiles')
-#         itol_domain = "DATASET_DOMAINS\nSEPARATOR COMMA\nDATASET_LABEL,Mito gene order\nCOLOR,#ff00aa\nWIDTH,1250\nBACKBONE_COLOR,black\nHEIGHT_FACTOR,0.8\nLEGEND_TITLE,Regions\nLEGEND_SHAPES,%s,%s,%s,%s,%s,%s,%s\nLEGEND_COLORS,%s,%s,%s,%s,%s,%s,%s\nLEGEND_LABELS,atp6|atp8,nad1-6|nad4L,cytb,cox1-3,rRNA,tRNA,NCR\n#SHOW_INTERNAL,0\nSHOW_DOMAIN_LABELS,1\nLABELS_ON_TOP,1\nDATA\n" % (
-#             self.dict_args["atpshape"], self.dict_args["nadshape"], self.dict_args["cytbshape"],
+#         with open(filesPath + os.sep + 'PCG_seqs.fas', 'w', encoding="utf-8") as f6:c
 #             self.dict_args["coxshape"], self.dict_args["rRNAshape"], self.dict_args["tRNAshape"],
 #             self.dict_args["NCRshape"], self.dict_args["atpcolour"], self.dict_args["nadcolour"],
 #             self.dict_args["cytbcolour"], self.dict_args["coxcolour"], self.dict_args["rRNAcolour"],

@@ -56,7 +56,9 @@ def run(dict_args, command, file):
         content = f.read()
         f.close()
         rgx_model = re.compile(r"Best-fit model according to.+?\: (.+)")
-        best_model = rgx_model.search(content).group(1)
+        rgx_model2 = re.compile(r"Model of substitution: (.+)")
+        best_model = rgx_model.search(content).group(1) if rgx_model.search(content) \
+                else rgx_model2.search(content).group(1)
         model_split = best_model.split("+")
         model = model_split[0]
         model_cmd = dict_args["dict_model"][model]
@@ -100,7 +102,7 @@ def run(dict_args, command, file):
             log_file.write(out_line)
             if re.search(r"\S+", out_line):
                 run.queue.put(("log", fileBase + " --- " + out_line.strip()))
-            if re.search(r"ERROR", out_line):
+            if re.search(r"(?i)ERROR", out_line):
                 run.queue.put(("log", fileBase + " --- " + out_line.strip()))
                 is_error = True
         if is_error:
@@ -177,9 +179,10 @@ class FastTree(QDialog, Ui_FastTree, object):
         # 自动导入
         self.workflow_input(input_MSA, model)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.interrupt = False
         # 信号槽
         self.exception_signal.connect(self.popupException)
@@ -233,7 +236,7 @@ class FastTree(QDialog, Ui_FastTree, object):
             self.error_has_shown = False  # 保证只报一次错
             self.input_files = self.comboBox_11.fetchListsText()
             self.list_pids = []
-            self.queue = multiprocessing.Queue()
+            self.queue = multiprocessing.Queue() if platform.system().lower() == "windows" else multiprocessing.Manager().Queue()
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.input_files) > thread else len(self.input_files)
             thread = 1 if not self.input_files else thread  # compare的情况
@@ -342,6 +345,7 @@ class FastTree(QDialog, Ui_FastTree, object):
             self.pool.close()  # 关闭进程池，防止进一步操作。如果所有操作持续挂起，它们将在工作进程终止前完成
             map(ApplyResult.wait, async_results)
             lst_results = [r.get() for r in async_results]
+            self.pool.join()  # 等待所有进程结束
             # 判断是否运行成功
             error_files = []
             trees = []
@@ -374,7 +378,7 @@ class FastTree(QDialog, Ui_FastTree, object):
                 self.time_used)
             with open(self.exportPath + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
                 f.write(
-                    self.description + "\n\nIf you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"
+                    self.description + f"\n\nIf you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n"
                                        "If you use FastTree, please cite:\n" + self.reference + "\n\n" + self.time_used_des)
             if (not self.interrupt) and (not has_error):
                 self.pool = None
@@ -449,12 +453,13 @@ class FastTree(QDialog, Ui_FastTree, object):
     def guiRestore(self):
 
         # Restore geometry
-        self.resize(self.FastTree_settings.value('size', QSize(1000, 750)))
+        self.resize(self.FastTree_settings.value('size', QSize(1000, 650)))
         self.factory.centerWindow(self)
         # self.move(self.FastTree_settings.value('pos', QPoint(875, 254)))
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if name == "comboBox_6":
                     cpu_num = multiprocessing.cpu_count()
                     list_cpu = [str(i + 1) for i in range(cpu_num)]
@@ -510,6 +515,7 @@ class FastTree(QDialog, Ui_FastTree, object):
                 obj.setChecked(
                     self.factory.str2bool(value))  # restore checkbox
             elif isinstance(obj, QDoubleSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 ini_float_ = obj.value()
                 float_ = self.FastTree_settings.value(name, ini_float_)
                 obj.setValue(float(float_))
@@ -601,6 +607,10 @@ class FastTree(QDialog, Ui_FastTree, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
+
         # return QMainWindow.eventFilter(self, obj, event) #
         # 其他情况会返回系统默认的事件处理方法。
         return super(FastTree, self).eventFilter(obj, event)  # 0
@@ -729,7 +739,7 @@ class FastTree(QDialog, Ui_FastTree, object):
             self.error_has_shown = False
             self.input_files = self.comboBox_11.fetchListsText()
             self.list_pids = []
-            self.queue = multiprocessing.Queue()
+            self.queue = multiprocessing.Queue() if platform.system().lower() == "windows" else multiprocessing.Manager().Queue()
             thread = int(self.comboBox_6.currentText())
             thread = thread if len(self.input_files) > thread else len(self.input_files)
             thread = 1 if not self.input_files else thread # compare的情况
@@ -946,8 +956,12 @@ class FastTree(QDialog, Ui_FastTree, object):
         f = self.factory.read_file(model_file)
         content = f.read()
         f.close()
+        # rgx_model = re.compile(r"Best-fit model according to.+?\: (.+)")
+        # best_model = rgx_model.search(content).group(1)
         rgx_model = re.compile(r"Best-fit model according to.+?\: (.+)")
-        best_model = rgx_model.search(content).group(1)
+        rgx_model2 = re.compile(r"Model of substitution: (.+)")
+        best_model = rgx_model.search(content).group(1) if rgx_model.search(content) \
+            else rgx_model2.search(content).group(1)
         model_split = best_model.split("+")
         model = model_split[0]
         index = self.comboBox_7.findText(model, Qt.MatchFixedString)

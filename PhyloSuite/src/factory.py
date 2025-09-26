@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # 所有类的工厂类
 import glob
+import io
+import random
 import traceback
 import sys
 
@@ -32,44 +34,69 @@ import platform
 # from src.Lg_settings import Setting
 from src.Lg_NCBI_DB import LG_NCBIdb
 from src.plugins import dict_plugin_settings
-from src.preset_values import init_sequence_type, preset_workflow
+from src.preset_values import init_sequence_type, preset_workflow, qss
 from uifiles.Ui_NCBI_db import Ui_NCBI_DB
 
 
 class Factory_sub(object):
 
-    def get_version(self, program, parent):
+    def get_version(self, program, parent, mode="set"):
         if program == "IQ-TREE":
-            command = f"\"{parent.iqtree_exe}\" -h"
-            popen = self.init_popen(command)
-            stdout = self.getSTDOUT(popen)
-            rgx_version = re.compile(r"version (\d+\.\d+\.\d+)")
+            exe_ = f"\"{parent.iqtree_exe}\"" if mode == "set" else f"\"{mode}\""
+            stdout = subprocess.run(
+                [exe_.replace("\"", ""), "-h"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
+            rgx_version = re.compile(r"version *(\d+\.\d+\.\d+)")
             if rgx_version.search(stdout):
-                parent.version = rgx_version.search(stdout).group(1)
+                version = rgx_version.search(stdout).group(1)
             else:
-                parent.version = ""
+                version = ""
+            if mode != "set":
+                return version
+            else:
+                parent.version = version
         elif program == "ModelFinder":
-            command = f"\"{parent.modelfinder_exe}\" -h"
-            popen = self.init_popen(command)
-            stdout = self.getSTDOUT(popen)
+            stdout = subprocess.run(
+                [parent.modelfinder_exe.replace("\"", ""), "-h"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
             rgx_version = re.compile(r"version (\d+\.\d+\.\d+)")
             if rgx_version.search(stdout):
                 parent.version = rgx_version.search(stdout).group(1)
             else:
                 parent.version = ""
         elif program == "FastTree":
-            command = f"\"{parent.FastTreePath}\" -expert"
-            popen = self.init_popen(command)
-            stdout = self.getSTDOUT(popen)
+            stdout = subprocess.run(
+                [parent.FastTreePath.replace("\"", ""), "-expert"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
             rgx_version = re.compile(r"FastTree (\d+\.\d+\.\d+)")
             if rgx_version.search(stdout):
                 parent.version = rgx_version.search(stdout).group(1)
             else:
                 parent.version = ""
-        elif program == "ASTRAL":
-            command = f"\"{parent.ASTRALPath}\" -h"
-            popen = self.init_popen(command)
-            stdout = self.getSTDOUT(popen)
+        elif program == "ASTRAL/CASTER/WASTER":
+            stdout = subprocess.run(
+                [parent.ASTRALPath.replace("\"", ""), "-h"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
             rgx_version = re.compile(r"Version: v(\d+\.\d+\.\d+\.\d+)")
             if rgx_version.search(stdout):
                 parent.version = rgx_version.search(stdout).group(1)
@@ -77,9 +104,14 @@ class Factory_sub(object):
                 parent.version = ""
         elif program == "Gblocks":
             # 无效,需要关程序的时候才会有stdout。需要在一个新的线程里面获取才行，见https://stackoverflow.com/questions/19880190/interactive-input-output-using-python
-            command = f"\"{parent.gb_exe}\""
-            popen = self.init_popen(command)
-            stdout = self.getSTDOUT(popen)
+            stdout = subprocess.run(
+                [parent.gb_exe.replace("\"", "")],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
             # print(stdout)
             rgx_version = re.compile(r"GBLOCKS (\d+\.\d+b)")
             if rgx_version.search(stdout):
@@ -87,27 +119,56 @@ class Factory_sub(object):
             else:
                 parent.version = ""
         elif program == "MAFFT":
-            command = f"\"{parent.mafft_exe}\" -h"
-            popen = self.init_popen(command)
-            stdout = self.getSTDOUT(popen)
+            stdout = subprocess.run(
+                [parent.mafft_exe.replace("\"", ""), "-h"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
             rgx_version = re.compile(r"MAFFT v(\d+\.\d+)")
             if rgx_version.search(stdout):
                 parent.version = rgx_version.search(stdout).group(1)
             else:
                 parent.version = ""
+        elif program == "MUSCLE":
+            stdout = subprocess.run(
+                [parent.MUSCLEEXE.replace("\"", ""), "-h"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
+            rgx_version = re.compile(r"muscle (\d+\.\d+)")
+            if rgx_version.search(stdout):
+                parent.version = rgx_version.search(stdout).group(1)
+            else:
+                parent.version = ""
         elif program == "trimAl":
-            command = f"\"{parent.TApath}\" --version"
-            popen = self.init_popen(command)
-            stdout = self.getSTDOUT(popen)
+            stdout = subprocess.run(
+                [parent.TApath.replace("\"", ""), "--version"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
             rgx_version = re.compile(r"trimAl (\d+\.\S+)")
             if rgx_version.search(stdout):
                 parent.version = rgx_version.search(stdout).group(1)
             else:
                 parent.version = ""
         elif program == "MrBayes":
-            command = f"\"{parent.MB_exe}\" -v"
-            popen = self.init_popen(command)
-            stdout = self.getSTDOUT(popen)
+            stdout = subprocess.run(
+                [parent.MB_exe.replace("\"", ""), "-v"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
             rgx_version = re.compile(r"MrBayes v(\d+\.\d+\.\d+\S*)")
             if rgx_version.search(stdout):
                 parent.version = rgx_version.search(stdout).group(1)
@@ -118,10 +179,48 @@ class Factory_sub(object):
                 else:
                     parent.version = ""
         elif program == "MACSE":
-            command = f"\"{parent.java}\" -jar \"{parent.macseEXE}\" -h"
-            popen = self.init_popen(command)
-            stdout = self.getSTDOUT(popen)
+            stdout = subprocess.run(
+                [parent.java.replace("\"", ""), "-jar", parent.macseEXE.replace("\"", ""), "-h"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
             rgx_version = re.compile(r" MACSE V(\d+\.\d+)")
+            if rgx_version.search(stdout):
+                parent.version = rgx_version.search(stdout).group(1)
+            else:
+                parent.version = ""
+        elif program == "MCMCTree":
+            exe_ = f"{parent.mcmctreeEXE}" if mode=="set" else f"{mode}"
+            stdout = subprocess.run(
+                [exe_.replace("\"", ""), "--version"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
+            rgx_version = re.compile(r"MCMCTree (\d+\.\d+)")
+            if rgx_version.search(stdout):
+                version = rgx_version.search(stdout).group(1)
+            else:
+                version = ""
+            if mode != "set":
+                return version
+            else:
+                parent.version = version
+        elif program == "r8s":
+            stdout = subprocess.run(
+                [parent.r8sEXE.replace("\"", ""), "-v"],
+                stdout=subprocess.PIPE,  # Equivalent to capture_output=True
+                stderr=subprocess.PIPE,  # Equivalent to capture_output=True
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='ignore'
+            ).stdout
+            rgx_version = re.compile(r"r8s version (\d+\.\d+)")
             if rgx_version.search(stdout):
                 parent.version = rgx_version.search(stdout).group(1)
             else:
@@ -211,7 +310,7 @@ class Factory_sub(object):
         return flag
 
     def get_PS_version(self):
-        with open(self.thisPath + os.sep + "NEWS_version.md", encoding="utf-8") as f:
+        with open(self.src_path + os.sep + "NEWS_version.md", encoding="utf-8") as f:
             content = f.read()
             current_version = re.search(
                 r"## *PhyloSuite v([^ ]+?) \(", content)
@@ -254,6 +353,10 @@ class Factory_sub(object):
         self.NCBIdb_window.setWindowFlags(self.NCBIdb_window.windowFlags() |
                                           Qt.WindowMinMaxButtonsHint)
         self.NCBIdb_window.show()
+
+    def NCBI_tax_db_is_installed(self):
+        db_file = f"{self.thisPath}{os.sep}db{os.sep}NCBI{os.sep}taxa.sqlite"
+        return os.path.exists(db_file)
 
     def get_OS_bit(self):
         # 有时候用户下载的是32位版本的phylosuite
@@ -309,6 +412,85 @@ class Factory_sub(object):
                 url = "https://raw.githubusercontent.com/dongzhang0725/PhyloSuite_linux/master/update_linux.zip"
         return url
 
+    def get_this_path(self, path):
+        # 先判断path，不行就用home
+        if os.access(path, os.W_OK):
+            return path
+        else:
+            run_path = os.path.join(os.environ.get('HOME', os.path.expanduser('~')), 'PhyloSuite_home')
+            os.makedirs(run_path, exist_ok=True)
+            return run_path
+
+    def set_qss(self, object, noset=False):
+        qss_file = self.thisPath + os.sep + 'style.qss'
+        if os.path.exists(qss_file) and os.access(qss_file, os.R_OK) and os.access(qss_file, os.W_OK):
+            with open(qss_file, encoding="utf-8", errors='ignore') as f:
+                qss_content = f.read()
+        else:
+            qss_content = qss
+        if not noset:
+            object.setStyleSheet(qss_content)
+        return qss_content
+
+    def checkNCBIdb(self, parent):
+        if not self.NCBI_tax_db_is_installed():
+            reply = QMessageBox.information(
+                parent,
+                "Information",
+                "<p style='line-height:25px; height:25px'>NCBI taxonomy database is not downloaded, "
+                "which may affect several functions. Do you wish to install now?</p>",
+                QMessageBox.Ok,
+                QMessageBox.Ignore)
+            if reply == QMessageBox.Ok:
+                return True
+            else:
+                return False
+
+    def get_PS_citation(self):
+        return "1. Zhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, "\
+                "and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular "\
+                "sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, "\
+                "2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n"\
+                "2. Xiang, Chuan‐Yu, Fangluan Gao, Ivan Jakovlić, Hong‐Peng Lei, Ye Hu, Hong Zhang, Hong Zou, "\
+                "Gui‐Tang Wang, and Dong Zhang, Using PhyloSuite for molecular phylogeny and tree‐based analyses. "\
+                "iMeta, 2023. e87. DOI: https://doi.org/10.1002/imt2.87."
+
+    def is_file_not_empty(self, file_path):
+        # 检查文件是否存在
+        if os.path.exists(file_path):
+            # 获取文件大小（字节数）
+            file_size = os.path.getsize(file_path)
+            # 如果文件大小大于0，则表示文件不为空
+            if file_size > 0:
+                return True
+        return False
+
+    def resize_window(self, window, width_frac, height_frac):
+        screen_resolution = QDesktopWidget().screenGeometry()
+        width, height = screen_resolution.width(), screen_resolution.height()
+        window.resize(QSize(int(width * width_frac), int(height * height_frac)))
+
+    def colorPicker(self, list_colors):
+        # 生成不重复的随机颜色
+        colour = '#%06X' % random.randint(0, 256 ** 3 - 1)
+        while colour in list_colors:
+            # 不让range用自定义的颜色
+            colour = '#%06X' % random.randint(0, 256 ** 3 - 1)
+        return colour
+
+    def get_file_name_base(self, file):
+        return os.path.splitext(os.path.basename(file))[0]
+
+    def runProgressDialog(self, progressDialog, num):
+        oldValue = progressDialog.value()
+        done_int = int(num)
+        if done_int > oldValue:
+            progressDialog.setProperty("value", done_int)
+            QCoreApplication.processEvents()
+            if done_int == 100:
+                progressDialog.close()
+
+
 class Factory(QObject, Factory_sub, object):
 
     def __init__(self, parent=None):
@@ -316,6 +498,8 @@ class Factory(QObject, Factory_sub, object):
         thisPath = os.path.dirname(os.path.abspath(os.path.dirname(sys.argv[0])))  #上一级目录
         thisPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__))) if not os.path.exists(
             thisPath + os.sep + "style.qss") else thisPath
+        self.src_path = thisPath
+        thisPath = self.get_this_path(thisPath)
         QSettings.setDefaultFormat(QSettings.IniFormat)
         # print(QSettings().fileName()) # get the default path of ini file
         self.path_settings = QSettings()
@@ -546,7 +730,8 @@ class Factory(QObject, Factory_sub, object):
 
     def ctrl_startButton_status(self, list_):
         button, progressbar, state, path, qss, parent = list_
-        if (type(progressbar) != list) and progressbar.maximum()==0: progressbar.setMaximum(100)  # 取消busy状态
+        if (type(progressbar) != list) and (progressbar.maximum()==0) and (state != "popupDialog stop"):
+            progressbar.setMaximum(100)  # 取消busy状态
         if state == "start":
             button.setEnabled(False)  # 使之失效
             button.setStyleSheet(
@@ -579,6 +764,11 @@ class Factory(QObject, Factory_sub, object):
                           "Import the results to trimAl",
                           "Import the results to HmmCleaner", "Import the results to Convert Sequence Format",
                           "Import the results to Concatenate Sequence", "Import the results to FastTree"],
+                "MUSCLE": ["Open the results folder", "Import the results to MACSE (for CDS)",
+                          "Import the results to Gblocks",
+                          "Import the results to trimAl",
+                          "Import the results to HmmCleaner", "Import the results to Convert Sequence Format",
+                          "Import the results to Concatenate Sequence", "Import the results to FastTree"],
                 "MACSE": ["Open the results folder", "Import the results to Gblocks", "Import the results to trimAl",
                           "Import the results to HmmCleaner",
                           "Import the results to Convert Sequence Format", "Import the results to Concatenate Sequence",
@@ -597,10 +787,13 @@ class Factory(QObject, Factory_sub, object):
                 "HmmCleaner": ["Open the results folder", "Import the results to Convert Sequence Format",
                                "Import the results to Concatenate Sequence", "Import the results to FastTree"],
                 "IQ-TREE": ["Open the results folder", "Import the results to TreeSuite",
-                               "Import the results to ASTRAL"],
-                "MrBayes": ["Open the results folder", "Import the results to TreeSuite"],
+                               "Import the results to ASTRAL/CASTER/WASTER", "Import the results to MDGUI"],
+                "MrBayes": ["Open the results folder", "Import the results to TreeSuite",
+                            "Import the results to MDGUI"],
                 "FastTree": ["Open the results folder", "Import the results to TreeSuite",
-                             "Import the results to ASTRAL"]
+                             "Import the results to ASTRAL/CASTER/WASTER", "Import the results to MDGUI"],
+                "ASTRAL/CASTER/WASTER": ["Open the results folder", "Import the results to TreeSuite",
+                             "Import the results to MDGUI"]
             }
             if hasattr(parent, "function_name") and (parent.function_name in dict_):
                 windInfo = JobFinishMessageBox(":/picture/resourses/msg_info.png", parent=parent)
@@ -611,6 +804,8 @@ class Factory(QObject, Factory_sub, object):
                         self.openPath(path, parent)
                     elif selection == "Import the results to MAFFT":
                         parent.parent.on_Mafft_triggered()
+                    elif selection == "Import the results to MUSCLE":
+                        parent.parent.on_actionMUSCLE_triggered()
                     elif selection == "Import the results to MACSE (for CDS)":
                         parent.parent.on_MACSE_triggered()
                     elif selection == "Import the results to Gblocks":
@@ -637,10 +832,12 @@ class Factory(QObject, Factory_sub, object):
                         parent.parent.on_actionDrawGO_triggered()
                     elif selection == "Import the results to TreeSuite":
                         parent.parent.on_TreeSuite_triggered()
-                    elif selection == "Import the results to ASTRAL":
+                    elif selection == "Import the results to ASTRAL/CASTER/WASTER":
                         parent.parent.on_actionASTRAL_triggered()
                     elif selection == "Import the results to FastTree":
                         parent.parent.on_actionFastTree_triggered()
+                    elif selection == "Import the results to MDGUI":
+                        parent.parent.on_MCMCTree_triggered()
             else:
                 reply = QMessageBox.information(
                     parent,
@@ -655,6 +852,16 @@ class Factory(QObject, Factory_sub, object):
                     i.setProperty("value", 0)
             else:
                 progressbar.setProperty("value", 0)
+        elif state == "popupDialog stop":
+            # 例如mcmtree的纯summarize功能
+            reply = QMessageBox.information(
+                parent,
+                "PhyloSuite",
+                "<p style='line-height:25px; height:25px'>Summarization completed! Open the results folder?        </p>",
+                QMessageBox.Ok,
+                QMessageBox.Cancel)
+            if reply == QMessageBox.Ok:
+                self.openPath(path, parent)
         elif state.startswith("extract_no_feature"):
             button.setEnabled(True)
             button.setStyleSheet(qss)
@@ -1181,7 +1388,7 @@ class Factory(QObject, Factory_sub, object):
                     dict_autoInputs[
                         os.path.normpath(otherPath + os.sep + each_path)] = \
                         {os.path.normpath(otherPath + os.sep + each_path): list_alignments}
-        elif mode == "MAFFT":
+        elif mode in ["MAFFT", "MUSCLE"]:
             # 自动导入特殊一些
             for extractPath in self.fetchResuilts(rootpath, "extract_results"):
                 dict_subResults = OrderedDict()  # 按修改时间排序
@@ -1352,16 +1559,30 @@ class Factory(QObject, Factory_sub, object):
                     list_msa = []
                     model = ["", None]
                     mf_part_model = None
+                    mf_part_text = ""
                     for i in os.listdir(subResults):
                         if "best_scheme.nex" in i:
                             mf_part_model = subResults + os.sep + i
+                            # judge link or unlink
+                            log = f"{subResults}{os.sep}PhyloSuite_ModelFinder.log"
+                            if os.path.exists(log):
+                                with open(log) as f:
+                                    content = f.read()
+                            else:
+                                content = ""
+                            rgx = re.compile(r"(?sm)^=+Commands=+\n.+?(-sp|-Q) +\".+?=+")
+                            if content and rgx.search(content):
+                                mf_part_text = "mf_part_model_unlink"
+                            else:
+                                mf_part_text = "mf_part_model"
                         elif os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FA", ".FAS", ".FASTA", ".NEX", ".NEXUS",
                                                                 ".NXS", ".ALN"]:
                             list_msa.append(subResults + os.sep + i)
                         elif os.path.splitext(i)[1].upper() == ".IQTREE":
                             model = ["MB_normal", subResults + os.sep + i]
                     model = [
-                        "mf_part_model", mf_part_model] if mf_part_model else model
+                        mf_part_text, mf_part_model] if mf_part_model else model
+                    list_msa = sorted(list_msa, key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
                     input_MSA = list_msa[0] if list_msa else None
                     if (model != ["", None]) or input_MSA:
                         dict_subResults[
@@ -1483,6 +1704,7 @@ class Factory(QObject, Factory_sub, object):
                     input_MSAs = [subResults + os.sep + i for i in os.listdir(subResults) if
                                   os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FA", ".FAS", ".FASTA", ".NEX", ".NEXUS",
                                                                      ".ALN"]]
+                    input_MSAs = sorted(input_MSAs, key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
                     input_MSA = input_MSAs[0] if input_MSAs else None
                     list_input_model_file = [subResults + os.sep + i for i in os.listdir(subResults) if
                                              os.path.splitext(i)[1].upper() == ".IQTREE"]
@@ -1499,11 +1721,25 @@ class Factory(QObject, Factory_sub, object):
                         f = self.read_file(input_model_file)
                         model_content = f.read()
                         f.close()
-                        rgx_model = re.compile(
-                            r"Best-fit model according to.+?\: (.+)")
-                        input_model = rgx_model.search(model_content).group(1)
+                        # rgx_model = re.compile(
+                        #     r"Best-fit model according to.+?\: (.+)")
+                        # input_model = rgx_model.search(model_content).group(1)
+                        rgx_model = re.compile(r"Best-fit model according to.+?\: (.+)")
+                        rgx_model2 = re.compile(r"Model of substitution: (.+)")
+                        input_model = rgx_model.search(model_content).group(1) if rgx_model.search(model_content) \
+                            else rgx_model2.search(model_content).group(1)
                     else:
                         input_model = None
+                    # judge link or unlink
+                    log = f"{subResults}{os.sep}PhyloSuite_ModelFinder.log"
+                    if os.path.exists(log):
+                        with open(log) as f:
+                            content = f.read()
+                    else:
+                        content = ""
+                    rgx = re.compile(r"(?sm)^=+Commands=+\n.+?(-sp|-Q) +\".+?=+")
+                    if content and rgx.search(content):
+                        input_model = f"**UNLINK**{input_model}" if input_model else input_model
                     if input_model or input_MSA:
                         dict_subResults[
                             os.path.normpath(subResults)] = [input_MSA, input_model]
@@ -1601,12 +1837,18 @@ class Factory(QObject, Factory_sub, object):
                     dict_autoInputs[
                         os.path.normpath(otherPath + os.sep + each_path)] = \
                         {os.path.normpath(otherPath + os.sep + each_path): [list_tree_files, []]}
-        elif mode == "ASTRAL":
+        elif mode == "ASTRAL/CASTER/WASTER":
             for iq_path in self.fetchResuilts(rootpath, "IQtree_results"):
                 dict_subResults = OrderedDict()  # 按修改时间排序
                 for subResults in self.fetchSubResults(iq_path):
-                    autoInputs = glob.glob(subResults + os.sep + "all_gene_trees.nwk")
-                    if autoInputs:
+                    input_trees = [subResults + os.sep + "all_gene_trees.nwk"] if \
+                        os.path.exists(subResults + os.sep + "all_gene_trees.nwk") else []
+                    list_alignments = self.fetchAlignmentFile(subResults)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    autoInputs = [input_trees, list_alignments]
+                    # autoInputs = glob.glob(subResults + os.sep + "all_gene_trees.nwk")
+                    if autoInputs[0]:
                         dict_subResults[
                             os.path.normpath(subResults)] = autoInputs
                 if dict_subResults:
@@ -1614,7 +1856,84 @@ class Factory(QObject, Factory_sub, object):
             for ft_path in self.fetchResuilts(rootpath, "FastTree_results"):
                 dict_subResults = OrderedDict()  # 按修改时间排序
                 for subResults in self.fetchSubResults(ft_path):
-                    autoInputs = glob.glob(subResults + os.sep + "all_gene_trees.nwk")
+                    input_trees = [subResults + os.sep + "all_gene_trees.nwk"] if \
+                        os.path.exists(subResults + os.sep + "all_gene_trees.nwk") else []
+                    list_alignments = self.fetchAlignmentFile(subResults)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    autoInputs = [input_trees, list_alignments]
+                    # autoInputs = glob.glob(subResults + os.sep + "all_gene_trees.nwk")
+                    if autoInputs[0]:
+                        dict_subResults[
+                            os.path.normpath(subResults)] = autoInputs
+                if dict_subResults:
+                    dict_autoInputs[os.path.normpath(ft_path)] = dict_subResults
+        elif mode == "MDGUI":
+            for iq_path in self.fetchResuilts(rootpath, "IQtree_results"):
+                dict_subResults = OrderedDict()  # 按修改时间排序
+                for subResults in self.fetchSubResults(iq_path):
+                    autoInputs = glob.glob(subResults + os.sep + "*.treefile")
+                    log = f"{subResults}{os.sep}PhyloSuite_IQ-TREE.log"
+                    if os.path.exists(log):
+                        with open(log) as f:
+                            content = f.read()
+                    else:
+                        content = ""
+                    if content and re.search(r'\-s +\"([^"]+?)\"\W', content):
+                        file_path = re.search(r'\-s +\"([^"]+?)\"\W', content).group(1)
+                        file_name = os.path.basename(file_path)
+                        alignments = glob.glob(f"{subResults}{os.sep}{file_name}")
+                    else:
+                        alignments = [os.path.splitext(tree)[0] for tree in autoInputs]
+                    autoInputs = [autoInputs, alignments]
+                    if autoInputs:
+                        dict_subResults[
+                            os.path.normpath(subResults)] = autoInputs
+                if dict_subResults:
+                    dict_autoInputs[os.path.normpath(iq_path)] = dict_subResults
+            for mb_path in self.fetchResuilts(rootpath, "MrBayes_results"):
+                dict_subResults = OrderedDict()  # 按修改时间排序
+                for subResults in self.fetchSubResults(mb_path):
+                    autoInputs = glob.glob(subResults + os.sep + "*.tre")
+                    alignments = glob.glob(f"{subResults}{os.sep}[!stop_run]*.nex") + \
+                                 glob.glob(f"{subResults}{os.sep}[!stop_run]*.nexus") + \
+                                 glob.glob(f"{subResults}{os.sep}[!stop_run]*.nxs")
+                    # [subResults + os.sep + i for i in os.listdir(subResults) if
+                    # os.path.splitext(i)[1].upper() in [".NEX", ".NEXUS", "NXS"]]
+                    autoInputs = [autoInputs, alignments]
+                    if autoInputs:
+                        dict_subResults[
+                            os.path.normpath(subResults)] = autoInputs
+                if dict_subResults:
+                    dict_autoInputs[os.path.normpath(mb_path)] = dict_subResults
+            for ft_path in self.fetchResuilts(rootpath, "FastTree_results"):
+                dict_subResults = OrderedDict()  # 按修改时间排序
+                # 随机挑选一个结果文件夹的数据进行导入
+                for subResults in self.fetchSubResults(ft_path):
+                    runPath = None
+                    for i in os.listdir(subResults):
+                        if os.path.isdir(subResults + os.sep + i):
+                            runPath = subResults + os.sep + i
+                            break
+                    if not runPath:
+                        continue
+                    input_trees = glob.glob(f"{runPath}{os.sep}*.nwk")
+                    list_alignments = self.fetchAlignmentFile(runPath)
+                    list_alignments = [os.path.normpath(
+                        alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                    autoInputs = [input_trees, list_alignments]
+                    if autoInputs:
+                        dict_subResults[
+                            os.path.normpath(subResults)] = autoInputs
+                if dict_subResults:
+                    dict_autoInputs[os.path.normpath(ft_path)] = dict_subResults
+            for ft_path in self.fetchResuilts(rootpath, "ASTER_results"):
+                dict_subResults = OrderedDict()  # 按修改时间排序
+                # 随机挑选一个结果文件夹的数据进行导入
+                for subResults in self.fetchSubResults(ft_path):
+                    input_trees = glob.glob(f"{subResults}{os.sep}*.nwk")
+                    list_alignments = []
+                    autoInputs = [input_trees, list_alignments]
                     if autoInputs:
                         dict_subResults[
                             os.path.normpath(subResults)] = autoInputs
@@ -1718,7 +2037,7 @@ class Factory(QObject, Factory_sub, object):
                     list_alignments = [os.path.normpath(
                         alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
                     if list_alignments: autoInputs = list_alignments
-        elif mode == "MAFFT":
+        elif mode in ["MAFFT", "MUSCLE"]:
             # 自动导入特殊一些
             if resultsParentName == "extract_results":
                 PCG_NUC_files, PCG_AA_files, RNAs_files = [], [], []
@@ -1846,16 +2165,30 @@ class Factory(QObject, Factory_sub, object):
                 list_msa = []
                 model = ["", None]
                 mf_part_model = None
+                mf_part_text = ""
                 for i in os.listdir(resultsPath):
                     if "best_scheme.nex" in i:
                         mf_part_model = resultsPath + os.sep + i
+                        # judge link or unlink
+                        log = f"{resultsPath}{os.sep}PhyloSuite_ModelFinder.log"
+                        if os.path.exists(log):
+                            with open(log) as f:
+                                content = f.read()
+                        else:
+                            content = ""
+                        rgx = re.compile(r"(?sm)^=+Commands=+\n.+?(-sp|-Q) +\".+?=+")
+                        if content and rgx.search(content):
+                            mf_part_text = "mf_part_model_unlink"
+                        else:
+                            mf_part_text = "mf_part_model"
                     elif os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FA", ".FAS", ".FASTA", ".NEX", ".NEXUS",
                                                             ".NXS", ".ALN"]:
                         list_msa.append(resultsPath + os.sep + i)
                     elif os.path.splitext(i)[1].upper() == ".IQTREE":
                         model = ["MB_normal", resultsPath + os.sep + i]
                 model = [
-                    "mf_part_model", mf_part_model] if mf_part_model else model
+                    mf_part_text, mf_part_model] if mf_part_model else model
+                list_msa = sorted(list_msa, key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
                 input_MSA = list_msa[0] if list_msa else None
                 if (model != ["", None]) or input_MSA: autoInputs = [[input_MSA], model]
             if resultsParentName == "PartFind_results":
@@ -1924,6 +2257,7 @@ class Factory(QObject, Factory_sub, object):
                               os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP", ".FA", ".FAS", ".FASTA", ".NEX",
                                                                  ".NEXUS",
                                                                  ".ALN"]]
+                input_MSAs = sorted(input_MSAs, key=lambda x: ["F", "P", "A", "N"].index(os.path.splitext(x)[1][1].upper()))
                 input_MSA = input_MSAs[0] if input_MSAs else None
                 list_input_model_file = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
                                          os.path.splitext(i)[1].upper() == ".IQTREE"]
@@ -1940,12 +2274,27 @@ class Factory(QObject, Factory_sub, object):
                     f = self.read_file(input_model_file)
                     model_content = f.read()
                     f.close()
-                    rgx_model = re.compile(
-                        r"Best-fit model according to.+?\: (.+)")
-                    input_model = rgx_model.search(model_content).group(1)
+                    # rgx_model = re.compile(
+                    #     r"Best-fit model according to.+?\: (.+)")
+                    # input_model = rgx_model.search(model_content).group(1)
+                    rgx_model = re.compile(r"Best-fit model according to.+?\: (.+)")
+                    rgx_model2 = re.compile(r"Model of substitution: (.+)")
+                    input_model = rgx_model.search(model_content).group(1) if rgx_model.search(model_content) \
+                        else rgx_model2.search(model_content).group(1)
                 else:
                     input_model = None
-                if input_model or input_MSA: autoInputs = [input_MSA, input_model]
+                # judge link or unlink
+                log = f"{resultsPath}{os.sep}PhyloSuite_ModelFinder.log"
+                if os.path.exists(log):
+                    with open(log) as f:
+                        content = f.read()
+                else:
+                    content = ""
+                rgx = re.compile(r"(?sm)^=+Commands=+\n.+?(-sp|-Q) +\".+?=+")
+                if content and rgx.search(content):
+                    input_model = f"**UNLINK**{input_model}" if input_model else input_model
+                if input_model or input_MSA:
+                    autoInputs = [input_MSA, input_model]
             if resultsParentName == "PartFind_results":
                 input_MSAs = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
                               os.path.splitext(i)[1].upper() in [".PHY", ".PHYLIP"]]
@@ -2025,11 +2374,75 @@ class Factory(QObject, Factory_sub, object):
                 else:
                     alignments = [os.path.splitext(tree)[0] for tree in input_trees]
                 autoInputs = [input_trees, alignments]
-        elif mode == "ASTRAL":
+        elif mode == "ASTRAL/CASTER/WASTER":
             if resultsParentName in ["IQtree_results", "FastTree_results"]:
                 input_trees = [resultsPath + os.sep + "all_gene_trees.nwk"] if \
                     os.path.exists(resultsPath + os.sep + "all_gene_trees.nwk") else []
-                autoInputs = input_trees
+                list_alignments = self.fetchAlignmentFile(resultsPath)
+                list_alignments = [os.path.normpath(
+                    alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                if input_trees:
+                    autoInputs = [input_trees, list_alignments]
+        elif mode == "MDGUI":
+            if resultsParentName == "MrBayes_results":
+                input_trees = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                               os.path.splitext(i)[1].upper() in [".TRE"]]
+                alignments = glob.glob(f"{resultsPath}{os.sep}[!stop_run]*.nex") + \
+                             glob.glob(f"{resultsPath}{os.sep}[!stop_run]*.nexus") + \
+                             glob.glob(f"{resultsPath}{os.sep}[!stop_run]*.nxs")
+                # [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                #   os.path.splitext(i)[1].upper() in [".NEX", ".NEXUS", "NXS"]]
+                autoInputs = [input_trees, alignments]
+            elif resultsParentName == "FastTree_results":
+                # 随机挑选一个结果文件夹的数据进行导入
+                for i in os.listdir(resultsPath):
+                    if os.path.isdir(resultsPath + os.sep + i):
+                        resultsPath = resultsPath + os.sep + i
+                        break
+                input_trees = glob.glob(f"{resultsPath}{os.sep}*.nwk")
+                list_alignments = self.fetchAlignmentFile(resultsPath)
+                list_alignments = [os.path.normpath(
+                    alignment) for alignment in list_alignments if self.is_aligned_file(alignment)]  # 只要比对过的
+                autoInputs = [input_trees, list_alignments]
+            elif resultsParentName == "IQtree_results":
+                input_trees = [resultsPath + os.sep + i for i in os.listdir(resultsPath) if
+                               os.path.splitext(i)[1].upper() in [".TREEFILE"]]
+                log = f"{resultsPath}{os.sep}PhyloSuite_IQ-TREE.log"
+                if os.path.exists(log):
+                    with open(log) as f:
+                        content = f.read()
+                else:
+                    content = ""
+                if content and re.search(r'\-s +\"([^"]+?)\"\W', content):
+                    file_path = re.search(r'\-s +\"([^"]+?)\"\W', content).group(1)
+                    file_name = os.path.basename(file_path)
+                    alignments = glob.glob(f"{resultsPath}{os.sep}{file_name}")
+                else:
+                    alignments = [os.path.splitext(tree)[0] for tree in input_trees]
+                autoInputs = [input_trees, alignments]
+            elif resultsParentName == "ASTER_results":
+                input_trees = glob.glob(f"{resultsPath}{os.sep}*.nwk")
+                alignments = []
+                autoInputs = [input_trees, alignments]
+        elif mode == "MCMCTracer":
+            if resultsParentName == "MDGUI_results":
+                repeatPaths = glob.glob(f"{resultsPath}{os.sep}repeat*")
+                runPaths = glob.glob(f"{resultsPath}{os.sep}run*")
+                mcmc_file_paths = []
+                if runPaths:
+                    for rpath in runPaths:
+                        if "mcmc.txt" in os.listdir(rpath):
+                            mcmc_file_path = os.path.join(rpath, "mcmc.txt").replace("\\", "/")
+                            mcmc_file_paths.append(mcmc_file_path)
+                elif repeatPaths:
+                    for repeatPath in repeatPaths:
+                        all_mcmc_path = f"{repeatPath}{os.sep}all_mcmc_runs.txt"
+                        if os.path.exists(all_mcmc_path):
+                            mcmc_file_paths.append(all_mcmc_path)
+                autoInputs = mcmc_file_paths
+        # elif mode == "TreeViewer":
+        #     if resultsParentName == "MOLDAT_results":
+        #         input_trees = [resultsPath + os.sep + i for i in os.listdir(resultsPath)] if
         if not autoInputs:
             #["ModelFinder", "IQ-TREE", "MrBayes"]: [list_alignments, None]；IQ-TREE：[list_alignments, ["", None]]
             if mode in ["ModelFinder", "MrBayes", "FastTree"]:
@@ -2100,8 +2513,12 @@ class Factory(QObject, Factory_sub, object):
     def programIsValid(self, program, mode="settings"):
         # 由存的文件里面读取
         if program == "python27":
-            PyPath = self.settings_ini.value('python27', "python")
-            PyPath = "python" if not PyPath else PyPath  # 有时候路径为空
+            if "PY27" in os.environ:
+                PyPath = os.environ["PY27"]
+            else:
+                PyPath = "python"
+            PyPath = self.settings_ini.value('python27', PyPath)
+            # PyPath = "python" if not PyPath else PyPath  # 有时候路径为空
             try:
                 popen = subprocess.Popen(
                     "%s -V" % PyPath, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
@@ -2159,8 +2576,13 @@ class Factory(QObject, Factory_sub, object):
                 return "succeed" if mode == "settings" else TSpath
         elif program == "PF2":
             PFpath = self.settings_ini.value('PF2', "")
-            PFpath = self.getDefaultpluginPath("PF2") if \
-                not PFpath else PFpath
+            # PFpath = self.getDefaultpluginPath("PF2") if \
+            #     not PFpath else PFpath
+            if not PFpath:
+                if "PF2" in os.environ:
+                    PFpath = os.environ["PF2"]
+                else:
+                    PFpath = self.getDefaultpluginPath("PF2")
             if PFpath:
                 pf_compiled = PFpath + os.sep + "PartitionFinder.exe" if platform.system().lower() == "windows" else \
                     PFpath + os.sep + "PartitionFinder"
@@ -2276,7 +2698,11 @@ class Factory(QObject, Factory_sub, object):
             #         self.settings_ini.setValue("java", javaPath)  ##设置一遍，不然workflow报错
             #         return "succeed" if mode == "settings" else javaPath
         elif program == "macse":
-            MACSEpath = self.settings_ini.value('macse', "")
+            if "MACSE" in os.environ:
+                MACSEpath = os.environ["MACSE"]
+            else:
+                MACSEpath = ""
+            MACSEpath = self.settings_ini.value('macse', MACSEpath)
             if not MACSEpath:
                 # 自动判断下是否存在于环境变量
                 if platform.system().lower() == "windows":
@@ -2308,8 +2734,12 @@ class Factory(QObject, Factory_sub, object):
             if shutil.which(trimAlpath):
                 return "succeed" if mode == "settings" else trimAlpath
         elif program == "perl":
-            PERLPath = self.settings_ini.value('perl', "perl")
-            PERLPath = "perl" if not PERLPath else PERLPath  # 有时候路径为空
+            if "PERLx" in os.environ:
+                PERLPath = os.environ["PERLx"]
+            else:
+                PERLPath = "perl"
+            PERLPath = self.settings_ini.value('perl', PERLPath)
+            # PERLPath = "perl" if not PERLPath else PERLPath  # 有时候路径为空
             # try:
             #     popen = subprocess.Popen(
             #         "%s -version" % PERLPath, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
@@ -2332,6 +2762,12 @@ class Factory(QObject, Factory_sub, object):
             if shutil.which(HmmClPath):
                 self.settings_ini.setValue("HmmCleaner", HmmClPath)  ##设置一遍，不然workflow报错
                 return "succeed" if mode == "settings" else HmmClPath
+        elif program == "r8s":
+            r8sPath = self.settings_ini.value('r8s', "r8s")
+            r8sPath = "r8s" if not r8sPath else r8sPath  # 有时候路径为空
+            if shutil.which(r8sPath):
+                self.settings_ini.setValue("r8s", r8sPath)  ##设置一遍，不然workflow报错
+                return "succeed" if mode == "settings" else r8sPath
         elif program == "CodonW":
             CodonPath = self.settings_ini.value('CodonW', "")
             env_name = "CodonW.exe" if platform.system().lower() == "windows" else "codonw"
@@ -2342,6 +2778,46 @@ class Factory(QObject, Factory_sub, object):
                 not CodonPath else CodonPath
             if shutil.which(CodonPath):
                 return "succeed" if mode == "settings" else CodonPath
+        elif program == "MCMCTree":
+            MCMCPath = self.settings_ini.value('MCMCTree', "")
+            if platform.system().lower() == "windows":
+                env_name = dict_plugin_settings[program]["target_win"]
+            elif platform.system().lower() == "darwin":
+                env_name = dict_plugin_settings[program]["target_mac"]
+            else:
+                env_name = dict_plugin_settings[program]["target_linux"]
+            if not MCMCPath:
+                if type(env_name) == list:
+                    for each_env in env_name:
+                        if shutil.which(each_env):
+                            return "succeed" if mode == "settings" else each_env
+                else:
+                    if shutil.which(env_name):
+                        return "succeed" if mode == "settings" else env_name
+            MCMCPath = self.getDefaultpluginPath("MCMCTree") if \
+                not MCMCPath else MCMCPath
+            if shutil.which(MCMCPath):
+                return "succeed" if mode == "settings" else MCMCPath
+        elif program == "Baseml":
+            BasemlPath = self.settings_ini.value('Baseml', '')
+            if platform.system().lower() == "windows":
+                env_name = dict_plugin_settings[program]["target_win"]
+            elif platform.system().lower() == "darwin":
+                env_name = dict_plugin_settings[program]["target_mac"]
+            else:
+                env_name = dict_plugin_settings[program]["target_linux"]
+            if not BasemlPath:
+                if type(env_name) == list:
+                    for each_env in env_name:
+                        if shutil.which(each_env):
+                            return "succeed" if mode == "settings" else each_env
+                else:
+                    if shutil.which(env_name):
+                        return "succeed" if mode == "settings" else env_name
+            BasemlPath = self.getDefaultpluginPath("MCMCTree") if \
+                not BasemlPath else BasemlPath
+            if shutil.which(BasemlPath):
+                return "succeed" if mode == "settings" else BasemlPath
         else:
             plugin_name = dict_plugin_settings[program]["plugin_name"]
             pluginPath = self.settings_ini.value(plugin_name, "")
@@ -2561,6 +3037,12 @@ class Factory(QObject, Factory_sub, object):
             # match = re.search(r"Usage:", stdout, re.I)
             if shutil.which(HmmClPath):
                 return "succeed"
+        elif program == "r8s":
+            r8sPath = path
+            # 有时候路径为空
+            r8sPath = "r8s" if not r8sPath else r8sPath
+            if shutil.which(r8sPath):
+                return "succeed"
         elif program == "CodonW":
             Codonpath = path
             if shutil.which(Codonpath):
@@ -2572,9 +3054,27 @@ class Factory(QObject, Factory_sub, object):
 
     def init_check(self, parent):
         try:
+            # 初始化extract settings
+            GenBankExtract_settings = QSettings(
+                self.thisPath + '/settings/GenBankExtract_settings.ini', QSettings.IniFormat)
+            GenBankExtract_settings.setFallbacksEnabled(False)
+            dict_gbExtract_set = GenBankExtract_settings.value("set_version", None)
+            if not dict_gbExtract_set:
+                GenBankExtract_settings.setValue("set_version", init_sequence_type)
+            else:
+                # 如果没有预设的类型，就加上
+                flag = False
+                for seq_type in init_sequence_type:
+                    if seq_type not in dict_gbExtract_set:
+                        flag = True
+                        dict_gbExtract_set[seq_type] = init_sequence_type[seq_type]
+                    if seq_type == "general" and "extract all features" not in dict_gbExtract_set[seq_type]:
+                        dict_gbExtract_set[seq_type]["extract all features"] = True
+                if flag:
+                    GenBankExtract_settings.setValue("set_version", dict_gbExtract_set)
             # 删掉插件不合格的路径
             for i in ["python27", "mafft", "PF2", "gblocks", "iq-tree", "MrBayes", "tbl2asn", "RscriptPath", "mpi",
-                      "perl", "java", "macse", "trimAl", "HmmCleaner"] + list(dict_plugin_settings.keys()):
+                      "perl", "java", "macse", "trimAl", "HmmCleaner", "r8s"] + list(dict_plugin_settings.keys()):
                 path = self.settings_ini.value(i, "")
                 if path and not os.path.exists(path):
                     self.settings_ini.setValue(i, "")
@@ -2615,24 +3115,6 @@ class Factory(QObject, Factory_sub, object):
                     if remainingStr.startswith("_GenBank_File"):
                         data_settings.setValue(key, mainwindow_settings.value(key))
                         mainwindow_settings.remove(key)
-            # 初始化extract settings
-            GenBankExtract_settings = QSettings(
-                self.thisPath + '/settings/GenBankExtract_settings.ini', QSettings.IniFormat)
-            GenBankExtract_settings.setFallbacksEnabled(False)
-            dict_gbExtract_set = GenBankExtract_settings.value("set_version", None)
-            if not dict_gbExtract_set:
-                GenBankExtract_settings.setValue("set_version", init_sequence_type)
-            else:
-                # 如果没有预设的类型，就加上
-                flag = False
-                for seq_type in init_sequence_type:
-                    if seq_type not in dict_gbExtract_set:
-                        flag = True
-                        dict_gbExtract_set[seq_type] = init_sequence_type[seq_type]
-                    if seq_type == "general" and "extract all features" not in dict_gbExtract_set[seq_type]:
-                        dict_gbExtract_set[seq_type]["extract all features"] = True
-                if flag:
-                    GenBankExtract_settings.setValue("set_version", dict_gbExtract_set)
             # 初始化workflow设置
             workflow_settings = QSettings(
                 self.thisPath +
@@ -2674,7 +3156,14 @@ class Factory(QObject, Factory_sub, object):
             if not dict_backColor:
                 Seq_viewer_setting.setValue("background colors", ini_back_colors)
             # 初始化parse ANNT的settings
-            init_value2 = {'tRNA Abbreviation': [['tRNA-Val', 'V'], ['tRNA-Tyr', 'Y'], ['tRNA-Trp', 'W'], ['tRNA-Thr', 'T'], ['tRNA-Ser', 'S'], ['tRNA-Pro', 'P'], ['tRNA-Phe', 'F'], ['tRNA-Met', 'M'], ['tRNA-Lys', 'K'], ['tRNA-Leu', 'L'], ['tRNA-Ile', 'I'], ['tRNA-His', 'H'], ['tRNA-Gly', 'G'], ['tRNA-Glu', 'E'], ['tRNA-Gln', 'Q'], ['tRNA-Cys', 'C'], ['tRNA-Asp', 'D'], ['tRNA-Asn', 'N'], ['tRNA-Arg', 'R'], ['tRNA-Ala', 'A']], 'Protein Gene Full Name': [['atp6', 'ATP synthase F0 subunit 6'], ['atp8', 'ATP synthase F0 subunit 8'], ['cox1', 'cytochrome c oxidase subunit 1'], ['cox2', 'cytochrome c oxidase subunit 2'], ['cox3', 'cytochrome c oxidase subunit 3'], ['cytb', 'cytochrome b'], ['nad1', 'NADH dehydrogenase subunit 1'], ['nad2', 'NADH dehydrogenase subunit 2'], ['nad3', 'NADH dehydrogenase subunit 3'], ['nad4', 'NADH dehydrogenase subunit 4'], ['nad4L', 'NADH dehydrogenase subunit 4L'], ['nad5', 'NADH dehydrogenase subunit 5'], ['nad6', 'NADH dehydrogenase subunit 6']], 'Name From Word': [['trnY(gta)', 'tRNA-Tyr(gta)'], ['trnY', 'tRNA-Tyr(gta)'], ['trnW(tca)', 'tRNA-Trp(tca)'], ['trnW', 'tRNA-Trp(tca)'], ['trnV(tac)', 'tRNA-Val(tac)'], ['trnV', 'tRNA-Val(tac)'], ['trnT(tgt)', 'tRNA-Thr(tgt)'], ['trnT', 'tRNA-Thr(tgt)'], ['trnR(tcg)', 'tRNA-Arg(tcg)'], ['trnR', 'tRNA-Arg(tcg)'], ['trnQ(ttg)', 'tRNA-Gln(ttg)'], ['trnQ', 'tRNA-Gln(ttg)'], ['trnP(tgg)', 'tRNA-Pro(tgg)'], ['trnP', 'tRNA-Pro(tgg)'], ['trnN(gtt)', 'tRNA-Asn(gtt)'], ['trnN', 'tRNA-Asn(gtt)'], ['trnM(cat)', 'tRNA-Met(cat)'], ['trnM', 'tRNA-Met(cat)'], ['trnK(ctt)', 'tRNA-Lys(ctt)'], ['trnK', 'tRNA-Lys(ctt)'], ['trnI(gat)', 'tRNA-Ile(gat)'], ['trnI', 'tRNA-Ile(gat)'], ['trnH(gtg)', 'tRNA-His(GTG)'], ['trnH', 'tRNA-His(gtg)'], ['trnG(tcc)', 'tRNA-Gly(tcc)'], ['trnG', 'tRNA-Gly(tcc)'], ['trnF(gaa)', 'tRNA-Phe(gaa)'], ['trnF', 'tRNA-Phe(gaa)'], ['trnE(ttc)', 'tRNA-Glu(ttc)'], ['trnE', 'tRNA-Glu(ttc)'], ['trnD(gtc)', 'tRNA-Asp(gtc)'], ['trnD', 'tRNA-Asp(gtc)'], ['trnC(gca)', 'tRNA-Cys(gca)'], ['trnC', 'tRNA-Cys(gca)'], ['trnA(tgc)', 'tRNA-Ala(tgc)'], ['trnA', 'tRNA-Ala(tgc)'], ['tRNA-Val', 'tRNA-Val(tac)'], ['tRNA-Tyr', 'tRNA-Tyr(gta)'], ['tRNA-Trp', 'tRNA-Trp(tca)'], [
+            init_value2 = {'tRNA Abbreviation': [['tRNA-Val', 'V'], ['tRNA-Tyr', 'Y'], ['tRNA-Trp', 'W'],
+                                                 ['tRNA-Thr', 'T'], ['tRNA-Ser', 'S'], ['tRNA-Pro', 'P'],
+                                                 ['tRNA-Phe', 'F'], ['tRNA-Met', 'M'], ['tRNA-Lys', 'K'],
+                                                 ['tRNA-Leu', 'L'], ['tRNA-Ile', 'I'], ['tRNA-His', 'H'],
+                                                 ['tRNA-Gly', 'G'], ['tRNA-Glu', 'E'], ['tRNA-Gln', 'Q'],
+                                                 ['tRNA-Cys', 'C'], ['tRNA-Asp', 'D'], ['tRNA-Asn', 'N'],
+                                                 ['tRNA-Arg', 'R'], ['tRNA-Ala', 'A']],
+                           'Protein Gene Full Name': [['atp6', 'ATP synthase F0 subunit 6'], ['atp8', 'ATP synthase F0 subunit 8'], ['cox1', 'cytochrome c oxidase subunit 1'], ['cox2', 'cytochrome c oxidase subunit 2'], ['cox3', 'cytochrome c oxidase subunit 3'], ['cytb', 'cytochrome b'], ['nad1', 'NADH dehydrogenase subunit 1'], ['nad2', 'NADH dehydrogenase subunit 2'], ['nad3', 'NADH dehydrogenase subunit 3'], ['nad4', 'NADH dehydrogenase subunit 4'], ['nad4L', 'NADH dehydrogenase subunit 4L'], ['nad5', 'NADH dehydrogenase subunit 5'], ['nad6', 'NADH dehydrogenase subunit 6']], 'Name From Word': [['trnY(gta)', 'tRNA-Tyr(gta)'], ['trnY', 'tRNA-Tyr(gta)'], ['trnW(tca)', 'tRNA-Trp(tca)'], ['trnW', 'tRNA-Trp(tca)'], ['trnV(tac)', 'tRNA-Val(tac)'], ['trnV', 'tRNA-Val(tac)'], ['trnT(tgt)', 'tRNA-Thr(tgt)'], ['trnT', 'tRNA-Thr(tgt)'], ['trnR(tcg)', 'tRNA-Arg(tcg)'], ['trnR', 'tRNA-Arg(tcg)'], ['trnQ(ttg)', 'tRNA-Gln(ttg)'], ['trnQ', 'tRNA-Gln(ttg)'], ['trnP(tgg)', 'tRNA-Pro(tgg)'], ['trnP', 'tRNA-Pro(tgg)'], ['trnN(gtt)', 'tRNA-Asn(gtt)'], ['trnN', 'tRNA-Asn(gtt)'], ['trnM(cat)', 'tRNA-Met(cat)'], ['trnM', 'tRNA-Met(cat)'], ['trnK(ctt)', 'tRNA-Lys(ctt)'], ['trnK', 'tRNA-Lys(ctt)'], ['trnI(gat)', 'tRNA-Ile(gat)'], ['trnI', 'tRNA-Ile(gat)'], ['trnH(gtg)', 'tRNA-His(GTG)'], ['trnH', 'tRNA-His(gtg)'], ['trnG(tcc)', 'tRNA-Gly(tcc)'], ['trnG', 'tRNA-Gly(tcc)'], ['trnF(gaa)', 'tRNA-Phe(gaa)'], ['trnF', 'tRNA-Phe(gaa)'], ['trnE(ttc)', 'tRNA-Glu(ttc)'], ['trnE', 'tRNA-Glu(ttc)'], ['trnD(gtc)', 'tRNA-Asp(gtc)'], ['trnD', 'tRNA-Asp(gtc)'], ['trnC(gca)', 'tRNA-Cys(gca)'], ['trnC', 'tRNA-Cys(gca)'], ['trnA(tgc)', 'tRNA-Ala(tgc)'], ['trnA', 'tRNA-Ala(tgc)'], ['tRNA-Val', 'tRNA-Val(tac)'], ['tRNA-Tyr', 'tRNA-Tyr(gta)'], ['tRNA-Trp', 'tRNA-Trp(tca)'], [
                 'tRNA-Thr', 'tRNA-Thr(tgt)'], ['tRNA-Pro', 'tRNA-Pro(tgg)'], ['tRNA-Phe', 'tRNA-Phe(gaa)'], ['tRNA-Met', 'tRNA-Met(cat)'], ['tRNA-Lys', 'tRNA-Lys(ctt)'], ['tRNA-Ile', 'tRNA-Ile(gat)'], ['tRNA-His', 'tRNA-His(GTG)'], ['tRNA-Gly', 'tRNA-Gly(tcc)'], ['tRNA-Glu', 'tRNA-Glu(ttc)'], ['tRNA-Gln', 'tRNA-Gln(ttg)'], ['tRNA-Cys', 'tRNA-Cys(gca)'], ['tRNA-Asp', 'tRNA-Asp(gtc)'], ['tRNA-Asn', 'tRNA-Asn(gtt)'], ['tRNA-Arg', 'tRNA-Arg(tcg)'], ['tRNA-Ala', 'tRNA-Ala(tgc)'], ['small subunit ribosomal RNA', '12S'], ['small ribosomal RNA subunit RNA', '12S'], ['small ribosomal RNA', '12S'], ['s-rRNA', '12S'], ['ribosomal RNA small subunit', '12S'], ['ribosomal RNA large subunit', '16S'], ['large subunit ribosomal RNA', '16S'], ['large ribosomal RNA subunit RNA', '16S'], ['large ribosomal RNA', '16S'], ['l-rRNA', '16S'], ['cytochrome c oxidase subunit III', 'COX3'], ['cytochrome c oxidase subunit II', 'COX2'], ['cytochrome c oxidase subunit I', 'COX1'], ['cytochrome c oxidase subunit 3', 'COX3'], ['cytochrome c oxidase subunit 2', 'COX2'], ['cytochrome c oxidase subunit 1', 'COX1'], ['cytochrome b', 'CYTB'], ['ND6', 'NAD6'], ['ND5', 'NAD5'], ['ND4L', 'NAD4L'], ['ND4', 'NAD4'], ['ND3', 'NAD3'], ['ND2', 'NAD2'], ['ND1', 'NAD1'], ['NADH dehydrogenase subunit5', 'NAD5'], ['NADH dehydrogenase subunit 6', 'NAD6'], ['NADH dehydrogenase subunit 5', 'NAD5'], ['NADH dehydrogenase subunit 4L', 'NAD4L'], ['NADH dehydrogenase subunit 4', 'NAD4'], ['NADH dehydrogenase subunit 3', 'NAD3'], ['NADH dehydrogenase subunit 2', 'NAD2'], ['NADH dehydrogenase subunit 1', 'NAD1'], ['CYT B', 'CYTB'], ['COXIII', 'COX3'], ['COXII', 'COX2'], ['COXI', 'COX1'], ['COIII', 'COX3'], ['COII', 'COX2'], ['COI', 'COX1'], ['COB', 'CYTB'], ['CO3', 'COX3'], ['CO2', 'COX2'], ['CO1', 'COX1'], ['ATPase subunit 6', 'ATP6'], ['ATPASE8', 'ATP8'], ['ATPASE6', 'ATP6'], ['ATPASE 8', 'ATP8'], ['ATPASE 6', 'ATP6'], ['ATP synthase F0 subunit 6', 'ATP6'], ['16s rRNA', '16S'], ['16S subunit RNA', '16S'], ['16S ribosomal RNA', '16S'], ['16S rRNA', '16S'], ['12s rRNA', '12S'], ['12S subunit RNA', '12S'], ['12S ribosomal RNA', '12S'], ['12S rRNA', '12S'], ['12S Ribosomal RNA', '12S']]}
             parseANNT_settings = QSettings(
                 self.thisPath +
@@ -2867,7 +3356,7 @@ class Factory(QObject, Factory_sub, object):
 
     def checkUpdates(self, updateSig, exceptSig, mode="check", parent=None):
         try:
-            with open(self.thisPath + os.sep + "NEWS_version.md", encoding="utf-8") as f:
+            with open(self.src_path + os.sep + "NEWS_version.md", encoding="utf-8") as f:
                 content = f.read()
                 current_version = re.search(
                     r"## *PhyloSuite v([^ ]+?) \(", content).group(1)
@@ -3075,18 +3564,55 @@ class Factory(QObject, Factory_sub, object):
     #     thisPath = "." if not thisPath else thisPath  ##有时候当前目录是空
     #     return thisPath
 
-    def init_popen(self, commands):
+    def init_popen(self, commands, stdin_=False):
+        '''
+        shell=True 会导致windows的那种杀进程方式杀不掉
+        You're getting 2 processes because you have shell=True.
+        The extra process with the /bin/sh is the shell that you requested.
+        The answer by Bryant Hansen on this StackOverflow question appears to make the killing of the sub processes work
+        https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
+        Parameters
+        ----------
+        commands
+
+        Returns
+        -------
+
+        '''
         startupINFO = None
         if platform.system().lower() == "windows":
             startupINFO = subprocess.STARTUPINFO()
             startupINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             startupINFO.wShowWindow = subprocess.SW_HIDE
-            popen = subprocess.Popen(
-                commands, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupINFO, shell=True)
+            if stdin_:
+                popen = subprocess.Popen(
+                    commands, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    stdin=subprocess.PIPE,
+                    startupinfo=startupINFO,
+                    shell=False)
+            else:
+                popen = subprocess.Popen(
+                    commands, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    startupinfo=startupINFO,
+                    shell=False)
         else:
-            popen = subprocess.Popen(
-                commands, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, startupinfo=startupINFO, shell=True,
-                preexec_fn=os.setsid)
+            if stdin_:
+                popen = subprocess.Popen(
+                    commands, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    stdin=subprocess.PIPE,
+                    startupinfo=startupINFO,
+                    shell=True,
+                    preexec_fn=os.setsid)
+            else:
+                popen = subprocess.Popen(
+                    commands, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    startupinfo=startupINFO,
+                    shell=True,
+                    preexec_fn=os.setsid)
         return popen
 
     def set_direct_dir(self, action, parent):
@@ -3178,7 +3704,7 @@ class Factory(QObject, Factory_sub, object):
         if baseGroup:
             qsettings.endGroup()
 
-    def getSTDOUT(self, popen):
+    def getSTDOUT(self, popen, file=None):
         stdout = []
         try:
             while True:
@@ -3189,9 +3715,12 @@ class Factory(QObject, Factory_sub, object):
                 if out_line == "" and popen.poll() is not None:
                     break
                 stdout.append(out_line)
+                if file:
+                    with open(file, "a", errors="ignore") as f:
+                        f.write(out_line)
         except:
             stdout = []
-        return "".join(stdout)
+        return "".join(stdout) if not file else None
 
     def getDefaultpluginPath(self, plugin=""):
         path = ""
@@ -3317,6 +3846,11 @@ class Factory(QObject, Factory_sub, object):
             centerPoint = QApplication.desktop().screenGeometry(screen).center()
             frameGm.moveCenter(centerPoint)
             window.move(frameGm.topLeft())
+        else:
+            frameGm = window.frameGeometry()
+            centerPoint = QDesktopWidget().availableGeometry().center()
+            frameGm.moveCenter(centerPoint)
+            window.move(frameGm.topLeft())
 
     def emitCommands(self, logGuiSig, commands):
         logGuiSig.emit("%sCommands%s\n%s\n%s" % ("=" * 45, "=" * 45, commands, "=" * 98))
@@ -3337,7 +3871,7 @@ class Factory(QObject, Factory_sub, object):
         width_, height_ = qsize.width(), qsize.height()
         return qsize if width_ >= width and height_ >= height else QSize(width, height)
 
-    def read_tree(self, file, parent=None):
+    def read_tree(self, file, refine_name=False, parent=None):
         def read_use_ete3(tree):
             flag = False
             tre = None
@@ -3355,6 +3889,10 @@ class Factory(QObject, Factory_sub, object):
             return flag, tre
         ## ete3 读树
         ok, tre = read_use_ete3(file)
+        if refine_name and tre:
+            for node in tre.traverse():
+                if node.is_leaf():
+                    node.name = self.refineName(node.name)
         if ok:
             return tre
         ## Biopython的phylo读树
@@ -3365,10 +3903,47 @@ class Factory(QObject, Factory_sub, object):
                     raise Exception("File read filed!")
                 nwk_tree_str = tree.format("newick")
                 ok, tre = read_use_ete3(nwk_tree_str)
+                if refine_name and tre:
+                    for node in tre.traverse():
+                        if node.is_leaf():
+                            node.name = self.refineName(node.name)
                 if ok:
                     return tre
             except:
                 pass
+        QMessageBox.information(
+            parent,
+            "Import tree",
+            "<p style='line-height:25px; height:25px'>Tree imported failed, please check the format!</p>")
+        return
+
+    def read_tree_phylo(self, file, parent=None):
+        def read_use_ete3(tree):
+            flag = False
+            tre = None
+            for format in list(range(10)) + [100]:
+                try:
+                    tre = Tree(tree, format=format)
+                    flag=True
+                    break
+                except: pass
+                try:
+                    tre = Tree(tree, format=format, quoted_node_names=True)
+                    flag=True
+                    break
+                except: pass
+            return flag, tre
+        for format in ["nexus", "newick", "phyloxml", "nexml"]:
+            try:
+                tree = next(Phylo.parse(file, format))
+                if tree.count_terminals() == 1:
+                    raise Exception("File read filed!")
+                return tree
+            except:
+                pass
+        ok, tre = read_use_ete3(file)
+        if ok:
+            return next(Phylo.parse(io.StringIO(tre.write(format=5)), 'newick'))
         QMessageBox.information(
             parent,
             "Import tree",
@@ -3862,6 +4437,7 @@ class Parsefmt(object):
             handle = open(file, encoding="utf-8", errors='ignore')
         except:
             handle = file
+        seq_name = "no_name"
         for line in handle:
             line = line.strip()
             if line.startswith(">"):
@@ -4238,6 +4814,7 @@ class Convertfmt(object):
         self.factory = Factory()
         self.unaligns = []
         self.f3 = None
+        self.f4 = None
 
     def exec_(self):
         if "files" in self.dict_args:
@@ -4364,7 +4941,8 @@ class Convertfmt(object):
             with open(self.f3, 'w', encoding="utf-8") as f3:
                 f3.write("".join(self.nxs_inter))
         if self.dict_args["export_paml"]:
-            with open(self.outpath + os.sep + rawname + '.PML', 'w', encoding="utf-8") as f4:
+            self.f4 = self.outpath + os.sep + rawname + '.PML'
+            with open(self.f4, 'w', encoding="utf-8") as f4:
                 f4.write(self.paml)
         if self.dict_args["export_axt"]:
             self.axt_file = self.outpath + os.sep + rawname + '.axt'

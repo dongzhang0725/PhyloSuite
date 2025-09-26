@@ -48,9 +48,10 @@ class LG_exePath(QDialog, Ui_ExePath, object):
         self.flag = flag
         self.target = " ".join(target) if type(target) == list else target
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         self.pushButton.setFocus()
         self.lineEdit.installEventFilter(self)
         self.label_4.linkActivated.connect(self.exe_link)
@@ -66,7 +67,7 @@ class LG_exePath(QDialog, Ui_ExePath, object):
             self.label_4.close()
             self.label_4.deleteLater()
             del self.label_4
-        elif (platform.system().lower() == "linux") or (flag in ["java", "perl", "HmmCleaner"]) or \
+        elif (platform.system().lower() == "linux") or (flag in ["java", "perl", "HmmCleaner", "r8s"]) or \
                 ("If download failed," not in link):
             # self.gridLayout_2.removeWidget(self.pushButton_5)
             # self.pushButton_5.close()
@@ -236,9 +237,10 @@ class LG_PF2_exePath(QDialog, Ui_PF2ExePath, object):
         if placeholdertext:
             self.lineEdit_3.setPlaceholderText(placeholdertext)
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         country = self.factory.path_settings.value("country", "UK")
         url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/" if \
             country == "China" else "https://dongzhang0725.github.io/dongzhang0725.github.io/PhyloSuite-demo/how-to-configure-plugins/"
@@ -352,9 +354,10 @@ class Setting(QDialog, Ui_Settings, object):
                                     parent=self)
         iniCheckWorker.start()
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # self.factory.init_check(self)
         ##信号槽
         self.comboBox.currentTextChanged.connect(self.judgeSettings)
@@ -397,7 +400,8 @@ class Setting(QDialog, Ui_Settings, object):
                               "perl": 12,
                               "HmmCleaner": 13,
                               "CodonW": 14,
-                              "plot_engine": 15
+                              "plot_engine": 15,
+                              "r8s": 16
                               }
         for plugin in dict_plugin_settings:
             if "link_mac" not in dict_plugin_settings[plugin]:
@@ -464,6 +468,10 @@ class Setting(QDialog, Ui_Settings, object):
         self.download_HmmCleaner_button.clicked.connect(
             self.on_download_HmmCleaner_button_clicked)
         self.tableWidget.setCellWidget(self.dict_name_row["HmmCleaner"], 3, self.download_HmmCleaner_button)
+        self.download_r8s_button = QPushButton("Install", self)
+        self.download_r8s_button.clicked.connect(
+            self.on_download_r8s_button_clicked)
+        self.tableWidget.setCellWidget(self.dict_name_row["r8s"], 3, self.download_r8s_button)
         self.download_CodonW_button = QPushButton("Install", self)
         self.download_CodonW_button.clicked.connect(
             self.on_download_CodonW_button_clicked)
@@ -486,6 +494,7 @@ class Setting(QDialog, Ui_Settings, object):
                                  "trimAl": self.download_trimAl_button,
                                  "perl": self.download_perl_button,
                                  "HmmCleaner": self.download_HmmCleaner_button,
+                                 "r8s": self.download_r8s_button,
                                  "CodonW": self.download_CodonW_button,
                                  "plot_engine": self.download_plot_engine_button
                                  }
@@ -532,6 +541,7 @@ class Setting(QDialog, Ui_Settings, object):
         if platform.system().lower() == "windows":
             self.tableWidget.setRowHidden(self.dict_name_row["perl"], True)
             self.tableWidget.setRowHidden(self.dict_name_row["HmmCleaner"], True)
+            self.tableWidget.setRowHidden(self.dict_name_row["r8s"], True)
         ## brief demo
         country = self.factory.path_settings.value("country", "UK")
         url = "http://phylosuite.jushengwu.com/dongzhang0725.github.io/documentation/#4-4-1-Lineage-recognition" if \
@@ -637,7 +647,7 @@ class Setting(QDialog, Ui_Settings, object):
                 "Please Wait", "Importing...", parent=self, busy=True)
             self.progressDialog.show()
             zipWorker = WorkThread(
-                lambda: self.factory.unzipFolder(fileName[0], self.thisPath),
+                lambda: self.factory.unzipFolder(fileName[0], self.factory.src_path),
                 parent=self)
             zipWorker.start()
             zipWorker.finished.connect(lambda: [self.progressDialog.close(), QMessageBox.information(
@@ -1023,7 +1033,7 @@ class Setting(QDialog, Ui_Settings, object):
         if self.download_iq_tree_button.text() == "Install":
             # self.installButtonSig.emit(
             #     [self.download_iq_tree_button, self.tableWidget, 6, "start", self.qss_file])
-            label1 = "<html><head/><body><p>If you have <span style=\"color:red\">IQ-TREE v. 1.6.8</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>"
+            label1 = "<html><head/><body><p>If you have <span style=\"color:red\">IQ-TREE v. 3.0.1</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>"
             label2 = "IQ-TREE Path:"
             label3 = "<html><head/><body><p>If you don\'t have IQ-TREE, please <span style=\" font-weight:600; color:#ff0000;\">download</span>.</p></body></html>"
             self.installStatus(flag, "start")
@@ -1032,11 +1042,11 @@ class Setting(QDialog, Ui_Settings, object):
                    "<span style=\" font-size:12pt; text-decoration: underline; color:#0000ff;\">here</a>" \
                    "</span> to download manually and then specify the path as indicated above.</p></body></html>" % url
             if platform.system().lower() == "windows":
-                placeholdertext = "C:\\iqtree-1.6.8-Windows\\bin\\iqtree.exe"
-                self.IQ_target = ["iqtree.exe", "iqtree2.exe"]
+                placeholdertext = "C:\\iqtree-3.0.1-Windows\\bin\\iqtree.exe"
+                self.IQ_target = ["iqtree.exe", "iqtree2.exe", "iqtree3.exe"]
             elif platform.system().lower() == "darwin":
-                placeholdertext = "../iqtree-1.6.8-MacOSX/bin/iqtree"
-                self.IQ_target = ["iqtree", "iqtree2"]
+                placeholdertext = "../iqtree-3.0.1-MacOSX/bin/iqtree"
+                self.IQ_target = ["iqtree", "iqtree2", "iqtree3"]
             else:
                 placeholdertext = "/usr/bin/iqtree"
                 self.IQ_target = "All File (*)"
@@ -1535,6 +1545,42 @@ class Setting(QDialog, Ui_Settings, object):
             self.installStatus(flag, "uninstall")
 
     @pyqtSlot()
+    def on_download_r8s_button_clicked(self):
+        """
+        install r8s
+        """
+        flag = "r8s"
+        if self.download_r8s_button.text() == "Install":
+            label1 = "<html><head/><body><p>If you have <span style=\"color:red\">r8s</span>, please <span style=\" font-weight:600; color:#ff0000;\">specify</span>.</p></body></html>"
+            label2 = "r8s:"
+            label3 = "<html><head/><body><p>If you don\'t have r8s, please <span style=\" font-weight:600; color:#ff0000;\">configure</span>.</p></body></html>"
+            self.installStatus(flag, "start")
+            link = "If you are adding r8s to environment variables, when you finish the installation," \
+                   " you need to close and reopen PhyloSuite to see if it installed successfully" \
+                   " (if you see \"Uninstall\" button, it means success). Otherwise you need to specify the r8s executable" \
+                   " file (<span style=\" font-weight:600; color:#ff0000;\">r8s</span>) manually (using options above).</p>"
+            if platform.system().lower() == "windows":
+                placeholdertext = ".../r8s1.81/src/r8s"
+                self.r8s_target = "r8s"
+            elif platform.system().lower() == "darwin":
+                placeholdertext = ".../r8s1.81/src/r8s"
+                self.r8s_target = "r8s"
+            else:
+                placeholdertext = ".../r8s1.81/src/r8s"
+                self.r8s_target = "r8s"
+            self.lg_exePath_r8s = LG_exePath(self, label1, label2, label3, placeholdertext, flag, self.r8s_target,
+                                                    link)
+            self.lg_exePath_r8s.closeSig.connect(self.saveEXEpath)
+            # 添加最大化按钮
+            self.lg_exePath_r8s.setWindowFlags(self.lg_exePath_r8s.windowFlags() | Qt.WindowMinMaxButtonsHint)
+            self.lg_exePath_r8s.exec_()
+        else:
+            self.settings.setValue("r8s", "")
+            QMessageBox.information(
+                self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
+            self.installStatus(flag, "uninstall")
+
+    @pyqtSlot()
     def on_download_plot_engine_button_clicked(self):
         """
         install plot engine for phylosuite
@@ -1624,26 +1670,12 @@ class Setting(QDialog, Ui_Settings, object):
                 self.factory.remove_dir_directly(zipFolder, removeRoot=True)
             if os.path.exists(zipFile):
                 os.remove(zipFile)
-
-            # if platform.system().lower() == "windows":
-            #     zipFile = self.plugin_path + os.sep + kwargs["zipFileName_win"]
-            #     zipFolder = self.plugin_path + os.sep + kwargs["zipFolder_win"]
-            #     if os.path.exists(zipFolder):
-            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-            #     if os.path.exists(zipFile):
-            #         os.remove(zipFile)
-            # elif platform.system().lower() == "darwin":
-            #     zipFile = self.plugin_path + os.sep + kwargs["zipFileName_mac"]
-            #     zipFolder = self.plugin_path + os.sep + kwargs["zipFolder_mac"]
-            #     if os.path.exists(zipFolder):
-            #         self.factory.remove_dir_directly(zipFolder, removeRoot=True)
-            #     if os.path.exists(zipFile):
-            #         os.remove(zipFile)
-            # self.settings.setValue(flag, "")
-            WorkThread(self.judgePluginInstall, parent=self).start()
-            QMessageBox.information(
-                self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
-            # self.installStatus(flag, "uninstall")
+            self.settings.setValue(flag, "")
+            # 问题，执行下面这个任务，会导致环境变量里面有这个程序的时候，一直无法把按钮变成install
+            # WorkThread(self.judgePluginInstall, parent=self).start()
+            # QMessageBox.information(
+            #     self, "Settings", "<p style='line-height:25px; height:25px'>Uninstalled successfully!</p>")
+            self.installStatus(flag, "uninstall")
 
     @pyqtSlot()
     def on_pushButton_6_clicked(self):
@@ -2428,7 +2460,7 @@ class Setting(QDialog, Ui_Settings, object):
 
     def judgePluginInstall(self):
         for i in set(["mafft", "tbl2asn", "RscriptPath", "PF2", "gblocks", "iq-tree", "MrBayes", "mpi",
-                  "java", "macse", "trimAl", "perl", "HmmCleaner", "CodonW"] + \
+                  "java", "macse", "trimAl", "perl", "HmmCleaner", "CodonW", "r8s"] + \
                  list(dict_plugin_settings.keys())):
             status = self.factory.programIsValid(i)
             self.installStatus(i, status)

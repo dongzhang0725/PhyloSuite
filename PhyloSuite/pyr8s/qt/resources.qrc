@@ -1,0 +1,15 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource>
+    <file>resources/itaxotools-micrologo.png</file>
+    <file>resources/logo-pyr8s.svg</file>
+    <file>resources/open.svg</file>
+    <file>resources/save.svg</file>
+    <file>resources/run.svg</file>
+    <file>resources/stop.svg</file>
+    <file>resources/export.svg</file>
+    <file>resources/arrow-right.svg</file>
+    <file>resources/search.svg</file>
+  </qresource>
+  <!-- To generate module: python setup.py build_qt -->
+</RCC>

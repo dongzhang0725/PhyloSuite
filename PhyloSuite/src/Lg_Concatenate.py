@@ -434,9 +434,10 @@ class Matrix(QDialog, Ui_Matrix, object):
         # 恢复用户的设置
         self.guiRestore()
         # 开始装载样式表
-        with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
-            self.qss_file = f.read()
-        self.setStyleSheet(self.qss_file)
+        # with open(self.thisPath + os.sep + 'style.qss', encoding="utf-8", errors='ignore') as f:
+        #     self.qss_file = f.read()
+        # self.setStyleSheet(self.qss_file)
+        self.qss_file = self.factory.set_qss(self)
         # self.groupBox_top_line.setStyleSheet('''QGroupBox{
         #         border-bottom:none;
         #         border-right:none;
@@ -522,7 +523,7 @@ class Matrix(QDialog, Ui_Matrix, object):
             self.dict_args["export_stat"] = self.checkBox_9.isChecked()
             self.dict_args["export_name"] = self.lineEdit.text() if self.lineEdit.text() else "concatenation"
             self.dict_args["missing_symbol"] = self.lineEdit_2.text() if self.lineEdit_2.text() else "?"
-            self.dict_args["PCG_genes"] = self.comboBox_4.fetchPCGs()
+            self.dict_args["PCG_genes"] = self.comboBox_4.fetchPCGs(factory_fun=self.factory)
             # if self.groupBox_top_line.isChecked():
             #     self.dict_args["draw_linear"] = True
             #     self.dict_args["fig_height"] = self.spinBox_5.value()
@@ -583,7 +584,7 @@ class Matrix(QDialog, Ui_Matrix, object):
             self.time_used_des = "Start at: %s\nFinish at: %s\nTotal time used: %s\n\n" % (str(time_start), str(time_end),
                                                                                            self.time_used)
             with open(self.dict_args["exportPath"] + os.sep + "summary and citation.txt", "w", encoding="utf-8") as f:
-                f.write("If you use PhyloSuite v1.2.3, please cite:\nZhang, D., F. Gao, I. Jakovlić, H. Zou, J. Zhang, W.X. Li, and G.T. Wang, PhyloSuite: An integrated and scalable desktop platform for streamlined molecular sequence data management and evolutionary phylogenetics studies. Molecular Ecology Resources, 2020. 20(1): p. 348–355. DOI: 10.1111/1755-0998.13096.\n\n" + self.time_used_des)
+                f.write(f"If you use PhyloSuite v2, please cite:\n{self.factory.get_PS_citation()}\n\n" + self.time_used_des)
             if not self.seqMatrix.unaligned and not self.seqMatrix.interrupt:
                 if self.workflow:
                     ##work flow跑的
@@ -792,6 +793,7 @@ class Matrix(QDialog, Ui_Matrix, object):
 
         for name, obj in inspect.getmembers(self):
             if isinstance(obj, QComboBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 if name == "comboBox":
                     allItems = [obj.itemText(i) for i in range(obj.count())]
                     index = self.concatenate_settings.value(name, "0")
@@ -825,6 +827,7 @@ class Matrix(QDialog, Ui_Matrix, object):
                 text = self.concatenate_settings.value(name, obj.text())
                 obj.setText(text)
             if isinstance(obj, QSpinBox):
+                obj.installEventFilter(self)  # 安装事件过滤器，为了取消滚轮事件
                 value = self.concatenate_settings.value(name, None)
                 if value:
                     obj.setValue(int(value))
@@ -907,6 +910,10 @@ class Matrix(QDialog, Ui_Matrix, object):
                          self.pushButton.toolButton.menu().pos().y())
             self.pushButton.toolButton.menu().move(pos)
             return True
+
+        if (isinstance(obj, QDoubleSpinBox) or isinstance(obj, QSpinBox) or isinstance(obj, QComboBox)) and event.type()==QEvent.Wheel:
+            return True  # 过滤掉滚轮事件
+
         return super(Matrix, self).eventFilter(obj, event)  # 0
 
     def input(self, files):

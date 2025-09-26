@@ -37,9 +37,18 @@
 #
 # #END_LICENSE#############################################################
 from __future__ import absolute_import
+
+import inspect
+import platform
 from functools import partial
 
-from PyQt5.QtWidgets import QFileDialog
+# from PyQt5 import QtWidgets, QtCore
+# from PyQt5.QtCore import QSettings
+# from PyQt5.QtWidgets import QFileDialog, QApplication
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from ete3 import TextFace
 from six.moves import range
 
 from src.factory import Factory
@@ -47,6 +56,8 @@ from .qt import Qt, QDialog, QMenu, QCursor, QInputDialog
 from .svg_colors import random_color
 from . import  _show_newick
 from ..evol import EvolTree
+from uifiles.Ui_calibrate import Ui_Calibrate
+
 
 class NewickDialog(QDialog):
     def __init__(self, node, *args):
@@ -91,9 +102,12 @@ class NewickDialog(QDialog):
 class _NodeActions(object):
     """ Used to extend QGraphicsItem features """
     def __init__(self):
+        #self.mcmcTree = MCMCTree()
         self.setCursor(Qt.PointingHandCursor)
         self.setAcceptHoverEvents(True)
         self.factory = Factory()
+        self.thisPath = self.factory.thisPath
+        self.Ui_calibration = Ui_Calibrate
 
     def mouseReleaseEvent(self, e):
         if not self.node:
@@ -181,7 +195,10 @@ class _NodeActions(object):
         else:
             contextMenu.addAction( "Extract", self.set_start_node)
         contextMenu.addAction( "Extract branch lengths", self.extract_branch_len)
+        contextMenu.addAction( "Add calibration", self.add_calibration)
+        contextMenu.addAction( "Remove calibration", self.rm_calibration)
         contextMenu.addAction( "Unroot tree", self.unroot_tree)
+        contextMenu.addAction("Copy leaf labels", self.copy_leaf_labels)
 
         if isinstance(self.node, EvolTree):
             root = self.node.get_tree_root()
@@ -266,6 +283,10 @@ class _NodeActions(object):
     def void(self):
         return True
 
+    def copy_leaf_labels(self):
+        labels = self.node.get_leaf_names()
+        QApplication.clipboard().setText("\n".join(labels))
+
     def set_as_outgroup(self):
         self.scene().tree.set_outgroup(self.node)
         self.scene().GUI.number_node()
@@ -316,6 +337,195 @@ class _NodeActions(object):
                                                         "CSV (*.csv)")
             if fname[0]:
                 self.factory.write_csv_file(fname[0], table_, self.scene().view)
+
+    def cal_gui_save(self):
+        self.cal_gui_settings.setValue('size', self.calibrate_dialog.size())
+        for name, obj in inspect.getmembers(self.calibrate_ui):
+            if isinstance(obj, QCheckBox):
+                state = obj.isChecked()
+                self.cal_gui_settings.setValue(name, state)
+            elif isinstance(obj, QRadioButton):
+                state = obj.isChecked()
+                self.cal_gui_settings.setValue(name, state)
+            elif isinstance(obj,QSpinBox):
+                int_ = obj.value()
+                self.cal_gui_settings.setValue(name, int_)
+            elif isinstance(obj, QDoubleSpinBox):
+                float_ = obj.value()
+                self.cal_gui_settings.setValue(name, float_)
+            elif isinstance(obj, QTabWidget):
+                index = obj.currentIndex()
+                self.cal_gui_settings.setValue(name, index)
+
+    def cal_gui_restore(self):
+        self.calibrate_dialog.resize(self.cal_gui_settings.value('size', QSize(1150, 750)))
+        self.factory.centerWindow(self.calibrate_dialog)
+        for name, obj in inspect.getmembers(self.calibrate_ui):
+            if isinstance(obj, QSpinBox):
+                ini_int_ = obj.value()
+                int_ = self.cal_gui_settings.value(name, ini_int_)
+                obj.setValue(int(int_))
+            elif isinstance(obj, QDoubleSpinBox):
+                ini_float_ = obj.value()
+                float_ = self.cal_gui_settings.value(name, ini_float_)
+                obj.setValue(float(float_))
+            elif isinstance(obj, QRadioButton):
+                value = self.cal_gui_settings.value(
+                    name, "true")  # get stored value from registry
+                obj.setChecked(
+                    self.factory.str2bool(value))  # restore checkbox
+            elif isinstance(obj, QCheckBox):
+                value = self.cal_gui_settings.value(
+                    name, "no setting")  # get stored value from registry
+                if value != "no setting":
+                    obj.setChecked(
+                        self.factory.str2bool(value))  # restore checkbox
+            elif isinstance(obj, QTabWidget):
+                index = self.cal_gui_settings.value(name, 0)
+                obj.setCurrentIndex(int(index))
+
+    def judge_system(self):
+        if platform.system().lower() == "windows":
+            QMessageBox.information(self.calibrate_dialog, "MDGUI",
+                                    "Pyr8s doesn't allow 'CALIBRATE'! "
+                                         "Please choose other modes.")
+            self.calibrate_ui.radioButton_7.setChecked(False)
+
+    def add_calibration(self):
+        self.calibrate_dialog = QDialog(self.scene().GUI)
+        self.calibrate_ui = self.Ui_calibration()
+        self.calibrate_ui.setupUi(self.calibrate_dialog)
+        self.cal_gui_settings = QSettings(
+            self.thisPath + '/settings/cal_gui_settings.ini', QSettings.IniFormat)
+        self.cal_gui_settings.setFallbacksEnabled(False)
+        self.calibrate_ui.radioButton_7.clicked.connect(self.judge_system)
+        self.calibrate_ui.pushButton.clicked.connect(lambda : [self.calibrate_dialog.close(),
+                                                               self.check_radiobutton_action()])
+        self.calibrate_ui.pushButton_2.clicked.connect(self.calibrate_dialog.close)
+        self.cal_gui_restore()
+        self.calibrate_dialog.finished.connect(self.cal_gui_save)
+        self.calibrate_dialog.setWindowFlags(
+            self.calibrate_dialog.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        self.calibrate_dialog.show()
+
+    def check_radiobutton_action(self):
+        dict_radiobutton = {"modeFirst": self.calibrate_ui.radioButton.isChecked(),
+                            "modeSecond": self.calibrate_ui.radioButton_2.isChecked(),
+                            "modeThird": self.calibrate_ui.radioButton_3.isChecked(),
+                            "modeForth": self.calibrate_ui.radioButton_4.isChecked(),
+                            "modeFifth": self.calibrate_ui.radioButton_5.isChecked(),
+                            "modeSixth": self.calibrate_ui.radioButton_6.isChecked(),
+                            "r8sFirst": self.calibrate_ui.radioButton_7.isChecked(),
+                            "r8sSecond": self.calibrate_ui.radioButton_8.isChecked(),
+                            "r8sThird": self.calibrate_ui.radioButton_9.isChecked(),
+                            "r8sForth": self.calibrate_ui.radioButton_10.isChecked(),
+                            "rootFirst": self.calibrate_ui.radioButton_14.isChecked(),
+                            "rootSecond": self.calibrate_ui.radioButton_12.isChecked(),
+                            "rootThird": self.calibrate_ui.radioButton_15.isChecked(),
+                            }
+        self.add_calibration_to_node(**dict_radiobutton)
+
+    def add_calibration_to_node(self,
+                                modeFirst=None,
+                                modeSecond=None,
+                                modeThird=None,
+                                modeForth=None,
+                                modeFifth=None,
+                                modeSixth=None,
+                                r8sFirst=None,
+                                r8sSecond=None,
+                                r8sThird=None,
+                                r8sForth=None,
+                                rootFirst=None,
+                                rootSecond=None,
+                                rootThird=None,
+                                ):
+        # 删除已有的标记
+        dict_faces = getattr(self.node.faces, "branch-top")
+        dict_faces.clear()
+        if self.calibrate_ui.tabWidget.tabText(self.calibrate_ui.tabWidget.currentIndex()) == "MCMCtree":
+            if modeFirst:
+                tl = "{:.4f}".format(self.calibrate_ui.doubleSpinBox.value())
+                tu = "{:.4f}".format(self.calibrate_ui.doubleSpinBox_2.value())
+                pl = "{:.3f}".format(self.calibrate_ui.doubleSpinBox_3.value())
+                pu = "{:.3f}".format(self.calibrate_ui.doubleSpinBox_4.value())
+                self.node.name = f"'B({tl},{tu},{pl},{pu})'"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+            elif modeSecond:
+                tl = "{:.4f}".format(self.calibrate_ui.doubleSpinBox_5.value())
+                p = "{:.1f}".format(self.calibrate_ui.doubleSpinBox_6.value())
+                c = "{:.1f}".format(self.calibrate_ui.doubleSpinBox_7.value())
+                pl = "{:.3f}".format(self.calibrate_ui.doubleSpinBox_8.value())
+                self.node.name = f"'L({tl},{p},{c},{pl})'"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+            elif modeThird:
+                tu = "{:.4f}".format(self.calibrate_ui.doubleSpinBox_9.value())
+                pr = "{:.3f}".format(self.calibrate_ui.doubleSpinBox_10.value())
+                self.node.name = f"'U({tu},{pr})'"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+            elif modeForth:
+                alpha = format(int(self.calibrate_ui.spinBox.value()))
+                beta = format(int(self.calibrate_ui.spinBox_2.value()))
+                self.node.name = f"'G({alpha},{beta})'"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+            elif modeFifth:
+                loc1 = format(int(self.calibrate_ui.spinBox_3.value()))
+                scal1 = "{:.2f}".format(self.calibrate_ui.doubleSpinBox_21.value())
+                shp1 = format(int(self.calibrate_ui.spinBox_4.value()))
+                self.node.name = f"'SN({loc1},{scal1},{shp1})'"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+            elif modeSixth:
+                loc2 = format(int(self.calibrate_ui.spinBox_9.value()))
+                scal2 = "{:.2f}".format(self.calibrate_ui.doubleSpinBox_22.value())
+                shp2 = format(int(self.calibrate_ui.spinBox_10.value()))
+                df = "{:.2f}".format(self.calibrate_ui.doubleSpinBox_23.value())
+                self.node.name = f"'ST({loc2},{scal2},{shp2},{df})'"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+        elif self.calibrate_ui.tabWidget.tabText(self.calibrate_ui.tabWidget.currentIndex()) == "r8s":
+            if r8sFirst:
+                ca_age = self.calibrate_ui.doubleSpinBox_27.value()
+                self.node.name = f"cal[{ca_age}]"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+            elif r8sSecond:
+                min_age =  self.calibrate_ui.doubleSpinBox_28.value() if self.calibrate_ui.checkBox.isChecked() else ""
+                max_age =  self.calibrate_ui.doubleSpinBox_29.value() if self.calibrate_ui.checkBox_2.isChecked() else ""
+                self.node.name = f"con[{min_age}~{max_age}]"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+            elif r8sThird:
+                fix_age = self.calibrate_ui.doubleSpinBox_30.value()
+                self.node.name = f"fix[{fix_age}]"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+            elif r8sForth:
+                unf_age = self.calibrate_ui.doubleSpinBox_31.value()
+                self.node.name = f"unfix[{unf_age}]"
+                self.node.add_face(TextFace(self.node.name), column=0, position="branch-top")
+        elif self.calibrate_ui.tabWidget.tabText(self.calibrate_ui.tabWidget.currentIndex()) == "MCMCtree root node":
+            root_node = self.scene().tree.get_tree_root()
+            if rootFirst:
+                minimum = "{:.4f}".format(self.calibrate_ui.doubleSpinBox_13.value())
+                maximum = "{:.4f}".format(self.calibrate_ui.doubleSpinBox_15.value())
+                pl = "{:.3f}".format(self.calibrate_ui.doubleSpinBox_12.value())
+                pu = "{:.3f}".format(self.calibrate_ui.doubleSpinBox_16.value())
+                root_node.name = f"'B({minimum},{maximum},{pl},{pu})'"
+                root_node.add_face(TextFace(root_node.name), column=0, position="branch-top")
+            elif rootSecond:
+                lower = "{:.4f}".format(self.calibrate_ui.doubleSpinBox_11.value())
+                upper = "{:.4f}".format(self.calibrate_ui.doubleSpinBox_14.value())
+                root_node.name = f"'>{lower}<{upper}'"
+                root_node.add_face(TextFace(root_node.name), column=0, position="branch-top")
+            elif rootThird:
+                maxBound = "{:.4f}".format(self.calibrate_ui.doubleSpinBox_19.value())
+                root_node.name = f"'<{maxBound}'"
+                root_node.add_face(TextFace(root_node.name), column=0, position="branch-top")
+        self.scene().GUI.redraw()
+        # self.calibrate_dialog.close()
+
+    def rm_calibration(self):
+        self.node.name = ""
+        # dict_faces = getattr(self.node.faces, "branch-top")
+        setattr(self.node.faces, "branch-top", {})
+        self.scene().GUI.redraw()
+        # self.node.add_face(TextFace(""), column=0, position = "branch-top")
 
     def unroot_tree(self):
         self.scene().tree.unroot()
