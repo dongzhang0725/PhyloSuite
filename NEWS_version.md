@@ -1,5 +1,39 @@
 # Release Note
 
+## PhyloSuite v2 (2025-11-26, Wednesday)
++ **Official Release:** PhyloSuite v2 is officially released, with the core update being a comprehensive molecular dating analysis suite.  
+  + Integrates data processing, parameter configuration, molecular dating computation, and result visualization within a streamlined workflow.  
+  + Supports drag-and-drop operation, automatic import of upstream results, and intuitive fossil calibration visualization for efficient and user-friendly operation.  
+  + Compatible with various common alignment file formats and fully supports all major evolutionary models.  
+  + Offers multithreaded acceleration, pause/resume options, and markedly enhanced efficiency compared with command-line MCMCtree.  
+  + Incorporates comprehensive downstream analyses, including real-time MCMC convergence monitoring, statistical summaries, plotting, and timetree visualization via MCMCTracer.  
+
++ **Citation:**  
+  Zhao, Dong, Tong Ye, Fangluan Gao, Ivan Jakovlić, Qiong La, Yindong Tong, Xiang Liu, et al. 2025.  
+  *“PhyloSuite v2: The Development of an All-in-One, Efficient and Visualization-Oriented Suite for Molecular Dating Analysis and Other Advanced Features.”* iMeta. e70095.  
+  [https://doi.org/10.1002/imt2.70095](https://doi.org/10.1002/imt2.70095)  
+
++ **Step-by-Step Tutorial:** https://dongzhang0725.github.io/PhyloSuite-demo/Moleculardating-analysis/ or http://phylosuite.jushengwu.com/dongzhang0725.github.io/PhyloSuite-demo/Moleculardating-analysis/
+
++ **Bug Fixes & Improvements:**  
+  + Automatic filtering of single-sequence files in Gblocks.  
+  + Fixed encoding errors when importing GenBank files.  
+  + Resolved MAFFT installation issues and errors with input file paths containing special characters.  
+  + Fixed plotting issue in substitution saturation analysis.  
+  + Fixed progress bar issues in ModelFinder.  
+  + Fixed plotting errors in saturation analysis.  
+  + Fixed IQ-TREE failing to automatically recognize the latest models in ModelFinder.  
+
+## PhyloSuite v2.0.dev2 (2025-09-12, Friday)
++ Extraction: Added gene duplicate resolution during extraction
++ Performance: Faster format conversion, concatenation, and MrBayes summary
++ ModelFinder: Fixed progress bar bug; integrated mixtureFinder
++ IQ-TREE3: Support for new models (NQ.bird, NQ.insect, NQ.mammal), mixture models, alignment trimming, and “fast search”
++ UI: Improved high-resolution screen support and adaptive layout
++ Concatenation: Added codon position partitioning option
++ Saturation analysis: Fixed substitution saturation plot bug
++ Molecular dating: Introduced a comprehensive molecular dating suite that integrates MCMCtree and r8s with visual fossil calibration configuration, automated model testing and selection, streamlined data preparation and pipeline execution, one-click pause and resume functionality, multithreading acceleration, and real-time MCMC convergence monitoring and plotting through MCMCTracer, together with improved compatibility with diverse alignment formats and flexible calibration strategies, enabling a fully automated yet customizable workflow for robust molecular clock analysis.
+
 ## PhyloSuite v1.2.3 (2023-02-10, Friday)
 + Added the citation for the newest PhyloSuite (v1.2.3) paper (iMeta, doi: https://doi.org/10.1002/imt2.87)
 + Optimized the progress bar for ModelFinder
